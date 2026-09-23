@@ -76,12 +76,15 @@ public struct OfficialLink: Codable, Hashable, Identifiable, Sendable {
     ]
 
     private static let productPathFragments: [String] = [
-        "/discographies/", "/discography/", "/serial/", "/products/", "/news/",
+        "/discographies/", "/discography/", "/products/", "/news/",
     ]
 
     /// Classifies a link by its label and resolved URL. Evaluated in a fixed
-    /// priority order (support > product > overseasApplication > application
-    /// > other); the first matching rule wins.
+    /// priority order (support > overseasApplication > application by vendor
+    /// host > product > application by label > other); the first matching
+    /// rule wins. Vendor hosts win over product rules so an e+ serial
+    /// application page (`eplus.jp/serial/…`) or `ticket.bushiroad-music.com`
+    /// stays an application link.
     public static func classify(label: String, url: String) -> OfficialLinkRole {
         let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowercasedLabel = trimmedLabel.lowercased()
@@ -99,18 +102,24 @@ public struct OfficialLink: Codable, Hashable, Identifiable, Sendable {
             return .support
         }
 
+        let isPiaOrEplusHost = host == "pia.jp" || host.hasSuffix(".pia.jp") || host == "eplus.jp" || host.hasSuffix(".eplus.jp")
+        let isKKTIXEvent = (host.hasSuffix("kktix.cc") || host.hasSuffix("kktix.com")) && path.contains("/events/")
+        let englishPath = path.range(of: #"(?:^|[/_-])(?:en|eng)(?:[/_-]|$)|engpls"#, options: .regularExpression) != nil
+        if host.hasPrefix("ib.") || isKKTIXEvent || host.contains("cityline")
+            || (isPiaOrEplusHost && englishPath) {
+            return .overseasApplication
+        }
+
+        if hostMatches(applicationHosts) {
+            return .application
+        }
+
         if hostMatches(productHosts)
             || productPathFragments.contains(where: { path.contains($0) }) {
             return .product
         }
 
-        let isPiaOrEplusHost = host == "pia.jp" || host.hasSuffix(".pia.jp") || host == "eplus.jp" || host.hasSuffix(".eplus.jp")
-        if host.hasPrefix("ib.") || host.contains("kktix") || host.contains("cityline")
-            || (isPiaOrEplusHost && (path.contains("eng") || path.contains("en/") || path.contains("_en"))) {
-            return .overseasApplication
-        }
-
-        if hostMatches(applicationHosts) || applicationLabels.contains(lowercasedLabel) {
+        if applicationLabels.contains(lowercasedLabel) {
             return .application
         }
 

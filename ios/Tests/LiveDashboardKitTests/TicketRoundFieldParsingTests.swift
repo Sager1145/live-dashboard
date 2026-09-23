@@ -134,6 +134,8 @@ final class TicketRoundFieldParsingTests: XCTestCase {
         XCTAssertEqual(firstComeBlock.kind, .firstComeFirstServed)
         XCTAssertEqual(firstComeBlock.applyURL, "https://eplus.jp/hasunosora6th/")
         XCTAssertEqual(firstComeBlock.applyWindowText, "Day.1\u{3000}2026年7月11日（土）0:00～\nDay.2\u{3000}2026年7月12日（日）0:00～")
+        XCTAssertEqual(firstComeBlock.applyStartAt, Self.date("2026-07-10T15:00:00Z"))
+        XCTAssertNil(firstComeBlock.applyEndAt, "independent per-day sale starts are not a window")
 
         for round in rounds {
             let faceNote = try XCTUnwrap(round.notes.first { $0.kind == .faceRecognition }, "round \(round.officialName) missing faceRecognition note")
@@ -151,6 +153,98 @@ final class TicketRoundFieldParsingTests: XCTestCase {
             if round.officialName != "一般発売（一次抽選）（Bloom Stage／福岡公演）" {
                 XCTAssertFalse(round.notes.contains { $0.kind == .creditCardOnly }, "round \(round.officialName) unexpectedly has creditCardOnly note")
             }
+        }
+    }
+
+    func testLoveLiveTargetWordingVariantsSplitBlocksAndSectionNotesStayScoped() async throws {
+        let html = """
+        <article>
+          <div data-target="top">
+            <h3>日程</h3><p>2027年1月23日(土) 開場17:00／開演18:00</p>
+            <h3>会場</h3><p>東京・Test Hall</p>
+          </div>
+          <div class="ticket" data-target="ticket">
+          <strong>＜最速先行抽選＞</strong><br>
+          ★申込対象公演：＜東京Day.1公演＞<br>
+          2026年7月26日（日）発売<br>
+          テストシングル「A」<br>
+          封入申込券にて受付<br>
+          ----------<br>
+          ■受付期間：2026年7月26日（日）12:00～8月17日（月）23:59<br>
+          ■当落発表：2026年8月22日（土）13:00～<br>
+          ※枚数制限：『シリアルNo.』1つにつき2枚まで<br>
+          ----------<br>
+          ★お申込み対象：Day.2　2027年1月24日（日）公演<br>
+          テストシングル「B」<br>
+          封入申込券にて受付<br>
+          ----------<br>
+          ■受付期間：2026年9月1日（火）12:00～9月20日（日）23:59<br>
+          ■当落発表：2026年9月26日（土）13:00～<br>
+          ----------<br>
+          受付対象公演：大阪公演DAY.1<br>
+          テストシングル「C」<br>
+          封入申込券にて受付<br>
+          ----------<br>
+          ■受付期間：2026年10月1日（木）12:00～10月26日（月）23:59<br>
+          ■当落発表：2026年10月31日（土）13:00～<br>
+          【ご注意】<br>
+          ※お申込みには身分証明書番号の入力が必要です。<br>
+          <strong>＜一般発売（先着）＞</strong><br>
+          ★申込対象：＜東京Day.1公演＞<br>
+          ----------<br>
+          ■受付URL：<a href="https://eplus.jp/serial/test_sg/">https://eplus.jp/serial/test_sg/</a><br>
+          ■発売日：2026年11月7日（土）12:00～<br>
+          ※本受付では全席指定のみを販売いたします。<br>
+          【電子チケットのお申込みについて】<br>
+          ＜一般発売（先着）＞受付でご購入された場合、チケットのお受取はイープラス電子チケット「スマチケ」となります。顔写真登録の必要はございません。<br>
+          ▼顔認証入場システムのご利用について<br>
+          <a href="https://eplus.jp/faceticket_about/">https://eplus.jp/faceticket_about/</a><br>
+          ●注意事項●<br>
+          ※顔認証入場システムを利用したチケット販売のため、顔写真登録が必要となります。<br>
+          <a href="https://eplus.jp/faceticket_about/">https://eplus.jp/faceticket_about/</a>
+          </div>
+        </article>
+        """
+
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/test/live-event/variants/", title: "Variants", franchise: .lovelive)
+        let rounds = refreshed.ticketRounds
+
+        XCTAssertEqual(rounds.map(\.officialName), [
+            "最速先行抽選（東京Day.1公演）",
+            "最速先行抽選（Day.2\u{3000}2027年1月24日（日）公演）",
+            "最速先行抽選（大阪公演DAY.1）",
+            "一般発売（先着）（東京Day.1公演）",
+        ])
+        XCTAssertEqual(rounds.map(\.applyWindowText), [
+            "2026年7月26日（日）12:00～8月17日（月）23:59",
+            "2026年9月1日（火）12:00～9月20日（日）23:59",
+            "2026年10月1日（木）12:00～10月26日（月）23:59",
+            "2026年11月7日（土）12:00～",
+        ])
+        XCTAssertEqual(rounds[0].applyEndAt, Self.date("2026-08-17T14:59:00Z"))
+        XCTAssertEqual(rounds.prefix(3).map(\.lotteryProducts), [["テストシングル「A」"], ["テストシングル「B」"], ["テストシングル「C」"]])
+        XCTAssertEqual(rounds[0].quantityLimit, "『シリアルNo.』1つにつき2枚まで")
+
+        // A 【…】 block between rounds must not swallow the rounds after it.
+        let firstCome = rounds[3]
+        XCTAssertEqual(firstCome.kind, .firstComeFirstServed)
+        XCTAssertEqual(firstCome.applyURL, "https://eplus.jp/serial/test_sg/", "an e+ serial page is an application link, not a product")
+
+        // 身分証明書番号 in an input instruction is not an identity check.
+        XCTAssertFalse(rounds.flatMap(\.notes).contains { $0.kind == .identityCheck })
+
+        // The スマチケ sentence names ＜一般発売（先着）＞ and applies only there; the
+        // negated 顔写真登録 clause never becomes a face-recognition requirement.
+        XCTAssertTrue(firstCome.notes.contains { $0.kind == .smartTicketOnly })
+        for round in rounds.prefix(3) {
+            XCTAssertFalse(round.notes.contains { $0.kind == .smartTicketOnly }, "\(round.officialName) should not carry the 先着-only スマチケ note")
+        }
+        for round in rounds {
+            let face = try XCTUnwrap(round.notes.first { $0.kind == .faceRecognition })
+            XCTAssertFalse(face.text.contains("必要はございません"))
+            XCTAssertFalse(face.text.contains("ご利用について"))
+            XCTAssertEqual(face.links.map(\.url), ["https://eplus.jp/faceticket_about/"], "note links are deduplicated")
+            XCTAssertFalse(round.notes.contains { $0.text.hasPrefix("【") })
         }
     }
 
@@ -227,6 +321,12 @@ final class TicketRoundFieldParsingTests: XCTestCase {
             ("公式ストア", "https://bushiroad-store.com/pages/x", .product),
             ("アルバム封入", "https://example.com/album", .other),
             ("上海站", "https://sdp.ctrip.com/?x", .other),
+            ("https://eplus.jp/serial/ppp_22ndsg/", "https://eplus.jp/serial/ppp_22ndsg/", .application),
+            ("チケット購入", "https://ticket.bushiroad-music.com/order/x", .application),
+            ("受付はこちら", "https://eplus.jp/garden-challenge/", .application),
+            ("English", "https://w.pia.jp/a/hasunosora6th26engpls/", .overseasApplication),
+            ("FamiPort", "https://kktix.link/familyMartfamiport", .other),
+            ("決済申込書", "https://assets.kktix.io/x/form.pdf", .other),
         ]
         for testCase in cases {
             XCTAssertEqual(

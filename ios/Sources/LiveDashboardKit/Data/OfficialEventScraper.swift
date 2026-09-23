@@ -954,23 +954,37 @@ private extension OfficialEventScraper {
         ]
         var notes: [TicketNote] = []
         for rule in rules {
+            var seenLines: Set<String> = []
             let matchingLines = lines.compactMap { line -> String? in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.isEmpty, rule.keywords.contains(where: { trimmed.contains($0) }) else { return nil }
-                // A pure link-label line ("▼スマチケご利用ガイドはこちら") is not note text.
-                guard trimmed.range(of: #"^[▼●■◆]?.*(こちら|ガイド)[：:]?$"#, options: .regularExpression) == nil || rule.keywords.contains(where: { !trimmed.hasSuffix("こちら") && !trimmed.hasSuffix("ガイド") && trimmed.contains($0) }) else { return nil }
-                var value = trimmed
+                // 身分証明書番号 in a quantity-limit sentence is not an identity check.
+                if rule.kind == .identityCheck, !trimmed.contains("本人確認"), trimmed.contains("番号") { return nil }
+                // Section headings (【…】) and link-label lines ("▼スマチケご利用ガイドはこちら",
+                // "▼顔認証入場システムのご利用について") are not note text.
+                if trimmed.hasPrefix("【") || trimmed.hasPrefix("●") && trimmed.hasSuffix("●") { return nil }
+                if trimmed.range(of: #"^[▼●■◆]?[^。]*(こちら|ガイド|について|とは[？?]?)[：:]?$"#, options: .regularExpression) != nil { return nil }
+                // A clause that says the requirement does NOT apply is not a requirement;
+                // keep only the keyword-bearing clauses that are not negated.
+                let clauses = trimmed.components(separatedBy: "。").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                let kept = clauses.filter { clause in
+                    rule.keywords.contains(where: { clause.contains($0) })
+                        && !clause.contains("必要はございません") && !clause.contains("必要ありません") && !clause.contains("不要です")
+                }
+                guard !kept.isEmpty else { return nil }
+                var value = kept.joined(separator: "。") + "。"
                 while let first = value.first, "※▼■●".contains(first) { value.removeFirst() }
                 let cleaned = value.trimmingCharacters(in: .whitespaces)
-                guard !cleaned.isEmpty else { return nil }
+                guard !cleaned.isEmpty, seenLines.insert(cleaned).inserted else { return nil }
                 return String(cleaned.prefix(400))
             }
             guard !matchingLines.isEmpty else { continue }
+            var seenLinkURLs: Set<String> = []
             let matchedLinks = links.filter { link in
                 let lowerURL = link.url.lowercased()
-                if rule.linkFragments.contains(where: { lowerURL.contains($0) }) { return true }
-                if !rule.linkLabelFragments.isEmpty, rule.linkLabelFragments.contains(where: { link.label.contains($0) }) { return true }
-                return false
+                let matches = rule.linkFragments.contains(where: { lowerURL.contains($0) })
+                    || (!rule.linkLabelFragments.isEmpty && rule.linkLabelFragments.contains(where: { link.label.contains($0) }))
+                return matches && seenLinkURLs.insert(canonicalURL(link.url)).inserted
             }
             notes.append(TicketNote(kind: rule.kind, text: matchingLines.joined(separator: "\n"), links: matchedLinks))
         }
@@ -1277,7 +1291,8 @@ private extension OfficialEventScraper {
 
         let roundHeadingRE = #"^[＜<〈]([^＜＞<>〈〉]+)[＞>〉]$"#
         let roundHeadingKeywords = ["先行", "抽選", "発売", "販売", "受付", "トレード", "リセール", "当日券", "先着", "アップグレード"]
-        let targetRE = #"^[★■]\s*申込対象[：:]\s*(.*)$"#
+        // ★申込対象： / ★申込対象公演： / ★お申込み対象： / 受付対象公演： all start a sub-block.
+        let targetRE = #"^[★■●◆]?\s*(?:お?申し?込み?対象(?:公演)?|受付対象(?:公演)?)\s*[：:]\s*(.*)$"#
         let separatorRE = #"^[-ー─]{5,}$"#
         let fieldRE = #"^[■□◆●※]?\s*(受付期間|受付時間|申込期間|発売日時|発売日|当落発表|当選発表|抽選結果|入金期間|支払期間|支払い期間|支払期限|受付URL|申込URL|対象公演|枚数制限|支払い方法|支払方法)\s*[：:]\s*(.*)$"#
         let sectionHeadingRE = #"^【([^】]+)】"#
@@ -1301,7 +1316,9 @@ private extension OfficialEventScraper {
             let text = line.text
 
             if inSectionNotes {
-                if text.hasPrefix(HTML.headingLineMarker) { inSectionNotes = false } else {
+                let resumesRound = regex(roundHeadingRE, text).first.flatMap { group($0, 1, in: text) }
+                    .map { inner in roundHeadingKeywords.contains(where: { inner.contains($0) }) } ?? false
+                if text.hasPrefix(HTML.headingLineMarker) || resumesRound { inSectionNotes = false } else {
                     sectionNoteLines.append(line)
                     index += 1
                     continue
@@ -1374,6 +1391,7 @@ private extension OfficialEventScraper {
                         if regex(targetRE, candidateText).first != nil { break }
                         if regex(roundHeadingRE, candidateText).first != nil { break }
                         if regex(sectionHeadingRE, candidateText).first != nil { break }
+                        if candidateText.hasPrefix("※") { break }
                         gathered.append(candidateText)
                         currentBlock?.allLines.append(lines[lookahead])
                         lookahead += 1
@@ -1387,7 +1405,14 @@ private extension OfficialEventScraper {
                 switch label {
                 case "受付期間", "受付時間", "申込期間", "発売日時", "発売日":
                     currentBlock?.applyWindowText = value
-                    currentBlock?.applyDates = parseExplicitDateTimes(injectYearIfNeeded(value, referenceDate: referenceDate))
+                    let valueLines = value.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                    let perLineDates = valueLines.map { parseExplicitDateTimes(injectYearIfNeeded($0, referenceDate: referenceDate)) }
+                    if valueLines.count >= 2, perLineDates.allSatisfy({ $0.count <= 1 }) {
+                        // "Day.1　7月11日 0:00～ / Day.2　7月12日 0:00～": independent start times, not a window.
+                        currentBlock?.applyDates = perLineDates.compactMap(\.first).min().map { [$0] } ?? []
+                    } else {
+                        currentBlock?.applyDates = parseExplicitDateTimes(injectYearIfNeeded(value, referenceDate: referenceDate))
+                    }
                 case "当落発表", "当選発表", "抽選結果":
                     currentBlock?.resultText = value
                     currentBlock?.resultDates = parseExplicitDateTimes(injectYearIfNeeded(value, referenceDate: referenceDate))
@@ -1395,15 +1420,19 @@ private extension OfficialEventScraper {
                     currentBlock?.paymentWindowText = value
                     currentBlock?.paymentDates = parseExplicitDateTimes(injectYearIfNeeded(value, referenceDate: referenceDate))
                 case "受付URL", "申込URL":
-                    let url = line.links.first?.url ?? regex(#"https?://\S+"#, value).first.flatMap { group($0, 0, in: value) }
-                    if let url { currentBlock?.receiptLinks.append(OfficialLink(label: "受付URL", url: url)) }
+                    if line.links.isEmpty, let url = regex(#"https?://\S+"#, value).first.flatMap({ group($0, 0, in: value) }) {
+                        currentBlock?.receiptLinks.append(OfficialLink(label: "受付URL", url: url))
+                    }
                 case "対象公演":
                     if currentBlock?.applicationTargetField == nil { currentBlock?.applicationTargetField = value }
                 case "枚数制限":
                     currentBlock?.quantityLimit = value
                 case "支払い方法", "支払方法":
-                    let kind: TicketNoteKind = value.contains("クレジット") ? .creditCardOnly : .other
-                    currentBlock?.extraNotes.append(TicketNote(kind: kind, text: value, links: []))
+                    let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmedValue.isEmpty {
+                        let kind: TicketNoteKind = trimmedValue.contains("クレジット") ? .creditCardOnly : .other
+                        currentBlock?.extraNotes.append(TicketNote(kind: kind, text: trimmedValue, links: []))
+                    }
                 default: break
                 }
                 index += 1
@@ -1418,10 +1447,20 @@ private extension OfficialEventScraper {
         }
         flush()
 
-        let sectionNotes = ticketNotes(
-            in: sectionNoteLines.map(\.text),
-            links: classifiedLinks(sectionNoteLines.flatMap(\.links))
-        )
+        // A section-level sentence that names rounds ("＜一般発売（先着）＞と＜当日券販売（先着）＞受付で…")
+        // applies only to those rounds; unscoped sentences apply to every round.
+        func roundReferences(_ text: String) -> [String] {
+            regex(#"[＜<]([^＜＞<>]+)[＞>]"#, text).compactMap { group($0, 1, in: text).map(clean) }
+                .filter { inner in roundHeadingKeywords.contains(where: { inner.contains($0) }) }
+        }
+        let sectionLinks = classifiedLinks(sectionNoteLines.flatMap(\.links))
+        func sectionNotes(for roundHeading: String) -> [TicketNote] {
+            let scoped = sectionNoteLines.filter { line in
+                let references = roundReferences(line.text)
+                return references.isEmpty || references.contains(clean(roundHeading))
+            }
+            return ticketNotes(in: scoped.map(\.text), links: sectionLinks)
+        }
 
         func loveLiveLotteryProducts(_ productLines: [Line]) -> [String] {
             var results: [String] = []
@@ -1471,7 +1510,7 @@ private extension OfficialEventScraper {
 
             let blockNotes = ticketNotes(in: block.allLines.map(\.text) + block.productLines.map(\.text), links: ownLinks) + block.extraNotes
             var seenNoteIDs: Set<String> = []
-            let notes = (blockNotes + sectionNotes).filter { seenNoteIDs.insert($0.id).inserted }
+            let notes = (blockNotes + sectionNotes(for: block.roundHeading)).filter { seenNoteIDs.insert($0.id).inserted }
 
             let hasDates = !applyDates.isEmpty || resultDate != nil || !paymentDates.isEmpty
             let isWaiting = !hasDates && nameAndFields.range(of: "後日|追って|未定", options: .regularExpression) != nil
