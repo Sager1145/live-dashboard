@@ -32,6 +32,9 @@ public final class AssistantCoordinator {
     }
     public private(set) var summaries: [String: AssistantEventSummary] = [:]
     public private(set) var generatingEventIDs: Set<String> = []
+    /// User-facing progress entries for each active generation. These describe
+    /// app work only; model reasoning is never exposed as a log.
+    public private(set) var generationLogs: [String: [String]] = [:]
     public private(set) var lastError: String?
     /// Per-event failure messages (eventID → message), so a card can show why
     /// its own summary failed without every other card reporting the same
@@ -73,6 +76,7 @@ public final class AssistantCoordinator {
 
     private var credential: AssistantCredential?
     private var inFlightGenerations: [String: Task<AssistantEventSummary?, Never>] = [:]
+    private var generationTokens: [String: UUID] = [:]
     /// Shared in-flight ChatGPT token refresh so concurrent callers (a stale
     /// access token plus a 401 retry, for instance) never race two refreshes.
     private var refreshTask: Task<ChatGPTSession, Error>?
@@ -126,6 +130,10 @@ public final class AssistantCoordinator {
         errors[eventID]
     }
 
+    public func generationLog(for eventID: String) -> [String] {
+        generationLogs[eventID] ?? []
+    }
+
     /// Cached per (event, summary generation, bundle content) so repeated
     /// `body` evaluations for an unchanged bundle never re-hash the source
     /// text. Keyed on `bundle.hashValue` — Swift's synthesized `Hashable`
@@ -159,16 +167,26 @@ public final class AssistantCoordinator {
             return await existing.value
         }
 
+        let generationToken = UUID()
+        generationTokens[eventID] = generationToken
+        generationLogs[eventID] = []
         let task = Task { [weak self] () -> AssistantEventSummary? in
             guard let self else { return nil }
             do {
-                let summary = try await self.runSummarize(bundle: bundle)
+                let summary = try await self.runSummarize(bundle: bundle) { [weak self] entry in
+                    self?.appendGenerationLog(entry, eventID: eventID, token: generationToken)
+                }
                 // `cancelGeneration`/`removeAllSummaries` only mark the task
                 // cancelled — the underlying request may still finish. Never
                 // let a cancelled generation resurrect a summary the user
                 // already asked to remove.
                 guard !Task.isCancelled else { return nil }
                 do {
+                    self.appendGenerationLog(
+                        String(localized: "正在保存整理结果…", bundle: .kit),
+                        eventID: eventID,
+                        token: generationToken
+                    )
                     try await self.summaryStore.save(summary)
                 } catch {
                     throw AssistantError.provider(String(localized: "AI 整理结果保存失败，请重试。", bundle: .kit))
@@ -213,6 +231,7 @@ public final class AssistantCoordinator {
         if inFlightGenerations[eventID] == task {
             inFlightGenerations.removeValue(forKey: eventID)
             generatingEventIDs.remove(eventID)
+            generationTokens.removeValue(forKey: eventID)
         }
         return result
     }
@@ -223,6 +242,13 @@ public final class AssistantCoordinator {
         inFlightGenerations[eventID]?.cancel()
         inFlightGenerations.removeValue(forKey: eventID)
         generatingEventIDs.remove(eventID)
+        generationTokens.removeValue(forKey: eventID)
+        generationLogs.removeValue(forKey: eventID)
+    }
+
+    private func appendGenerationLog(_ entry: String, eventID: String, token: UUID) {
+        guard generationTokens[eventID] == token, !Task.isCancelled else { return }
+        generationLogs[eventID, default: []].append(entry)
     }
 
     /// Resolves a transport and runs the summarizer. A 401 from the ChatGPT
@@ -230,12 +256,15 @@ public final class AssistantCoordinator {
     /// `refreshChatGPTSession`) and retries once. A 401 from an API-key
     /// transport — or a retry that still 401s — signs the credential out (if
     /// it was a plain API key) and surfaces a re-login message.
-    private func runSummarize(bundle: LiveEventBundle) async throws -> AssistantEventSummary {
+    private func runSummarize(
+        bundle: LiveEventBundle,
+        progress: @escaping @MainActor @Sendable (String) -> Void
+    ) async throws -> AssistantEventSummary {
         let requestModel = model
         let transport = try await currentTransport()
         let summarizer = AssistantSummarizer(client: client, officialPageSession: officialPageSession)
         do {
-            return try await summarizer.summarize(bundle: bundle, model: requestModel, transport: transport)
+            return try await summarizer.summarize(bundle: bundle, model: requestModel, transport: transport, progress: progress)
         } catch AssistantError.http(401, _) {
             guard case .chatGPTBackend = transport else {
                 lastSignOutReason = Self.invalidCredentialMessage
@@ -244,7 +273,7 @@ public final class AssistantCoordinator {
             }
             let refreshedTransport = try await forceRefreshChatGPTTransport()
             do {
-                return try await summarizer.summarize(bundle: bundle, model: requestModel, transport: refreshedTransport)
+                return try await summarizer.summarize(bundle: bundle, model: requestModel, transport: refreshedTransport, progress: progress)
             } catch AssistantError.http(401, _) {
                 lastSignOutReason = Self.invalidCredentialMessage
                 await signOut()

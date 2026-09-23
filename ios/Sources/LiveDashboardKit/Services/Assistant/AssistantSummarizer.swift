@@ -13,7 +13,14 @@ public struct AssistantSummarizer: Sendable {
         self.officialPageSession = officialPageSession
     }
 
-    public func summarize(bundle: LiveEventBundle, model: String, transport: AssistantTransport, now: Date = Date()) async throws -> AssistantEventSummary {
+    public func summarize(
+        bundle: LiveEventBundle,
+        model: String,
+        transport: AssistantTransport,
+        now: Date = Date(),
+        progress: (@MainActor @Sendable (String) -> Void)? = nil
+    ) async throws -> AssistantEventSummary {
+        await progress?(String(localized: "正在读取官网页面…", bundle: .kit))
         let source: OfficialPageSource
         if let officialPageSession {
             source = try await Self.fetchOfficialPage(for: bundle, session: officialPageSession)
@@ -24,6 +31,7 @@ public struct AssistantSummarizer: Sendable {
             let sourceURL = URL(string: bundle.event.primarySourceURL)
             source = OfficialPageSource(text: sourceText, finalURL: sourceURL, rawHTML: nil)
         }
+        await progress?(String(localized: "正在整理官网资料…", bundle: .kit))
         let input = Self.buildInput(bundle: bundle, officialPageText: source.text, officialPageURL: source.finalURL)
         var allowedURLs = Self.allowedURLs(
             sourceText: source.rawHTML ?? source.text,
@@ -31,6 +39,7 @@ public struct AssistantSummarizer: Sendable {
         )
         allowedURLs.insert(bundle.event.primarySourceURL)
 
+        await progress?(String(localized: "已提交给 AI，正在等待结果…", bundle: .kit))
         let jsonText = try await client.generateStructured(
             model: model,
             instructions: Self.instructions,
@@ -40,6 +49,7 @@ public struct AssistantSummarizer: Sendable {
             transport: transport
         )
 
+        await progress?(String(localized: "正在校验 AI 返回的资料…", bundle: .kit))
         guard let jsonData = jsonText.data(using: .utf8) else {
             throw AssistantError.invalidOutput("output is not UTF-8")
         }

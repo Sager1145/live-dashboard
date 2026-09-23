@@ -635,9 +635,11 @@ final class AssistantServiceTests: XCTestCase {
         let firstGeneration = Task { await coordinator.generate(for: bundle) }
         await fulfillment(of: [firstStarted], timeout: 5)
         XCTAssertTrue(coordinator.generatingEventIDs.contains(bundle.event.id))
+        XCTAssertFalse(coordinator.generationLog(for: bundle.event.id).isEmpty)
 
         coordinator.cancelGeneration(for: bundle.event.id)
         XCTAssertFalse(coordinator.generatingEventIDs.contains(bundle.event.id))
+        XCTAssertTrue(coordinator.generationLog(for: bundle.event.id).isEmpty)
 
         // Regenerate immediately — this must register a newer task.
         let secondGeneration = Task { await coordinator.generate(for: bundle, force: true) }

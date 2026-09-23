@@ -161,11 +161,41 @@ public struct AssistantSummaryCard: View {
                 .controlSize(.small)
                 .frame(minHeight: 44)
             }
+            generationLog
             if let previous {
                 summaryContent(previous)
                     .opacity(0.5)
                     .disabled(true)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var generationLog: some View {
+        let entries = coordinator.generationLog(for: bundle.event.id)
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("处理日志", bundle: .kit)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Image(systemName: index == entries.indices.last ? "circle.dotted" : "checkmark.circle.fill")
+                            .foregroundStyle(index == entries.indices.last ? Color.secondary : Color.statusPositive)
+                            .accessibilityHidden(true)
+                        Text(verbatim: entry)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("处理日志", bundle: .kit))
         }
     }
 
