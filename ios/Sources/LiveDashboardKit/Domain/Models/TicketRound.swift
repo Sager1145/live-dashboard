@@ -26,6 +26,14 @@ public struct TicketRound: Codable, Hashable, Identifiable, Sendable {
     public let officialStatus: String?
     public let status: DataStatus
     public let links: [OfficialLink]
+    public let applyWindowText: String?
+    public let resultText: String?
+    public let paymentStartAt: Date?
+    public let paymentWindowText: String?
+    public let quantityLimit: String?
+    public let lotteryProducts: [String]
+    public let applicationTarget: String?
+    public let notes: [TicketNote]
 
     public init(
         id: String,
@@ -43,7 +51,15 @@ public struct TicketRound: Codable, Hashable, Identifiable, Sendable {
         overseasURL: String?,
         officialStatus: String?,
         status: DataStatus,
-        links: [OfficialLink] = []
+        links: [OfficialLink] = [],
+        applyWindowText: String? = nil,
+        resultText: String? = nil,
+        paymentStartAt: Date? = nil,
+        paymentWindowText: String? = nil,
+        quantityLimit: String? = nil,
+        lotteryProducts: [String] = [],
+        applicationTarget: String? = nil,
+        notes: [TicketNote] = []
     ) {
         self.id = id
         self.eventID = eventID
@@ -61,12 +77,22 @@ public struct TicketRound: Codable, Hashable, Identifiable, Sendable {
         self.officialStatus = officialStatus
         self.status = status
         self.links = links
+        self.applyWindowText = applyWindowText
+        self.resultText = resultText
+        self.paymentStartAt = paymentStartAt
+        self.paymentWindowText = paymentWindowText
+        self.quantityLimit = quantityLimit
+        self.lotteryProducts = lotteryProducts
+        self.applicationTarget = applicationTarget
+        self.notes = notes
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, eventID, officialName, kind, scope, applyStartAt, applyEndAt, resultAt
         case paymentDeadlineAt, eligibility, announcementURL, applyURL, overseasURL
         case officialStatus, status, links
+        case applyWindowText, resultText, paymentStartAt, paymentWindowText, quantityLimit
+        case lotteryProducts, applicationTarget, notes
     }
 
     public init(from decoder: Decoder) throws {
@@ -87,6 +113,14 @@ public struct TicketRound: Codable, Hashable, Identifiable, Sendable {
         officialStatus = try c.decodeIfPresent(String.self, forKey: .officialStatus)
         status = try c.decode(DataStatus.self, forKey: .status)
         links = try c.decodeIfPresent([OfficialLink].self, forKey: .links) ?? []
+        applyWindowText = try c.decodeIfPresent(String.self, forKey: .applyWindowText)
+        resultText = try c.decodeIfPresent(String.self, forKey: .resultText)
+        paymentStartAt = try c.decodeIfPresent(Date.self, forKey: .paymentStartAt)
+        paymentWindowText = try c.decodeIfPresent(String.self, forKey: .paymentWindowText)
+        quantityLimit = try c.decodeIfPresent(String.self, forKey: .quantityLimit)
+        lotteryProducts = try c.decodeIfPresent([String].self, forKey: .lotteryProducts) ?? []
+        applicationTarget = try c.decodeIfPresent(String.self, forKey: .applicationTarget)
+        notes = try c.decodeIfPresent([TicketNote].self, forKey: .notes) ?? []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -107,5 +141,13 @@ public struct TicketRound: Codable, Hashable, Identifiable, Sendable {
         try c.encodeIfPresent(officialStatus, forKey: .officialStatus)
         try c.encode(status, forKey: .status)
         try c.encode(links, forKey: .links)
+        try c.encodeIfPresent(applyWindowText, forKey: .applyWindowText)
+        try c.encodeIfPresent(resultText, forKey: .resultText)
+        try c.encodeIfPresent(paymentStartAt, forKey: .paymentStartAt)
+        try c.encodeIfPresent(paymentWindowText, forKey: .paymentWindowText)
+        try c.encodeIfPresent(quantityLimit, forKey: .quantityLimit)
+        try c.encode(lotteryProducts, forKey: .lotteryProducts)
+        try c.encodeIfPresent(applicationTarget, forKey: .applicationTarget)
+        try c.encode(notes, forKey: .notes)
     }
 }

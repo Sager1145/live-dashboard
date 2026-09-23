@@ -25,11 +25,16 @@ public enum LocalRefreshPolicy {
     }
 
     public static func isArchived(_ bundle: LiveEventBundle, cutoff: String) -> Bool {
-        // An unknown date or any future tour stop keeps the event eligible.
+        hasEnded(bundle, before: cutoff)
+    }
+
+    /// True when every performance has a known local date and the last one is before `day` (yyyy-MM-dd).
+    /// An unknown date or any later tour stop keeps the event current.
+    public static func hasEnded(_ bundle: LiveEventBundle, before day: String) -> Bool {
         guard !bundle.performances.isEmpty,
               bundle.performances.allSatisfy({ $0.localDate != nil }),
               let last = bundle.performances.compactMap(\.localDate).max() else { return false }
-        return last < cutoff
+        return last < day
     }
 }
 
@@ -48,6 +53,7 @@ public actor LocalLiveRepository: LiveRepository {
     private var catalog: Catalog?
     private var refreshTask: Task<[LiveEventBundle], Error>?
     private var eventTasks: [String: Task<LiveEventBundle, Error>] = [:]
+    private var historyTask: Task<[LiveEventBundle], Error>?
 
     public init(scraper: any OfficialEventScraping = OfficialEventScraper(), directory: URL? = nil,
                 calendar: Calendar = .autoupdatingCurrent, now: @escaping @Sendable () -> Date = { Date() }) {
@@ -82,7 +88,10 @@ public actor LocalLiveRepository: LiveRepository {
 
     public func refresh() async throws -> [LiveEventBundle] {
         if let refreshTask { return try await refreshTask.value }
-        for task in eventTasks.values { _ = try? await task.value }
+        while !eventTasks.isEmpty || historyTask != nil {
+            for task in eventTasks.values { _ = try? await task.value }
+            if let historyTask { _ = try? await historyTask.value }
+        }
         if let refreshTask { return try await refreshTask.value }
         var previous = try load()
         let timestamp = now()
@@ -116,6 +125,7 @@ public actor LocalLiveRepository: LiveRepository {
 
     private func refreshEvent(eventID: String, card: (CardType, String)?) async throws -> LiveEventBundle? {
         if let refreshTask { _ = try? await refreshTask.value }
+        if let historyTask { _ = try? await historyTask.value }
         if let task = eventTasks[eventID] {
             _ = try? await task.value
             // Each selected card is a distinct operation; queue it after the current one.
@@ -145,9 +155,38 @@ public actor LocalLiveRepository: LiveRepository {
         // Wait for an active write before removing it, so a completed clear stays cleared.
         if let refreshTask { _ = try? await refreshTask.value }
         for task in eventTasks.values { _ = try? await task.value }
+        if let historyTask { _ = try? await historyTask.value }
         let empty = Catalog()
         try persist(empty)
         catalog = empty
+    }
+
+    public func fetchHistory(start: String, end: String) async throws -> [LiveEventBundle] {
+        if let historyTask { return try await historyTask.value }
+        // Wait until no catalog write is in flight, then re-check: another caller
+        // may have started one while this actor was suspended.
+        while refreshTask != nil || !eventTasks.isEmpty {
+            if let refreshTask { _ = try? await refreshTask.value }
+            for task in eventTasks.values { _ = try? await task.value }
+        }
+        if let historyTask { return try await historyTask.value }
+        let previous = try load()
+        let timestamp = now()
+        let window = OfficialDateWindow(start: start, end: end)
+        let task = Task { [scraper] in
+            defer { self.historyTask = nil }
+            do {
+                let collected = try await scraper.collect(existing: previous.events, window: window, now: timestamp)
+                try Task.checkCancellation()
+                try self.saveHistory(collected: collected)
+                return collected
+            } catch OfficialEventScraperError.partialFailure(let bundles, let failures) {
+                try self.saveHistory(collected: bundles)
+                throw OfficialEventScraperError.partialFailure(partialBundles: bundles, failures: failures)
+            }
+        }
+        historyTask = task
+        return try await task.value
     }
 
     private func load() throws -> Catalog {
@@ -187,5 +226,19 @@ public actor LocalLiveRepository: LiveRepository {
         try persist(saved)
         catalog = saved
         return saved.events
+    }
+
+    /// A manual history fetch is not the day's catalog refresh: unlike `save`,
+    /// this overwrites every collected bundle unconditionally (no archived
+    /// checks) and never touches `lastRefresh`/`lastRefreshDay`/`lastAttemptDay`.
+    private func saveHistory(collected: [LiveEventBundle]) throws {
+        var current = try load()
+        for bundle in collected {
+            current.events.removeAll { $0.event.id == bundle.event.id }
+            current.events.append(bundle)
+        }
+        current.events.sort { $0.event.id < $1.event.id }
+        try persist(current)
+        catalog = current
     }
 }

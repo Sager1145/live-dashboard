@@ -103,6 +103,9 @@ struct AppShell: View {
             Tab("演出", systemImage: "calendar", value: RootTab.dashboard) {
                 DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant)
             }
+            Tab("往期", systemImage: "clock.arrow.circlepath", value: RootTab.pastLives) {
+                DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant, scope: .past)
+            }
             Tab("我的", systemImage: "star", value: RootTab.myLives) {
                 MyLivesView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, installationService: dependencies.installationService, assistant: dependencies.assistant)
             }

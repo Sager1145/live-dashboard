@@ -116,7 +116,7 @@ public struct GoodsView: View {
             HStack {
                 Text(product.name)
                 Spacer()
-                Text(product.amount?.formatted ?? String(localized: "价格待核对")).foregroundStyle(.secondary)
+                Text(product.amount?.formatted ?? String(localized: "价格待核对", bundle: .kit)).foregroundStyle(.secondary)
             }
             if detailed {
                 ForEach(product.variants) { variant in
@@ -145,8 +145,8 @@ public struct GoodsView: View {
         switch (session.startsAt, session.endsAt) {
         case (let start?, let end?): dates = "\(format(start)) – \(format(end))"
         case (let start?, nil): dates = format(start)
-        case (nil, let end?): dates = String(localized: "至 \(format(end))")
-        case (nil, nil): dates = String(localized: "时间待核对")
+        case (nil, let end?): dates = String(localized: "至 \(format(end))", bundle: .kit)
+        case (nil, nil): dates = String(localized: "时间待核对", bundle: .kit)
         }
         return "\(session.location)  \(dates)"
     }

@@ -273,6 +273,14 @@ test("reminder replacement preserves stable identity and rejects a different per
       overseasURL: null,
       officialStatus: null,
       links: [],
+      applyWindowText: null,
+      resultText: null,
+      paymentStartAt: null,
+      paymentWindowText: null,
+      quantityLimit: null,
+      lotteryProducts: [],
+      applicationTarget: null,
+      notes: [],
     });
     for (const field of ["scope", "applyEndAt"])
       b.evidence.push({

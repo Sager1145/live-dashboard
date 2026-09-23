@@ -31,6 +31,11 @@ public struct LiveEventCard: View {
                 .font(.headline)
                 .multilineTextAlignment(.leading)
 
+            if !summary.ticketBadges.isEmpty {
+                TicketBadgeRow(badges: summary.ticketBadges)
+                    .accessibilityIdentifier("ticketBadges-\(summary.id)")
+            }
+
             if !summary.groups.isEmpty {
                 Text(summary.groups.joined(separator: " × "))
                     .font(.subheadline)
@@ -60,11 +65,6 @@ public struct LiveEventCard: View {
                 Text(summary.venueSummary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            }
-
-            if let currentRoundLabel = summary.currentRoundLabel {
-                Text("当前：\(currentRoundLabel)进行中")
-                    .font(.footnote)
             }
 
             HStack {
@@ -114,7 +114,7 @@ public struct LiveEventCard: View {
         switch summary.franchise {
         case .bangdream: "BanG Dream!"
         case .lovelive: "Love Live!"
-        case .unknown: String(localized: "其他企划")
+        case .unknown: String(localized: "其他企划", bundle: .kit)
         }
     }
 
@@ -127,15 +127,47 @@ public struct LiveEventCard: View {
     }
 }
 
+/// Row of event-level ticket-phase chips (抽选中 / 一般贩售中 / 已售罄 etc).
+private struct TicketBadgeRow: View {
+    let badges: [TicketPhaseBadge]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(badges) { badge in
+                Text(badge.text)
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .foregroundStyle(color(for: badge.tone))
+                    .background(color(for: badge.tone).opacity(0.15), in: Capsule())
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private func color(for tone: TicketPhaseBadge.Tone) -> Color {
+        switch tone {
+        case .open: .green
+        case .upcoming: .blue
+        case .closed: .secondary
+        case .soldOut: .red
+        }
+    }
+}
+
 /// Uses the same official request headers as the detail gallery (including
 /// Love Live's image.php compatibility), rather than an unconfigured AsyncImage.
 private struct DashboardThumbnail: View {
     let summary: DashboardEventSummary
     private var asset: MediaAsset? { summary.officialThumbnail }
     @State private var image: UIImage?
-    @State private var isPreparingShare = false
-    @State private var shareFileURL: ShareFileURL?
     private let loader = URLSessionOfficialMediaLoader()
+
+    /// The event's official page; the share button shares this link, not the image.
+    private var officialURL: URL? {
+        guard let url = URL(string: summary.primarySourceURL), url.scheme != nil else { return nil }
+        return url
+    }
 
     var body: some View {
         ZStack {
@@ -154,30 +186,17 @@ private struct DashboardThumbnail: View {
         .accessibilityLabel(image == nil ? "\(summary.officialTitle)，默认封面" : "\(summary.officialTitle)，官方公演封面")
         .accessibilityIdentifier("officialThumbnail-\(summary.id)")
         .overlay(alignment: .topTrailing) {
-            if image != nil {
-                Button {
-                    Task { await prepareShare() }
-                } label: {
-                    if isPreparingShare {
-                        ProgressView()
-                            .frame(width: 28, height: 28)
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.footnote)
-                            .frame(width: 28, height: 28)
-                    }
+            if let officialURL {
+                ShareLink(item: officialURL, subject: Text(summary.officialTitle), message: Text(summary.officialTitle)) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.footnote)
+                        .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.borderless)
                 .background(.thinMaterial, in: Circle())
-                .disabled(isPreparingShare)
                 .padding(6)
                 .accessibilityIdentifier("thumbnailShare-\(summary.id)")
-                .accessibilityLabel("分享缩略图")
-            }
-        }
-        .sheet(item: $shareFileURL) { wrapper in
-            OfficialImageShareSheet(fileURL: wrapper.url) {
-                try? FileManager.default.removeItem(at: wrapper.url.deletingLastPathComponent())
+                .accessibilityLabel("分享官方链接")
             }
         }
         .task(id: asset) {
@@ -222,24 +241,6 @@ private struct DashboardThumbnail: View {
             .padding(18)
         }
         .accessibilityHidden(true)
-    }
-
-    @MainActor
-    private func prepareShare() async {
-        guard let asset else { return }
-        let candidates = [asset.originalURL, asset.thumbnailURL].compactMap { $0 }.compactMap(URL.init(string:))
-        guard let url = candidates.first else { return }
-        isPreparingShare = true
-        defer { isPreparingShare = false }
-        do {
-            let response = try await loader.load(url)
-            try Task.checkCancellation()
-            guard UIImage(data: response.data) != nil else { return }
-            let fileURL = try prepareShareFile(response: response, url: url)
-            shareFileURL = ShareFileURL(url: fileURL)
-        } catch {
-            // Silently ignore; no message surface exists on the compact thumbnail.
-        }
     }
 
     private static func thumbnail(from data: Data) -> UIImage? {

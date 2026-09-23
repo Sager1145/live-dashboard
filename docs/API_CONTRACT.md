@@ -8,6 +8,8 @@
 
 `TicketRound` 与 `GoodsCampaign` 各增加 `links: OfficialLink[]`（默认 `[]`），`OfficialLink` 为 `{label: string, url: string}`，用于呈现官方页面上除主要 `applyURL`／`url` 外的其它具名链接。`LiveEventBundle` 增加 `sourceText: string | null`（可选，默认缺省即 `null`），是官方页面的纯文本渲染，其中的链接以 `label（url）` 形式写入正文，长度上限 80000 字符；供无法解析结构化字段时的兜底展示与全文检索使用。
 
+`LiveEventBundle` 增加 `ticketBenefits: TicketBenefit[]`（默认 `[]`，可选，旧客户端忽略），记录官方「グッズ付きチケット特典」：`{id, eventID, officialName, scope, tierIDs: string[], detail: string|null, notes: string|null, redemptionLocation: string|null, redemptionWindow: string|null, redemptionNote: string|null, mediaAssetIDs: string[], status: DataStatus, links: OfficialLink[]}`；`status = officiallyTBA` 表示官方写明「後日公開」。字段定义见 `DATA_MODEL.md`。
+
 | 方法／路径 | 返回或请求 |
 |---|---|
 | `GET /v1/catalog/bootstrap` | `{schemaVersion:1,cursor,events:[Bundle]}`，目录锁保证同一提交水位 |

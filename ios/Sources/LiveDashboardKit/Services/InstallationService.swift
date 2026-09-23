@@ -26,7 +26,7 @@ public enum InstallationServiceError: Error, LocalizedError, Sendable {
     case remoteServicesUnavailable
 
     public var errorDescription: String? {
-        String(localized: "此版本仅使用本机资料与通知")
+        String(localized: "此版本仅使用本机资料与通知", bundle: .kit)
     }
 }
 

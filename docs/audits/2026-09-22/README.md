@@ -122,4 +122,7 @@ node docs/audits/2026-09-22/bangdream/compare-normalized.mjs \
 - **场次 ID 重复**：再次整理时同名标签会复用同一缓存 ID（LL02/06/07/08/09/11/12/18/19/20）。改为两轮匹配并保证 ID 在同一公演内唯一；两次整理的 ID 集合一致。
 - **售票轮次／票价 ID 重复导致崩溃**：Love Live! 页面同一票务区块出现在多个容器中，产生同 ID 的轮次和票价（LL08/13/18 等），打开「チケット」页会崩溃。解析时按 ID 去重，卡片排序策略也不再因重复 ID 中断。
 
-仍未覆盖：LL09/LL11/LL16/LL20 的出演者在官网以其他版式呈现，仍为空；`current-event-facts.json` 保存的是简化场馆名，比对需做前缀与括号归一化。iOS 单元测试 97 项、UI 测试 1 项通过。
+- **出演者**：LL09/LL20 的 `＜Day.N＞` 内联 `【出演】`、LL11 的 `div` 标题、LL16 的同级 `出演` 标题此前均未识别（出演者为空）；LL01/LL02 混入了链接文字、`ゲスト出演` 标题与トークパート区块。新增 Love Live! 专用的出演者分块解析，按 DAY／日期／巡演站点映射到各场次，并过滤备注、链接与句子。联网复测 20/20 场次均有出演者（LL17 官网只列角色名，保持 1 项）。
+- **后端契约**：`server/src/contracts.ts`、`schema/live-dashboard.schema.json`、`fixtures/contracts/bundle-v1.json` 与 API 文档已补充 `links` 与 `sourceText`；服务端 typecheck／80 项测试通过。
+
+仍未覆盖：`current-event-facts.json` 保存的是简化场馆名，比对需做前缀与括号归一化。iOS 单元测试 117 项、UI 测试 1 项通过。

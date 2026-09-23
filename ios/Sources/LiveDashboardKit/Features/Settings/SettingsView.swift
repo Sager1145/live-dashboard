@@ -6,11 +6,17 @@ public struct SettingsView: View {
     let userDataStore: UserDataStore
     let assistant: AssistantCoordinator
     @State private var refreshMessage: String?
+    @State private var historyStart: Date
+    @State private var historyEnd: Date
+    @State private var historyMessage: String?
 
     public init(dashboardStore: DashboardStore, userDataStore: UserDataStore, assistant: AssistantCoordinator) {
         self.dashboardStore = dashboardStore
         self.userDataStore = userDataStore
         self.assistant = assistant
+        let today = Date()
+        self._historyEnd = State(initialValue: today)
+        self._historyStart = State(initialValue: Calendar.autoupdatingCurrent.date(byAdding: .month, value: -6, to: today) ?? today)
     }
 
     public var body: some View {
@@ -20,7 +26,7 @@ public struct SettingsView: View {
                     Button {
                         Task { await refreshOfficialData() }
                     } label: {
-                        if dashboardStore.isRefreshing {
+                        if dashboardStore.isRefreshing && !dashboardStore.isFetchingHistory {
                             HStack {
                                 ProgressView()
                                 Text("正在检查官方资料…")
@@ -43,6 +49,36 @@ public struct SettingsView: View {
                         Text(refreshMessage).font(.footnote).foregroundStyle(.secondary)
                     }
                     Text("每天首次打开或跨天回到前台时自动整理官网资料，范围从手机当前日期往前一个自然月开始，包含所有未来公演。更早的已存公演会保留，但不再自动整理。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Section("抓取过往公演") {
+                    DatePicker("开始日期", selection: $historyStart, in: ...Date(), displayedComponents: .date)
+                        .accessibilityIdentifier("historyStartPicker")
+                        .onChange(of: historyStart) { _, newValue in
+                            if historyEnd < newValue { historyEnd = newValue }
+                        }
+                    DatePicker("结束日期", selection: $historyEnd, in: historyStart...Date(), displayedComponents: .date)
+                        .accessibilityIdentifier("historyEndPicker")
+                    Button {
+                        Task { await fetchHistory() }
+                    } label: {
+                        if dashboardStore.isFetchingHistory {
+                            HStack {
+                                ProgressView()
+                                Text("正在抓取过往公演…")
+                            }
+                        } else {
+                            Label("抓取该区间的公演", systemImage: "clock.arrow.circlepath")
+                        }
+                    }
+                    .disabled(dashboardStore.isRefreshing || historyEnd < historyStart)
+                    .accessibilityIdentifier("historyFetchButton")
+
+                    if let historyMessage {
+                        Text(historyMessage).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Text("手动抓取官网在所选日期区间内举办过的公演（含已结束的），并保存到本机。区间越长抓取时间越久。抓取结果不会影响每日自动整理。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -90,6 +126,17 @@ public struct SettingsView: View {
 
     private func refreshOfficialData() async {
         await dashboardStore.refresh()
-        refreshMessage = dashboardStore.errorMessage ?? String(localized: "官方资料已更新")
+        refreshMessage = dashboardStore.errorMessage ?? String(localized: "官方资料已更新", bundle: .kit)
+    }
+
+    private func fetchHistory() async {
+        let summary = await dashboardStore.fetchHistory(from: historyStart, to: historyEnd)
+        if let error = dashboardStore.errorMessage {
+            historyMessage = error
+        } else if let summary, summary.fetchedCount > 0 {
+            historyMessage = String(localized: "已抓取 \(summary.fetchedCount) 场公演（\(summary.start) 至 \(summary.end)）", bundle: .kit)
+        } else if summary != nil {
+            historyMessage = String(localized: "未找到该区间的公演", bundle: .kit)
+        }
     }
 }

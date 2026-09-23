@@ -13,18 +13,22 @@
 		138AE9274DDB18BD44FC2D07 /* OfficialEventScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53AA53BF3220E0816A0B002E /* OfficialEventScraper.swift */; };
 		140248A65486AE89E8875B91 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD7DE1C0555AE031F10B8DC /* AppRouter.swift */; };
 		1DA9702C6CD3D3AFD727D4E8 /* LLPlainDetailTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E72842FBAE8665E17D892C /* LLPlainDetailTests.swift */; };
+		1E2974C3D74E80303644F5A1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 19F676869BD3775C5260DBFC /* Assets.xcassets */; };
 		1EDCC80859FA9F3DD99F9D24 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C41D682B537D6CD14A7903F /* SettingsView.swift */; };
+		22EFD269BDAE183F242ADBDB /* TicketNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = C800B73DD25230C28A1D2899 /* TicketNote.swift */; };
 		2972D18FBA53DA9F46572D43 /* ContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9FB890CE6EB6F1F08D05A06 /* ContractTests.swift */; };
+		2BD9B861E1964BDBD3865DFD /* OfficialImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4F0665085FFB117330F83E /* OfficialImagePipeline.swift */; };
 		2FCC780BA1BE78941EAC0B67 /* LiveRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB18B9757E7139364F6AA9F /* LiveRepository.swift */; };
 		2FEC42F6AF364D370D65A525 /* LocalLiveRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F160447F416DC7BE56515C2 /* LocalLiveRepository.swift */; };
 		32389B111F5E0EE75C996C3C /* AssistantCredential.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D01FBA0078BF85ADD9063E /* AssistantCredential.swift */; };
 		33D24E38AFBA38DDFA7236A1 /* LiveDashboardKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B7BDDAB4FDDFDFF731FD82AE /* LiveDashboardKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		33E14FDF1F1E3C941BC00569 /* AssistantSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA0FE056F7165F073169C8B /* AssistantSummaryCard.swift */; };
 		36B7DACC470D5D11C282AB1D /* LiveDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC1CA285ACC452AC6FD5A4D /* LiveDetailView.swift */; };
+		36CCF8C97A7F611E3DEE85AE /* EventFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4DAE4F271021DB6C17B2231 /* EventFormattingTests.swift */; };
 		376FE16227FFC3009F7BD0E7 /* LiveDashboardKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B7BDDAB4FDDFDFF731FD82AE /* LiveDashboardKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		3AB9D8A4A4362AADA52E541E /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38D38C44153CAF198FA907AB /* Localizable.xcstrings */; };
 		3C00D580C882989BD92FE249 /* GoodsCampaign.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0C8A6F734E088BE39C3DB1 /* GoodsCampaign.swift */; };
 		40F23486AAFDB2C34AD0B803 /* AssistantLinksSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 870A578B9CE3138DD255E476 /* AssistantLinksSection.swift */; };
+		4304F96F838611E06503DFCF /* EventFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D54934B6CBF8E2A76F9461 /* EventFormatting.swift */; };
 		455740DDE44E3EF6541EA38B /* Performance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066B2C282DED617113465E46 /* Performance.swift */; };
 		45E303E24692F712FA5E1208 /* ChatGPTOAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93177134F0EC9C34062226D /* ChatGPTOAuthClient.swift */; };
 		4672F0BB02C72DA43B8E7D7C /* LiveDashboardKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7BDDAB4FDDFDFF731FD82AE /* LiveDashboardKit.framework */; };
@@ -39,15 +43,18 @@
 		5B0C9E60AB6F471F054F8E37 /* OfficialKeyVisualParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 082CE25DD56CAE23F6EAB5D2 /* OfficialKeyVisualParserTests.swift */; };
 		5D819D973F0C6FD26F3D48F9 /* MediaAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26AF544808857B3C2323889A /* MediaAsset.swift */; };
 		5E263E68DE53C1D582328E44 /* TicketRound.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50767C68A9A06F87CACA6C2 /* TicketRound.swift */; };
+		64DF83F859C292678241A1C4 /* TicketPhaseBadgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8311EA68D0825CDBA1637AB3 /* TicketPhaseBadgeTests.swift */; };
 		654CF583B38A23C111D75918 /* LiveDashboardApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D432473543DD61BCC1927B /* LiveDashboardApp.swift */; };
 		65A91491B79092B28544C69D /* InstallationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA97C3D64B440554AA6ED93A /* InstallationService.swift */; };
 		6B0DBB26174A2D5208608926 /* LossyStringEnum.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F9F5F21ECCD64E07B11F31 /* LossyStringEnum.swift */; };
+		6B105A7BE98701D0C877FBD9 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCDEF165BDF648FB466C6DB6 /* Colors.xcassets */; };
 		6BBAA67FB6C01DAEDBD2F22C /* LocalOAuthCallbackServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D437844EA1639CDC3B6EF435 /* LocalOAuthCallbackServer.swift */; };
 		7213EAE93FB9611A3CCF6E75 /* CardRefreshMerge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B7357ED6ED417D02926D20 /* CardRefreshMerge.swift */; };
 		730B2536B275D7F398DE164F /* TicketsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18E5BFE361D3A9C832A17877 /* TicketsView.swift */; };
 		73A669EB4AC26DC50784A801 /* ReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A436788CC87E27B8CF159F /* ReminderService.swift */; };
 		784200244BC5A47A1A58F373 /* GoodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0268BF4E4C57A78FC19983 /* GoodsView.swift */; };
 		793204BAAC16B32872898E1C /* AssistantPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D4433BA99772C1E15E279 /* AssistantPresentationTests.swift */; };
+		7A53E4232D8C833746FA8B70 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 37FC547C0FFFAFCC86F6BB71 /* Localizable.xcstrings */; };
 		7D3CC21AFADE525CB6955E8F /* LiveStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B52F99F92AE77BD18D6011 /* LiveStop.swift */; };
 		7EF2CB8123CA5EE19B3AAF8E /* OpenAIResponsesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C141424A90BBE83266E9029 /* OpenAIResponsesClient.swift */; };
 		83EB150057D2245F1EFC73F1 /* ScopedRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B882084E95CB756F1A1958 /* ScopedRecord.swift */; };
@@ -74,13 +81,18 @@
 		C9D51C289C2A9916C73B554D /* LiveDashboardKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7BDDAB4FDDFDFF731FD82AE /* LiveDashboardKit.framework */; };
 		CA7647E12917DC6622D2520A /* DashboardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E9C8AB036E52D6192B6E34 /* DashboardStore.swift */; };
 		CB111BB800AB1F43C694BE95 /* OfficialAuditRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DD1F71C359784950ED7E52C /* OfficialAuditRegressionTests.swift */; };
+		CE1212B86891D20F1F0965F0 /* TicketBenefit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED9C20D75C5133227A5A14C /* TicketBenefit.swift */; };
 		D0B6A2FE22F412126FB2A661 /* NavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 072FE97151AAEE92A6B09BD4 /* NavigationUITests.swift */; };
 		DD5B2224B24C99E81275E328 /* AssistantServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C36D1ACC921C584B944FC1 /* AssistantServiceTests.swift */; };
 		DD9A65BCBCDCF4837BAAC3CE /* AssistantCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D53A1C8718240A4917B83A /* AssistantCoordinator.swift */; };
+		DDEB616DB21725BEFFC2A68B /* Bundle+Kit.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84C58AB61B58D8BE5DA58AD /* Bundle+Kit.swift */; };
 		E095913676C9E475CAA9119A /* CardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65F27879964FBCC71B6A0E8 /* CardSettingsView.swift */; };
+		E393B7387517811281C37224 /* TicketRoundFieldParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B2135935999F123AD3C3F2D /* TicketRoundFieldParsingTests.swift */; };
+		E746169421D357F2FE436CA4 /* SemanticColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7DF91A1C3E5DB9BB6E437B /* SemanticColors.swift */; };
 		E770402FA68ECFEC770C3A46 /* DataStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50ADCAABF4872CF76FBE6C3B /* DataStatus.swift */; };
 		E831F1C436FDBB32F315302F /* AssistantSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AAFC6078585B0F9A019D48 /* AssistantSummary.swift */; };
 		E8D743D38272187C3B12F741 /* LocalRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A192203EBBE555E8D5F526 /* LocalRepositoryTests.swift */; };
+		E9CCC0CC3DD8970BDB889712 /* TicketPhaseBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC1877D48462BB36ED2D09C /* TicketPhaseBadge.swift */; };
 		EBA5E755BAA5B9E877E8CCD1 /* OfficialLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 725C38228CDE0069A686D3B6 /* OfficialLink.swift */; };
 		ECC747DFA49E7713FEC5415B /* AssistantSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA29902FBCB9A25666273E06 /* AssistantSettingsView.swift */; };
 		ED8E3B3CC18588E5EAF185D3 /* LiveEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701177FCB0C61960429DBD44 /* LiveEvent.swift */; };
@@ -151,10 +163,12 @@
 		16AAFC6078585B0F9A019D48 /* AssistantSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSummary.swift; sourceTree = "<group>"; };
 		18E5BFE361D3A9C832A17877 /* TicketsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketsView.swift; sourceTree = "<group>"; };
 		1964E8B0B01C2DCB82F3617A /* LiveDashboardUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiveDashboardUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		19F676869BD3775C5260DBFC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1AF36FA5A9FEBD443A6A9E65 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		25070F7BA97A94AF7D9BBB8B /* DashboardFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardFilters.swift; sourceTree = "<group>"; };
 		25FEB560B0BDF0077144EE99 /* MyLivesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyLivesView.swift; sourceTree = "<group>"; };
 		26AF544808857B3C2323889A /* MediaAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaAsset.swift; sourceTree = "<group>"; };
+		28D54934B6CBF8E2A76F9461 /* EventFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventFormatting.swift; sourceTree = "<group>"; };
 		2C41D682B537D6CD14A7903F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2CC1CA285ACC452AC6FD5A4D /* LiveDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDetailView.swift; sourceTree = "<group>"; };
 		2FA0FE056F7165F073169C8B /* AssistantSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSummaryCard.swift; sourceTree = "<group>"; };
@@ -162,8 +176,9 @@
 		32774D6B5B15AC7C27480600 /* UserDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataStore.swift; sourceTree = "<group>"; };
 		33A192203EBBE555E8D5F526 /* LocalRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalRepositoryTests.swift; sourceTree = "<group>"; };
 		3544E240216699C6B4F0EBD5 /* ExtendedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtendedModels.swift; sourceTree = "<group>"; };
-		38D38C44153CAF198FA907AB /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		37FC547C0FFFAFCC86F6BB71 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		3944F5DD8E6967125B85E394 /* CardConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardConfiguration.swift; sourceTree = "<group>"; };
+		4B2135935999F123AD3C3F2D /* TicketRoundFieldParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketRoundFieldParsingTests.swift; sourceTree = "<group>"; };
 		4BDF6922421C74CD93A7EA03 /* LiveDashboard.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiveDashboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4DD1F71C359784950ED7E52C /* OfficialAuditRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialAuditRegressionTests.swift; sourceTree = "<group>"; };
 		50ADCAABF4872CF76FBE6C3B /* DataStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStatus.swift; sourceTree = "<group>"; };
@@ -184,7 +199,9 @@
 		733112218332FE6A3B0C36C3 /* OfficialMediaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialMediaView.swift; sourceTree = "<group>"; };
 		75E72842FBAE8665E17D892C /* LLPlainDetailTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLPlainDetailTests.swift; sourceTree = "<group>"; };
 		79BF6E3034A0270F2FE84168 /* Scope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scope.swift; sourceTree = "<group>"; };
+		7B7DF91A1C3E5DB9BB6E437B /* SemanticColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticColors.swift; sourceTree = "<group>"; };
 		7F11DF65F00DF553EEE8C2A4 /* SourceEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceEvidence.swift; sourceTree = "<group>"; };
+		8311EA68D0825CDBA1637AB3 /* TicketPhaseBadgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketPhaseBadgeTests.swift; sourceTree = "<group>"; };
 		870A578B9CE3138DD255E476 /* AssistantLinksSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantLinksSection.swift; sourceTree = "<group>"; };
 		88F8C40473ECAD4BC36A70ED /* HorizontalSelectionStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalSelectionStrip.swift; sourceTree = "<group>"; };
 		8BADE47E1DC690D6E1207A32 /* LiveDashboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiveDashboard.entitlements; sourceTree = "<group>"; };
@@ -199,21 +216,27 @@
 		A5EDDC69D67B49CE00933CBF /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
 		A8E9C8AB036E52D6192B6E34 /* DashboardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardStore.swift; sourceTree = "<group>"; };
 		AAB18B9757E7139364F6AA9F /* LiveRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRepository.swift; sourceTree = "<group>"; };
+		AE4F0665085FFB117330F83E /* OfficialImagePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialImagePipeline.swift; sourceTree = "<group>"; };
 		B2A1E62897DD9AC4A740C25A /* LiveDetailStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDetailStore.swift; sourceTree = "<group>"; };
 		B50767C68A9A06F87CACA6C2 /* TicketRound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketRound.swift; sourceTree = "<group>"; };
 		B7BDDAB4FDDFDFF731FD82AE /* LiveDashboardKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LiveDashboardKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B93177134F0EC9C34062226D /* ChatGPTOAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGPTOAuthClient.swift; sourceTree = "<group>"; };
 		BA0C8A6F734E088BE39C3DB1 /* GoodsCampaign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoodsCampaign.swift; sourceTree = "<group>"; };
+		BBC1877D48462BB36ED2D09C /* TicketPhaseBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketPhaseBadge.swift; sourceTree = "<group>"; };
 		BE4A79EE900A120C0A76DBEE /* ImportantInformationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportantInformationPolicy.swift; sourceTree = "<group>"; };
 		C09E038DF51011012EB7187C /* LiveEventCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveEventCard.swift; sourceTree = "<group>"; };
 		C13CF1EFF8CB49B9D374F867 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		C65F27879964FBCC71B6A0E8 /* CardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSettingsView.swift; sourceTree = "<group>"; };
+		C800B73DD25230C28A1D2899 /* TicketNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketNote.swift; sourceTree = "<group>"; };
 		CA29902FBCB9A25666273E06 /* AssistantSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSettingsView.swift; sourceTree = "<group>"; };
 		CC458DF8781C6FA24C1FB79E /* TicketOffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketOffer.swift; sourceTree = "<group>"; };
+		CED9C20D75C5133227A5A14C /* TicketBenefit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketBenefit.swift; sourceTree = "<group>"; };
 		D1C36D1ACC921C584B944FC1 /* AssistantServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantServiceTests.swift; sourceTree = "<group>"; };
 		D2DE96571CE0FD37BF2E4737 /* PKCE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKCE.swift; sourceTree = "<group>"; };
 		D437844EA1639CDC3B6EF435 /* LocalOAuthCallbackServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalOAuthCallbackServer.swift; sourceTree = "<group>"; };
+		D4DAE4F271021DB6C17B2231 /* EventFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventFormattingTests.swift; sourceTree = "<group>"; };
 		D7D53A1C8718240A4917B83A /* AssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantCoordinator.swift; sourceTree = "<group>"; };
+		D84C58AB61B58D8BE5DA58AD /* Bundle+Kit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+Kit.swift"; sourceTree = "<group>"; };
 		DDD7DE1C0555AE031F10B8DC /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		EA97C3D64B440554AA6ED93A /* InstallationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallationService.swift; sourceTree = "<group>"; };
 		EB45BF7D6DB6435DBC72075C /* AssistantSummaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSummaryStore.swift; sourceTree = "<group>"; };
@@ -222,6 +245,7 @@
 		F3C72D95DA7C033B26828C87 /* MediaPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPresentationTests.swift; sourceTree = "<group>"; };
 		F583EAB8C346683290E7DC62 /* TicketStatusResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketStatusResolver.swift; sourceTree = "<group>"; };
 		F9FB890CE6EB6F1F08D05A06 /* ContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContractTests.swift; sourceTree = "<group>"; };
+		FCDEF165BDF648FB466C6DB6 /* Colors.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Colors.xcassets; sourceTree = "<group>"; };
 		FD0268BF4E4C57A78FC19983 /* GoodsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoodsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -259,6 +283,17 @@
 			path = Features;
 			sourceTree = "<group>";
 		};
+		0CDEBBE80B63295525F7F323 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				D84C58AB61B58D8BE5DA58AD /* Bundle+Kit.swift */,
+				28D54934B6CBF8E2A76F9461 /* EventFormatting.swift */,
+				AE4F0665085FFB117330F83E /* OfficialImagePipeline.swift */,
+				7B7DF91A1C3E5DB9BB6E437B /* SemanticColors.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		22703C28C9931896E0568241 /* Data */ = {
 			isa = PBXGroup;
 			children = (
@@ -289,6 +324,7 @@
 				D1C36D1ACC921C584B944FC1 /* AssistantServiceTests.swift */,
 				F9FB890CE6EB6F1F08D05A06 /* ContractTests.swift */,
 				31D5F5B8CBBF6FE341FA5513 /* DashboardPresentationTests.swift */,
+				D4DAE4F271021DB6C17B2231 /* EventFormattingTests.swift */,
 				75E72842FBAE8665E17D892C /* LLPlainDetailTests.swift */,
 				33A192203EBBE555E8D5F526 /* LocalRepositoryTests.swift */,
 				F3C72D95DA7C033B26828C87 /* MediaPresentationTests.swift */,
@@ -296,6 +332,8 @@
 				EB9BC9B7E04DCA46F0BD1ABE /* OfficialEventScraperTests.swift */,
 				082CE25DD56CAE23F6EAB5D2 /* OfficialKeyVisualParserTests.swift */,
 				0756506A102EE44003DE034B /* OfficialNetworkIntegrationTests.swift */,
+				8311EA68D0825CDBA1637AB3 /* TicketPhaseBadgeTests.swift */,
+				4B2135935999F123AD3C3F2D /* TicketRoundFieldParsingTests.swift */,
 			);
 			name = LiveDashboardKitTests;
 			path = Tests/LiveDashboardKitTests;
@@ -306,6 +344,7 @@
 			children = (
 				BE4A79EE900A120C0A76DBEE /* ImportantInformationPolicy.swift */,
 				0F3A75FF62CC87EB3DC6A7BC /* PerformanceScopeResolver.swift */,
+				BBC1877D48462BB36ED2D09C /* TicketPhaseBadge.swift */,
 				F583EAB8C346683290E7DC62 /* TicketStatusResolver.swift */,
 				75C7622A8BF758BE5E05BFE0 /* Models */,
 			);
@@ -323,10 +362,10 @@
 		67DE7A88A7E827B55C3D522A /* LiveDashboard */ = {
 			isa = PBXGroup;
 			children = (
+				19F676869BD3775C5260DBFC /* Assets.xcassets */,
 				1AF36FA5A9FEBD443A6A9E65 /* Info.plist */,
 				8BADE47E1DC690D6E1207A32 /* LiveDashboard.entitlements */,
 				60D432473543DD61BCC1927B /* LiveDashboardApp.swift */,
-				38D38C44153CAF198FA907AB /* Localizable.xcstrings */,
 			);
 			path = LiveDashboard;
 			sourceTree = "<group>";
@@ -374,6 +413,8 @@
 				79BF6E3034A0270F2FE84168 /* Scope.swift */,
 				58B882084E95CB756F1A1958 /* ScopedRecord.swift */,
 				7F11DF65F00DF553EEE8C2A4 /* SourceEvidence.swift */,
+				CED9C20D75C5133227A5A14C /* TicketBenefit.swift */,
+				C800B73DD25230C28A1D2899 /* TicketNote.swift */,
 				CC458DF8781C6FA24C1FB79E /* TicketOffer.swift */,
 				B50767C68A9A06F87CACA6C2 /* TicketRound.swift */,
 				517FC392FE0EEC6C2C6B460A /* TicketTier.swift */,
@@ -491,6 +532,15 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		D7103B8EAF7CD1997ABF84F3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				FCDEF165BDF648FB466C6DB6 /* Colors.xcassets */,
+				37FC547C0FFFAFCC86F6BB71 /* Localizable.xcstrings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		E70948060CE56DC238AE394E /* LiveDashboardUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -507,7 +557,9 @@
 				22703C28C9931896E0568241 /* Data */,
 				645CC9A084EE1373D056537D /* Domain */,
 				0313B1A1414AAB25DCC62DFA /* Features */,
+				D7103B8EAF7CD1997ABF84F3 /* Resources */,
 				AEDD0458552D24B767F20DF5 /* Services */,
+				0CDEBBE80B63295525F7F323 /* Shared */,
 			);
 			name = LiveDashboardKit;
 			path = Sources/LiveDashboardKit;
@@ -519,13 +571,6 @@
 				88F8C40473ECAD4BC36A70ED /* HorizontalSelectionStrip.swift */,
 			);
 			path = Shared;
-			sourceTree = "<group>";
-		};
-		"TEMP_CDAE64C6-9E62-4E9A-9A4D-640F122E947C" /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -554,6 +599,7 @@
 			buildConfigurationList = F11A4C12818161A8EFB33D53 /* Build configuration list for PBXNativeTarget "LiveDashboardKit" */;
 			buildPhases = (
 				3646C97993FBAC6F10B3BE01 /* Sources */,
+				FDFC95CE40653A988860FDB1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -632,12 +678,13 @@
 				};
 			};
 			buildConfigurationList = 113B516DD584D1F810E50942 /* Build configuration list for PBXProject "LiveDashboard" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
 				en,
 				ja,
+				"zh-Hans",
 			);
 			mainGroup = C73FDBF326F028C0F471DACC;
 			minimizedProjectReferenceProxies = 1;
@@ -659,7 +706,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3AB9D8A4A4362AADA52E541E /* Localizable.xcstrings in Resources */,
+				1E2974C3D74E80303644F5A1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FDFC95CE40653A988860FDB1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B105A7BE98701D0C877FBD9 /* Colors.xcassets in Resources */,
+				7A53E4232D8C833746FA8B70 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -689,6 +745,7 @@
 				E831F1C436FDBB32F315302F /* AssistantSummary.swift in Sources */,
 				33E14FDF1F1E3C941BC00569 /* AssistantSummaryCard.swift in Sources */,
 				AFBA95DB69EB264C48B6BC8F /* AssistantSummaryStore.swift in Sources */,
+				DDEB616DB21725BEFFC2A68B /* Bundle+Kit.swift in Sources */,
 				BA9A101238FE1D7445629519 /* CardConfiguration.swift in Sources */,
 				7213EAE93FB9611A3CCF6E75 /* CardRefreshMerge.swift in Sources */,
 				E095913676C9E475CAA9119A /* CardSettingsView.swift in Sources */,
@@ -698,6 +755,7 @@
 				0BDE26E23CE4F637C35627A0 /* DashboardView.swift in Sources */,
 				E770402FA68ECFEC770C3A46 /* DataStatus.swift in Sources */,
 				562117C7FBA47F67C1B15025 /* DetailCardMenu.swift in Sources */,
+				4304F96F838611E06503DFCF /* EventFormatting.swift in Sources */,
 				FACC4A66BD3568A8DA0DDFE2 /* ExtendedModels.swift in Sources */,
 				3C00D580C882989BD92FE249 /* GoodsCampaign.swift in Sources */,
 				784200244BC5A47A1A58F373 /* GoodsView.swift in Sources */,
@@ -719,6 +777,7 @@
 				BC4004C8B40C6A9384AAEB13 /* MyLivesView.swift in Sources */,
 				46E285CAD918DF6B88B97DD8 /* Notice.swift in Sources */,
 				138AE9274DDB18BD44FC2D07 /* OfficialEventScraper.swift in Sources */,
+				2BD9B861E1964BDBD3865DFD /* OfficialImagePipeline.swift in Sources */,
 				EBA5E755BAA5B9E877E8CCD1 /* OfficialLink.swift in Sources */,
 				93FC35AF172765C4E5B56934 /* OfficialLinksView.swift in Sources */,
 				B4FAD3B4DC15FEEF977FFC8D /* OfficialMediaView.swift in Sources */,
@@ -732,9 +791,13 @@
 				4CD9C890C4E30352D1B45690 /* Scope.swift in Sources */,
 				83EB150057D2245F1EFC73F1 /* ScopedRecord.swift in Sources */,
 				B1B62A0C56E289F971B3FAED /* SeatingView.swift in Sources */,
+				E746169421D357F2FE436CA4 /* SemanticColors.swift in Sources */,
 				1EDCC80859FA9F3DD99F9D24 /* SettingsView.swift in Sources */,
 				AADCDDE8A344714954ED185A /* SourceEvidence.swift in Sources */,
+				CE1212B86891D20F1F0965F0 /* TicketBenefit.swift in Sources */,
+				22EFD269BDAE183F242ADBDB /* TicketNote.swift in Sources */,
 				94A4E437320A83185CF7D778 /* TicketOffer.swift in Sources */,
+				E9CCC0CC3DD8970BDB889712 /* TicketPhaseBadge.swift in Sources */,
 				5E263E68DE53C1D582328E44 /* TicketRound.swift in Sources */,
 				9EA990F0D6E6B72EDA5AE5A4 /* TicketStatusResolver.swift in Sources */,
 				F3ACFD2877BB1B2CFDC39DE5 /* TicketTier.swift in Sources */,
@@ -752,6 +815,7 @@
 				DD5B2224B24C99E81275E328 /* AssistantServiceTests.swift in Sources */,
 				2972D18FBA53DA9F46572D43 /* ContractTests.swift in Sources */,
 				C18B908C6D53505FBF85DC5D /* DashboardPresentationTests.swift in Sources */,
+				36CCF8C97A7F611E3DEE85AE /* EventFormattingTests.swift in Sources */,
 				1DA9702C6CD3D3AFD727D4E8 /* LLPlainDetailTests.swift in Sources */,
 				E8D743D38272187C3B12F741 /* LocalRepositoryTests.swift in Sources */,
 				047EA8B923A74B0F0D7059D7 /* MediaPresentationTests.swift in Sources */,
@@ -759,6 +823,8 @@
 				5351E4207851A85C8BD4376A /* OfficialEventScraperTests.swift in Sources */,
 				5B0C9E60AB6F471F054F8E37 /* OfficialKeyVisualParserTests.swift in Sources */,
 				AF2AF4B6CE7F8951BA6D71E7 /* OfficialNetworkIntegrationTests.swift in Sources */,
+				64DF83F859C292678241A1C4 /* TicketPhaseBadgeTests.swift in Sources */,
+				E393B7387517811281C37224 /* TicketRoundFieldParsingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -796,6 +862,7 @@
 			buildSettings = {
 				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LiveDashboard/LiveDashboard.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = LiveDashboard/Info.plist;
@@ -872,6 +939,7 @@
 			buildSettings = {
 				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LiveDashboard/LiveDashboard.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = LiveDashboard/Info.plist;
@@ -985,6 +1053,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "app.live-dashboard.kit";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -1057,6 +1126,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "app.live-dashboard.kit";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};

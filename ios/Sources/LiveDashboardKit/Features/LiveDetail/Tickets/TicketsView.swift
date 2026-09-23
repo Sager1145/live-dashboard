@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct TicketsView: View {
     @Bindable var store: LiveDetailStore
@@ -25,6 +28,8 @@ public struct TicketsView: View {
         let applicableStreams = ImportantInformationPolicy.orderedStreamOffers(streams.applicable, configurations: configurations)
         let pendingStreams = ImportantInformationPolicy.orderedStreamOffers(streams.unconfirmed, configurations: configurations)
         let pendingRounds = ImportantInformationPolicy.orderedTicketRounds(resolution.unconfirmed, configurations: configurations)
+        let benefits = store.applicableTicketBenefits()
+        let showsBenefitPlaceholder = benefits.applicable.isEmpty && benefits.unconfirmed.isEmpty && !store.goodsBundledTiers.isEmpty
 
         LazyVStack(spacing: 12) {
             ForEach(grouping.open) { round in
@@ -44,6 +49,19 @@ public struct TicketsView: View {
                 DisclosureGroup("适用日期待确认") {
                     ForEach(pendingRounds) { round in
                         TicketRoundCard(round: round, store: store, userDataStore: userDataStore, reminderService: reminderService, isCollapsedByDefault: true)
+                    }
+                }
+            }
+            ForEach(benefits.applicable) { benefit in
+                TicketBenefitCard(benefit: benefit, store: store, userDataStore: userDataStore)
+            }
+            if showsBenefitPlaceholder {
+                TicketBenefitPlaceholderCard(store: store, userDataStore: userDataStore)
+            }
+            if !benefits.unconfirmed.isEmpty {
+                DisclosureGroup("适用日期待确认的特典资料") {
+                    ForEach(benefits.unconfirmed) { benefit in
+                        TicketBenefitCard(benefit: benefit, store: store, userDataStore: userDataStore)
                     }
                 }
             }
@@ -122,15 +140,38 @@ struct TicketRoundCard: View {
                 }
 
                 if config.shows(.time) {
-                    Text("申请期间：\(dateRangeText(round.applyStartAt, round.applyEndAt, status: round.status))")
+                    if let applyWindowText = round.applyWindowText {
+                        Text("受付期间：\(applyWindowText)").font(.footnote)
+                    } else {
+                        Text("受付期间：\(dateRangeText(round.applyStartAt, round.applyEndAt, status: round.status))")
+                    }
                 }
-                if config.shows(.eligibility), let eligibility = round.eligibility {
-                    Text("申请条件：\(eligibility)").font(.footnote)
+                if config.shows(.eligibility) {
+                    if let applicationTarget = round.applicationTarget {
+                        Text("申请对象：\(applicationTarget)").font(.footnote)
+                    }
+                    if let quantityLimit = round.quantityLimit {
+                        Text("枚数限制：\(quantityLimit)").font(.footnote)
+                    }
+                    if !round.lotteryProducts.isEmpty {
+                        lotteryProductsView
+                    } else if let eligibility = round.eligibility {
+                        Text("申请条件：\(eligibility)").font(.footnote)
+                    }
                 }
                 if config.shows(.time) {
-                    if let resultAt = round.resultAt { Text("结果公布：\(formatted(resultAt))").font(.footnote) }
-                    if let paymentDeadlineAt = round.paymentDeadlineAt { Text("付款期限：\(formatted(paymentDeadlineAt))").font(.footnote) }
+                    if let resultText = round.resultText {
+                        Text("当落发表：\(resultText)").font(.footnote)
+                    } else if let resultAt = round.resultAt {
+                        Text("当落发表：\(formatted(resultAt))").font(.footnote)
+                    }
+                    if let paymentWindowText = round.paymentWindowText {
+                        Text("入金期间：\(paymentWindowText)").font(.footnote)
+                    } else if round.paymentStartAt != nil || round.paymentDeadlineAt != nil {
+                        Text("入金期间：\(paymentRangeText(start: round.paymentStartAt, deadline: round.paymentDeadlineAt))").font(.footnote)
+                    }
                 }
+                notesView
 
                 if config.shows(.price) {
                     ForEach(store.offers(for: round)) { offer in
@@ -157,7 +198,10 @@ struct TicketRoundCard: View {
                 }
 
                 if config.shows(.source) {
-                    OfficialLinksView(links: round.links, title: "官方售票链接", excluding: [round.applyURL, round.overseasURL].compactMap { $0 })
+                    OfficialLinksView(links: applicationRoleLinks, title: "官方申请链接", excluding: [round.applyURL, round.overseasURL].compactMap { $0 })
+                    OfficialLinksView(links: supportRoleLinks, title: "服务 / 联系链接")
+                    OfficialLinksView(links: productRoleLinks, title: "对象商品链接")
+                    OfficialLinksView(links: otherRoleLinks, title: "其他链接")
                 }
 
                 if isActionable {
@@ -169,6 +213,119 @@ struct TicketRoundCard: View {
                 }
                 if let reminderMessage { Text(reminderMessage).font(.caption).foregroundStyle(.secondary) }
             }
+        }
+    }
+
+    private var applicationRoleLinks: [OfficialLink] {
+        round.links.filter { $0.role == .application || $0.role == .overseasApplication }
+    }
+
+    private var supportRoleLinks: [OfficialLink] {
+        let noteLinkIDs = Set(round.notes.flatMap { $0.links.map(\.id) })
+        return round.links.filter { $0.role == .support && !noteLinkIDs.contains($0.id) }
+    }
+
+    private var productRoleLinks: [OfficialLink] {
+        round.links.filter { $0.role == .product }
+    }
+
+    private var otherRoleLinks: [OfficialLink] {
+        round.links.filter { $0.role == nil || $0.role == .other }
+    }
+
+    private func paymentRangeText(start: Date?, deadline: Date?) -> String {
+        switch (start, deadline) {
+        case (let s?, let d?): return "\(formatted(s)) ~ \(formatted(d))"
+        case (let s?, nil): return String(localized: "\(formatted(s)) 起", bundle: .kit)
+        case (nil, let d?): return formatted(d)
+        case (nil, nil): return ""
+        }
+    }
+
+    @ViewBuilder
+    private var lotteryProductsView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("抽选用商品").font(.caption).foregroundStyle(.secondary)
+            ForEach(round.lotteryProducts, id: \.self) { product in
+                HStack {
+                    Text(product).font(.footnote).textSelection(.enabled)
+                    Spacer()
+                    Button {
+                        #if canImport(UIKit)
+                        UIPasteboard.general.string = product
+                        #endif
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(String(localized: "复制", bundle: .kit))
+                }
+            }
+            if round.lotteryProducts.count >= 2 {
+                Button("复制全部") {
+                    #if canImport(UIKit)
+                    UIPasteboard.general.string = round.lotteryProducts.joined(separator: "\n")
+                    #endif
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var notesView: some View {
+        if !round.notes.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("重要信息").font(.caption).foregroundStyle(.secondary)
+                ForEach(round.notes) { note in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(noteKindTitle(note.kind), systemImage: noteKindIcon(note.kind))
+                            .font(.caption.bold())
+                        Text(note.text).font(.footnote)
+                        if !note.links.isEmpty {
+                            HStack {
+                                ForEach(note.links) { link in
+                                    if let url = URL(string: link.url) {
+                                        Link(destination: url) {
+                                            Text(isBareURLLabel(link.label) ? noteKindTitle(note.kind) : link.label)
+                                        }
+                                        .buttonStyle(.bordered)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func isBareURLLabel(_ label: String) -> Bool {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
+    }
+
+    private func noteKindTitle(_ kind: TicketNoteKind) -> String {
+        switch kind {
+        case .faceRecognition: return NSLocalizedString("颜认证入场", comment: "")
+        case .companionRegistration: return NSLocalizedString("同行者登录", comment: "")
+        case .identityCheck: return NSLocalizedString("本人确认", comment: "")
+        case .smartTicketOnly: return NSLocalizedString("电子票（スマチケ）", comment: "")
+        case .creditCardOnly: return NSLocalizedString("仅限信用卡支付", comment: "")
+        case .membershipRequired: return NSLocalizedString("需注册会员", comment: "")
+        case .other: return NSLocalizedString("其他注意", comment: "")
+        }
+    }
+
+    private func noteKindIcon(_ kind: TicketNoteKind) -> String {
+        switch kind {
+        case .faceRecognition: return "faceid"
+        case .companionRegistration: return "person.2"
+        case .identityCheck: return "person.text.rectangle"
+        case .smartTicketOnly: return "iphone"
+        case .creditCardOnly: return "creditcard"
+        case .membershipRequired: return "person.crop.circle.badge.plus"
+        case .other: return "info.circle"
         }
     }
 
@@ -231,9 +388,9 @@ struct TicketRoundCard: View {
     private func dateRangeText(_ start: Date?, _ end: Date?, status: DataStatus) -> String {
         let formatter: (Date) -> String = { formatted($0) }
         switch (start, end) {
-        case (nil, nil): return status == .officiallyTBA ? String(localized: "官方待公布") : String(localized: "尚未获取或待核验")
-        case (let s?, nil): return String(localized: "\(formatter(s)) 起")
-        case (nil, let e?): return String(localized: "至 \(formatter(e))")
+        case (nil, nil): return status == .officiallyTBA ? String(localized: "官方待公布", bundle: .kit) : String(localized: "尚未获取或待核验", bundle: .kit)
+        case (let s?, nil): return String(localized: "\(formatter(s)) 起", bundle: .kit)
+        case (nil, let e?): return String(localized: "至 \(formatter(e))", bundle: .kit)
         case (let s?, let e?): return "\(formatter(s)) ~ \(formatter(e))"
         }
     }
@@ -246,11 +403,11 @@ struct TicketRoundCard: View {
 
     private func scheduleReminder() async {
         guard let deadline = round.applyEndAt, deadline > Date() else {
-            reminderMessage = String(localized: "截止时间已过，未设置提醒")
+            reminderMessage = String(localized: "截止时间已过，未设置提醒", bundle: .kit)
             return
         }
         guard await reminderService.requestAuthorizationIfNeeded() else {
-            reminderMessage = String(localized: "通知权限未开启")
+            reminderMessage = String(localized: "通知权限未开启", bundle: .kit)
             return
         }
         let identifier = ReminderIdentifier(
@@ -262,7 +419,7 @@ struct TicketRoundCard: View {
         )
         let now = Date()
         guard deadline.timeIntervalSince(now) >= 60 else {
-            reminderMessage = String(localized: "距离截止不足一分钟，请立即处理")
+            reminderMessage = String(localized: "距离截止不足一分钟，请立即处理", bundle: .kit)
             return
         }
         let dayBefore = deadline.addingTimeInterval(-24 * 3600)
@@ -273,7 +430,7 @@ struct TicketRoundCard: View {
             try await reminderService.scheduleDeadlineReminder(
                 identifier: identifier,
                 title: round.officialName,
-                body: dayBefore > now ? String(localized: "申请将于明天截止") : String(localized: "申请即将截止"),
+                body: dayBefore > now ? String(localized: "申请将于明天截止", bundle: .kit) : String(localized: "申请即将截止", bundle: .kit),
                 fireAt: reminderTime
             )
             userDataStore.saveReminder(PersonalReminderRecord(
@@ -284,10 +441,100 @@ struct TicketRoundCard: View {
                 fireAt: reminderTime
             ))
             reminderMessage = dayBefore > now
-                ? String(localized: "已设置截止前一天的本机提醒")
-                : String(localized: "距截止不足一天，已设置近期本机提醒")
+                ? String(localized: "已设置截止前一天的本机提醒", bundle: .kit)
+                : String(localized: "距截止不足一天，已设置近期本机提醒", bundle: .kit)
         } catch {
             reminderMessage = error.localizedDescription
+        }
+    }
+}
+
+/// One card per official goods-bundled ticket benefit (グッズ付きチケット特典):
+/// contents, redemption place/time, the official image, and which tiers
+/// include it. An officially-TBA benefit says so instead of showing nothing.
+struct TicketBenefitCard: View {
+    let benefit: TicketBenefit
+    @Bindable var store: LiveDetailStore
+    let userDataStore: UserDataStore
+
+    var body: some View {
+        let config = userDataStore.effectiveConfiguration(cardType: .ticketBenefit, entityID: benefit.id, eventID: benefit.eventID)
+        let tiers = store.bundle.ticketTiers.filter { benefit.tierIDs.contains($0.id) }
+        DetailCard(title: benefit.officialName, cardType: .ticketBenefit, entityID: benefit.id, userDataStore: userDataStore, eventID: benefit.eventID) {
+            VStack(alignment: .leading, spacing: config.density == .compact ? 3 : 6) {
+                scopeLabel
+
+                if benefit.status == .officiallyTBA {
+                    Text("特典内容：官方待公布").font(.caption.bold()).foregroundStyle(.orange)
+                } else if let detail = benefit.detail {
+                    Text("特典内容：\(detail)").font(.body)
+                } else {
+                    Text("特典内容：尚未获取或待核验").font(.caption.bold()).foregroundStyle(.orange)
+                }
+                if let notes = benefit.notes { Text(notes).font(.footnote).foregroundStyle(.secondary) }
+
+                if config.shows(.price), !tiers.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("适用票种").font(.caption).foregroundStyle(.secondary)
+                        ForEach(tiers) { tier in
+                            LabeledContent(tier.name, value: tier.amount?.formatted ?? tier.priceJPY.map { "¥\($0)" } ?? "价格待核验")
+                                .font(.footnote)
+                        }
+                    }
+                }
+
+                if config.shows(.place), let location = benefit.redemptionLocation { LabeledContent("领取地点", value: location) }
+                if config.shows(.time), let window = benefit.redemptionWindow { LabeledContent("领取时间", value: window) }
+                if config.density == .detailed, let note = benefit.redemptionNote {
+                    Text(note).font(.footnote).foregroundStyle(.secondary)
+                }
+
+                ForEach(store.bundle.mediaAssets.filter { benefit.mediaAssetIDs.contains($0.id) }) { asset in
+                    OfficialMediaView(asset: asset, compact: config.density == .compact)
+                }
+
+                if config.shows(.source) {
+                    OfficialLinksView(links: benefit.links, title: "官方链接")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var scopeLabel: some View {
+        switch benefit.scope {
+        case .wholeEvent:
+            Text("全日共通").font(.caption2).foregroundStyle(.secondary)
+        case .stop, .performances:
+            if let performance = store.selectedPerformance {
+                Text("适用：\(performance.dayLabel)").font(.caption2).foregroundStyle(.secondary)
+            }
+        case .unconfirmed:
+            Text("适用日期待确认").font(.caption2).foregroundStyle(.orange)
+        }
+    }
+}
+
+/// Shown when the price list sells グッズ付き tiers but the official page never
+/// describes the bonus at all (as opposed to saying 後日公開).
+struct TicketBenefitPlaceholderCard: View {
+    @Bindable var store: LiveDetailStore
+    let userDataStore: UserDataStore
+
+    var body: some View {
+        let entityID = "\(store.bundle.event.id)-ticket-benefit-placeholder"
+        DetailCard(title: "グッズ付きチケット特典", cardType: .ticketBenefit, entityID: entityID, userDataStore: userDataStore, eventID: store.bundle.event.id) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("特典内容：官方尚未公布").font(.caption.bold()).foregroundStyle(.orange)
+                Text("官方页面售有グッズ付き票种，但尚未刊登特典内容。").font(.footnote).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("适用票种").font(.caption).foregroundStyle(.secondary)
+                    ForEach(store.goodsBundledTiers) { tier in
+                        LabeledContent(tier.name, value: tier.amount?.formatted ?? tier.priceJPY.map { "¥\($0)" } ?? "价格待核验")
+                            .font(.footnote)
+                    }
+                }
+            }
         }
     }
 }

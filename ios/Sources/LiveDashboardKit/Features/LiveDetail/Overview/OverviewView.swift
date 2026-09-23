@@ -97,7 +97,7 @@ struct TimeAndVenueCard: View {
 
     private var venueText: String {
         let values = [performance.venueName, performance.venueCity].filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        return values.isEmpty ? String(localized: "会场尚未获取或待核验") : values.joined(separator: " · ")
+        return values.isEmpty ? String(localized: "会场尚未获取或待核验", bundle: .kit) : values.joined(separator: " · ")
     }
 
     private func formatted(_ date: Date) -> String {

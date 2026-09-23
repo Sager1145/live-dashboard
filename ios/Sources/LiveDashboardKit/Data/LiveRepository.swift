@@ -7,10 +7,10 @@ public enum LiveRepositoryError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidBaseURL: String(localized: "API 地址无效")
-        case .invalidResponse: String(localized: "服务器响应无效")
-        case .incompatibleSchema(let version): String(localized: "需要更新 App 才能读取资料版本 \(version)")
-        case .unknownChangeKind(let kind): String(localized: "无法识别的目录变更类型：\(kind)")
+        case .invalidBaseURL: String(localized: "API 地址无效", bundle: .kit)
+        case .invalidResponse: String(localized: "服务器响应无效", bundle: .kit)
+        case .incompatibleSchema(let version): String(localized: "需要更新 App 才能读取资料版本 \(version)", bundle: .kit)
+        case .unknownChangeKind(let kind): String(localized: "无法识别的目录变更类型：\(kind)", bundle: .kit)
         }
     }
 }
@@ -26,6 +26,10 @@ public protocol LiveRepository: Sendable {
     func changes(eventID: String) async throws -> [EventChangeHistory]
     func clearPublicCache() async throws
     func consumeRemaps() async -> [CatalogRemap]
+    /// Fetches official events whose performances fall inside the inclusive yyyy-MM-dd
+    /// range and stores them, including archived ones. Returns the bundles that were
+    /// fetched for the range (not the whole catalog).
+    func fetchHistory(start: String, end: String) async throws -> [LiveEventBundle]
 }
 
 public extension LiveRepository {
@@ -34,6 +38,12 @@ public extension LiveRepository {
     func refreshIfNeeded() async throws -> [LiveEventBundle] { try await refresh() }
     func lastRefreshDate() async -> Date? { nil }
     func refresh(eventID: String, cardType: CardType, entityID: String) async throws -> LiveEventBundle? { throw CardRefreshError.unavailable }
+    func fetchHistory(start: String, end: String) async throws -> [LiveEventBundle] { throw HistoryFetchError.unavailable }
+}
+
+public enum HistoryFetchError: Error, LocalizedError, Sendable {
+    case unavailable
+    public var errorDescription: String? { "此数据源不支持抓取过往公演" }
 }
 
 public struct CatalogRemap: Hashable, Sendable { public let eventID: String; public let replacementID: String }

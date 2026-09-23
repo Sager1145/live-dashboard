@@ -11,7 +11,8 @@ let package = Package(
     targets: [
         .target(
             name: "LiveDashboardKit",
-            path: "Sources/LiveDashboardKit"
+            path: "Sources/LiveDashboardKit",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "LiveDashboardKitTests",

@@ -52,8 +52,123 @@ final class OfficialEventScraperTests: XCTestCase {
         XCTAssertEqual(bundles.first?.performances.first?.venueName, "東京・Test Hall")
         XCTAssertEqual(bundles.first?.performances.first?.performers, ["Roselia"])
         XCTAssertEqual(bundles.first?.ticketTiers.first?.priceJPY, 9_900)
-        XCTAssertEqual(bundles.first?.ticketRounds.first?.scope, .unconfirmed)
+        // A single-performance page can only mean that performance.
+        let performanceID = try XCTUnwrap(bundles.first?.performances.first?.id)
+        XCTAssertEqual(bundles.first?.ticketRounds.first?.scope, .performances(performanceIDs: [performanceID]))
         XCTAssertFalse(requestedPaths.contains("/events/old-live/"))
+    }
+
+    func testRangedCollectionFetchesArchivedEventsAndSkipsEventsOutsideTheWindow() async throws {
+        let index = """
+        <html><section class="p-live-event-list">
+          <article class="p-live-event-list__item"><a class="p-live-event-list__item-link" href="/events/new-live/">
+            <div class="p-live-event-list__item-title">New LIVE</div>
+            <div class="p-live-event-list__item-category">ライブ</div>
+            <div><h2 class="p-live-event-list__item-date">開催日</h2><p>2027年1月9日(土)</p>
+            <h2 class="p-live-event-list__item-place">場所</h2><p>東京・Test Hall</p></div>
+            <span class="p-live-event-list__item-artist-item">Roselia</span>
+          </a></article>
+          <article class="p-live-event-list__item"><a class="p-live-event-list__item-link" href="/events/old-live/">
+            <div class="p-live-event-list__item-title">Old LIVE</div>
+            <div class="p-live-event-list__item-category">ライブ</div>
+            <div><h2 class="p-live-event-list__item-date">開催日</h2><p>2024年1月1日(月)</p></div>
+          </a></article>
+        </section></html>
+        """
+        let newDetail = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">New LIVE</h1>
+          <div class="p-live-event-detail__content">
+            <h2>日程</h2><p>2027年1月9日(土) 開場16:00／開演17:00</p>
+            <h2>会場</h2><p>東京・Test Hall</p>
+            <h2>出演</h2><p>Roselia</p>
+            <h2>チケット</h2><h3>料金</h3><p>一般指定席：9,900円(税込)</p>
+            <h6>一般発売</h6><p>受付期間：2026年12月1日(火) 12:00～2026年12月20日(日) 23:59 先着</p>
+          </div>
+        </article>
+        """
+        let oldDetail = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Old LIVE</h1>
+          <div class="p-live-event-detail__content">
+            <h2>日程</h2><p>2024年1月1日(月) 開場16:00／開演17:00</p>
+            <h2>会場</h2><p>東京・Test Hall</p>
+            <h2>出演</h2><p>Roselia</p>
+            <h2>チケット</h2><h3>料金</h3><p>一般指定席：9,900円(税込)</p>
+            <h6>一般発売</h6><p>受付期間：2023年12月1日(金) 12:00～2023年12月20日(水) 23:59 先着</p>
+          </div>
+        </article>
+        """
+        var requestedPaths: [String] = []
+        ScraperURLProtocol.handler = { request in
+            requestedPaths.append(request.url!.path)
+            if request.url?.path == "/events/" || request.url?.path == "/events" { return Self.response(request, body: index) }
+            if request.url?.path == "/events/old-live/" || request.url?.path == "/events/old-live" { return Self.response(request, body: oldDetail) }
+            if request.url?.path == "/events/new-live/" || request.url?.path == "/events/new-live" { return Self.response(request, body: newDetail) }
+            throw URLError(.badURL)
+        }
+        let scraper = OfficialEventScraper(session: session(), indexURLs: [URL(string: "https://bang-dream.com/events/")!])
+
+        let bundles = try await scraper.collect(existing: [], window: OfficialDateWindow(start: "2023-12-01", end: "2024-01-31"), now: Self.date("2026-09-22T12:00:00Z"))
+
+        XCTAssertEqual(bundles.map(\.event.officialTitle), ["Old LIVE"])
+        XCTAssertTrue(requestedPaths.contains("/events/old-live/") || requestedPaths.contains("/events/old-live"))
+        XCTAssertFalse(requestedPaths.contains("/events/new-live/") || requestedPaths.contains("/events/new-live"))
+    }
+
+    func testRangedCollectionSkipsCachedEventsOutsideTheWindowAndKeepsTourSpansThatStraddleIt() async throws {
+        let index = """
+        <html><section class="p-live-event-list">
+          <article class="p-live-event-list__item"><a class="p-live-event-list__item-link" href="/events/new-live/">
+            <div class="p-live-event-list__item-title">New LIVE</div>
+            <div class="p-live-event-list__item-category">ライブ</div>
+            <div><h2 class="p-live-event-list__item-date">開催日</h2><p>2027年1月9日(土)</p></div>
+          </a></article>
+          <article class="p-live-event-list__item"><a class="p-live-event-list__item-link" href="/events/tour/">
+            <div class="p-live-event-list__item-title">Old TOUR</div>
+            <div class="p-live-event-list__item-category">ライブ</div>
+            <div><h2 class="p-live-event-list__item-date">開催日</h2><p>2024年1月10日(水)～3月20日(水)</p></div>
+          </a></article>
+        </section></html>
+        """
+        let tourDetail = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Old TOUR</h1>
+          <div class="p-live-event-detail__content">
+            <h2>日程</h2><p>2024年1月10日(水) 開演17:00</p><p>2024年2月14日(水) 開演17:00</p><p>2024年3月20日(水) 開演17:00</p>
+            <h2>会場</h2><p>東京・Test Hall</p>
+            <h2>出演</h2><p>Roselia</p>
+          </div>
+        </article>
+        """
+        var requestedPaths: [String] = []
+        ScraperURLProtocol.handler = { request in
+            requestedPaths.append(request.url!.path)
+            if request.url?.path == "/events/" || request.url?.path == "/events" { return Self.response(request, body: index) }
+            if request.url?.path == "/events/tour/" || request.url?.path == "/events/tour" { return Self.response(request, body: tourDetail) }
+            throw URLError(.badURL)
+        }
+        let cachedNew = LiveEventBundle(
+            schemaVersion: 1, publishedAt: .distantPast,
+            event: LiveEvent(id: "new-live", franchise: .bangdream, officialTitle: "New LIVE", groups: [], eventType: .live, status: .scheduled, primarySourceURL: "https://bang-dream.com/events/new-live/", timeZone: "Asia/Tokyo"),
+            stops: [], performances: [Performance(id: "new-live-0", eventID: "new-live", stopID: nil, dayLabel: "Day 1", subtitle: nil, localDate: "2027-01-09", doorsAt: nil, startAt: nil, venueName: "", venueCity: "", performers: [], order: 0)],
+            ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: []
+        )
+        let scraper = OfficialEventScraper(session: session(), indexURLs: [URL(string: "https://bang-dream.com/events/")!])
+
+        let bundles = try await scraper.collect(existing: [cachedNew], window: OfficialDateWindow(start: "2024-02-01", end: "2024-02-29"), now: Self.date("2026-09-22T12:00:00Z"))
+
+        XCTAssertEqual(bundles.map(\.event.officialTitle), ["Old TOUR"])
+        XCTAssertEqual(bundles.first?.performances.compactMap(\.localDate), ["2024-01-10", "2024-02-14", "2024-03-20"])
+        XCTAssertFalse(requestedPaths.contains("/events/new-live/") || requestedPaths.contains("/events/new-live"))
+    }
+
+    func testRangedCollectionRejectsInvertedWindow() async throws {
+        let scraper = OfficialEventScraper(session: session(), indexURLs: [URL(string: "https://bang-dream.com/events/")!])
+        do {
+            _ = try await scraper.collect(existing: [], window: OfficialDateWindow(start: "2024-02-01", end: "2024-01-01"), now: Self.date("2026-09-22T12:00:00Z"))
+            XCTFail("Expected invalidCutoff")
+        } catch OfficialEventScraperError.invalidCutoff { } catch { XCTFail("Unexpected error \(error)") }
     }
 
     func testDailyCollectionUsesBangDreamListThumbnailAsEventCover() async throws {
@@ -294,6 +409,7 @@ final class OfficialEventScraperTests: XCTestCase {
             "https://eplus.jp/xxx", "https://l-tike.com/yyy", "https://example.com/album",
         ])
         XCTAssertEqual(round.applyURL, "https://eplus.jp/xxx")
+        XCTAssertEqual(round.links.last?.role, .other)
 
         let campaign = try XCTUnwrap(refreshed.goodsCampaigns.first { $0.officialName == "グッズ通販" })
         XCTAssertEqual(campaign.links, [OfficialLink(label: "通販サイトはこちら", url: "https://bang-dream.com/store/goods")])
@@ -323,7 +439,7 @@ final class OfficialEventScraperTests: XCTestCase {
         let refreshed = try await scraper.collect(event: existing, now: Self.date("2026-09-22T12:00:00Z"))
 
         let round = try XCTUnwrap(refreshed.ticketRounds.first { $0.officialName == "一般発売" })
-        XCTAssertEqual(round.links, [OfficialLink(label: "イープラス", url: "https://eplus.jp/dup")])
+        XCTAssertEqual(round.links, [OfficialLink(label: "イープラス", url: "https://eplus.jp/dup", role: .application)])
     }
 
     func testTicketRoundAndBundleCodableCompatibilityWithLinksAndSourceText() throws {

@@ -133,13 +133,13 @@ public struct LiveDetailView: View {
 
     private func schedulePersonalReminder() async {
         guard let performance = store.selectedPerformance, let start = performance.startAt else { return }
-        guard await reminderService.requestAuthorizationIfNeeded() else { reminderMessage = String(localized: "通知权限未开启"); return }
+        guard await reminderService.requestAuthorizationIfNeeded() else { reminderMessage = String(localized: "通知权限未开启", bundle: .kit); return }
         let identifier = ReminderIdentifier(eventID: store.bundle.event.id, performanceID: performance.id, tab: DetailTab.overview.rawValue, cardType: .timeAndVenue, entityID: performance.id)
         let fireAt = start.addingTimeInterval(-2 * 3600)
         do {
-            try await reminderService.scheduleDeadlineReminder(identifier: identifier, title: store.bundle.event.officialTitle, body: String(localized: "演出将在两小时后开始"), fireAt: fireAt)
+            try await reminderService.scheduleDeadlineReminder(identifier: identifier, title: store.bundle.event.officialTitle, body: String(localized: "演出将在两小时后开始", bundle: .kit), fireAt: fireAt)
             userDataStore.saveReminder(PersonalReminderRecord(stableID: identifier.stableID, eventID: store.bundle.event.id, performanceID: performance.id, entityID: performance.id, fireAt: fireAt))
-            reminderMessage = fireAt > Date() ? String(localized: "已设置本地行程提醒") : String(localized: "演出时间已过，未设置提醒")
+            reminderMessage = fireAt > Date() ? String(localized: "已设置本地行程提醒", bundle: .kit) : String(localized: "演出时间已过，未设置提醒", bundle: .kit)
         } catch { reminderMessage = error.localizedDescription }
     }
 
@@ -155,17 +155,17 @@ public struct LiveDetailView: View {
                 cardType: cardType,
                 entityID: entityID
             ) else {
-                cardRefreshMessage = String(localized: "此卡片暂无可更新的官方资料")
+                cardRefreshMessage = String(localized: "此卡片暂无可更新的官方资料", bundle: .kit)
                 return
             }
             store.replaceBundle(updated)
             onBundleRefresh?(updated)
-            cardRefreshMessage = String(localized: "此卡片已更新")
+            cardRefreshMessage = String(localized: "此卡片已更新", bundle: .kit)
             if assistant.autoSummarizeAfterRefresh, assistant.account.isSignedIn, assistant.isStale(updated) {
                 Task { await assistant.generate(for: updated) }
             }
         } catch {
-            cardRefreshMessage = String(localized: "重新整理失败：\(error.localizedDescription)")
+            cardRefreshMessage = String(localized: "重新整理失败：\(error.localizedDescription)", bundle: .kit)
         }
     }
 }

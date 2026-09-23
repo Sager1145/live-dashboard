@@ -167,12 +167,38 @@ final class LocalRepositoryTests: XCTestCase {
         let calls = await scraper.calls
         XCTAssertEqual(calls, 3)
     }
+
+    func testHistoryFetchStoresArchivedEventsWithoutCompletingTheDay() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let scraper = RecordingScraper(events: [bundle("old", dates: ["2024-01-01"]), bundle("future", dates: ["2027-01-01"])])
+        let now = date("2026-09-22T00:00:00Z")
+        let repository = LocalLiveRepository(scraper: scraper, directory: directory, calendar: calendar, now: { now })
+
+        let refreshed = try await repository.refresh()
+        XCTAssertEqual(refreshed.map(\.event.id), ["future"])
+        let firstRefreshDate = await repository.lastRefreshDate()
+        XCTAssertEqual(firstRefreshDate, now)
+
+        let history = try await repository.fetchHistory(start: "2023-12-01", end: "2024-01-31")
+        XCTAssertEqual(history.map(\.event.id), ["old"])
+        let all = try await repository.allBundles()
+        XCTAssertEqual(all.count, 2)
+        let lastRefreshDate = await repository.lastRefreshDate()
+        XCTAssertEqual(lastRefreshDate, firstRefreshDate)
+        let lastWindow = await scraper.lastWindow
+        XCTAssertEqual(lastWindow, OfficialDateWindow(start: "2023-12-01", end: "2024-01-31"))
+
+        let refreshedAgain = try await repository.refresh()
+        XCTAssertTrue(refreshedAgain.contains { $0.event.id == "old" })
+    }
 }
 
 private actor RecordingScraper: OfficialEventScraping {
     var events: [LiveEventBundle]
     var calls = 0
     var lastExisting: [LiveEventBundle] = []
+    var lastWindow: OfficialDateWindow?
     var failure = false
     var partialFailure = false
     init(events: [LiveEventBundle]) { self.events = events }
@@ -185,12 +211,18 @@ private actor RecordingScraper: OfficialEventScraping {
         return events.first { $0.event.id == event.event.id } ?? event
     }
     func collect(existing: [LiveEventBundle], cutoff: String, now: Date) async throws -> [LiveEventBundle] {
+        try await collect(existing: existing, window: .cutoff(cutoff), now: now)
+    }
+    func collect(existing: [LiveEventBundle], window: OfficialDateWindow, now: Date) async throws -> [LiveEventBundle] {
         calls += 1
         lastExisting = existing
+        lastWindow = window
+        // Daily (open-ended) refresh returns everything so `save()` archive rules stay under test.
+        let filtered = window.end == nil ? events : events.filter { window.overlaps($0) }
         if partialFailure {
-            throw OfficialEventScraperError.partialFailure(partialBundles: events, failures: [OfficialScrapeFailure(url: URL(string: "https://www.lovelive-anime.jp/")!, kind: .fetch, message: "HTTP 403")])
+            throw OfficialEventScraperError.partialFailure(partialBundles: filtered, failures: [OfficialScrapeFailure(url: URL(string: "https://www.lovelive-anime.jp/")!, kind: .fetch, message: "HTTP 403")])
         }
         if failure { throw URLError(.notConnectedToInternet) }
-        return events
+        return filtered
     }
 }

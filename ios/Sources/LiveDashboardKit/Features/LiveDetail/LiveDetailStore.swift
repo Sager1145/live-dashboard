@@ -114,6 +114,16 @@ public final class LiveDetailStore {
         )
     }
 
+    public func applicableTicketBenefits() -> ScopeResolution<TicketBenefit> {
+        PerformanceScopeResolver.resolve(records: bundle.ticketBenefits, selectedPerformanceID: selectedPerformanceID, stopID: stopID(for:))
+    }
+
+    /// Tiers whose official name marks them as goods-bundled (グッズ付き), used
+    /// to show a placeholder when the page never describes the bonus.
+    public var goodsBundledTiers: [TicketTier] {
+        bundle.ticketTiers.filter { $0.name.contains("グッズ付") }
+    }
+
     public func applicableNotices() -> ScopeResolution<Notice> {
         PerformanceScopeResolver.resolve(
             records: bundle.notices,

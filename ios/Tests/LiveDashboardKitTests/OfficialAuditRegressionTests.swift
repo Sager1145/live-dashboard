@@ -142,6 +142,205 @@ final class OfficialAuditRegressionTests: XCTestCase {
         XCTAssertEqual(round.applyEndAt, Self.date("2026-10-18T14:59:00Z"))
     }
 
+    func testEleganzaVendorButtonAndOfficiallyTBABenefitAreImported() async throws {
+        // Source: https://bang-dream.com/events/eleganza/ (captured 2026-09-22)
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Morfonica LIVE「eleganza」</h1>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>日程</h2><p>2027年1月9日(土)　開場17:00／開演18:00（予定）</p>
+            <h2>会場</h2><p>Kanadevia Hall</p>
+            <h2 id="Ticket" class="blogparts_element blogparts_root">チケット</h2>
+            <h3 class="blogparts_element blogparts_root">料金</h3>
+            <p>アリーナスタンディング Sエリア(特製グッズ付き)：22,000円(税込)<br />
+            アリーナスタンディング Aエリア(特製グッズ付き)：16,500円(税込)<br />
+            スタンド指定席(特製グッズ付き)：14,300円(税込))<br />
+            スタンド指定席：9,900円(税込))</p>
+            <h6 class="blogparts_element blogparts_root">グッズ付きチケット特典</h6>
+            <p class="blogparts_element">後日公開いたします。</p>
+            <h6 class="blogparts_element blogparts_root">会場座席イメージ</h6>
+            <p class="blogparts_element"><img src="https://bang-dream.com/wordpress/wp-content/uploads/2026/09/18121237/seat.jpg" alt="" /></p>
+            <h3>販売情報</h3>
+            <h6 class="blogparts_element blogparts_root">プレイガイド先行</h6>
+            <p><a class="c-button--blog-large c-button--red-grad" href="https://eplus.jp/morfonica-eleganza/" target="_blank" rel="noopener">受付はこちら</a></p>
+            <p>受付期間：2026年9月22日(火・祝) 21:00～ 10月18日(日) 23:59</p>
+            <p class="blogparts_element">※1回につき4枚までお申し込みいただけます。</p>
+          </div>
+        </article>
+        """
+
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/eleganza/", title: "Morfonica LIVE「eleganza」")
+
+        let performance = try XCTUnwrap(refreshed.performances.first)
+        let round = try XCTUnwrap(refreshed.ticketRounds.first { $0.officialName == "プレイガイド先行" })
+        XCTAssertEqual(round.applyURL, "https://eplus.jp/morfonica-eleganza/")
+        XCTAssertEqual(round.links.first { $0.url == "https://eplus.jp/morfonica-eleganza/" }?.label, "受付はこちら")
+        XCTAssertEqual(round.scope, .performances(performanceIDs: [performance.id]), "single-performance rounds apply to that performance")
+        XCTAssertEqual(round.applyStartAt, Self.date("2026-09-22T12:00:00Z"))
+
+        let benefit = try XCTUnwrap(refreshed.ticketBenefits.first)
+        XCTAssertEqual(benefit.officialName, "グッズ付きチケット特典")
+        XCTAssertEqual(benefit.status, .officiallyTBA)
+        XCTAssertNil(benefit.detail)
+        XCTAssertEqual(benefit.notes, "後日公開いたします。")
+        XCTAssertEqual(benefit.scope, .performances(performanceIDs: [performance.id]))
+        XCTAssertEqual(Set(benefit.tierIDs), Set(refreshed.ticketTiers.filter { $0.name.contains("グッズ付き") }.map(\.id)))
+        XCTAssertEqual(benefit.tierIDs.count, 3)
+        XCTAssertTrue(refreshed.ticketTiers.allSatisfy { $0.includes == nil }, "no announced contents to copy into tiers")
+        XCTAssertTrue(benefit.mediaAssetIDs.isEmpty, "the seating image belongs to the next heading")
+    }
+
+    func testMovementBenefitContentsRedemptionAndTradeButtonAreImported() async throws {
+        // Source: https://bang-dream.com/events/morfonica_live_2026/ (captured 2026-09-22)
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Morfonica LIVE「Movement」</h1>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>日程</h2><p>2026年9月22日(火・祝)　開場17:00／開演18:00</p>
+            <h2>会場</h2><p>TACHIKAWA STAGE GARDEN</p>
+            <h2 id="Ticket">チケット ※SOLD OUT！</h2>
+            <h3>料金</h3>
+            <p><span style="text-decoration: line-through;">スタンド指定席(特製グッズ付き)：14,300円(税込))</span>　受付終了<br />
+            <span style="text-decoration: line-through;">スタンド指定席：9,900円(税込))</span>　受付終了</p>
+            <h6>グッズ付きチケット特典</h6>
+            <p>イロドリコースター＋二重奏グラス</p>
+            <p>※二重奏グラスについて、特典の性質上、ロゴ部分に印刷のカスレが入る場合がございます。あらかじめご了承ください。</p>
+            <p><img src="https://bang-dream.com/wordpress/wp-content/uploads/2026/09/05161644/benefit-1024x778.jpg" alt="" /></p>
+            <blockquote class="c-post-content__quote">
+            <h6><span style="color: #ff0000;">チケット特典のお渡しについて (2026年9月18日更新)</span></h6>
+            <p>特典の引き換えは、<strong>チケットのグッズ引換券</strong>にて実施いたします。<br />
+            お受け取り忘れのないようご注意ください。</p>
+            <p><strong>▼引換場所</strong><br />
+            TACHIKAWA STAGE GARDEN 入場口付近 特典引換所</p>
+            <p><strong>▼引換日時<br />
+            </strong>9/22(火・祝) 13:00～16:30、17:00～終演後 列が途切れ次第終了</p>
+            <p>※開場時間中は場内に限り引き換えいただけます。</p>
+            </blockquote>
+            <h4>会場座席イメージ</h4>
+            <p><img src="https://bang-dream.com/wordpress/wp-content/uploads/2026/09/17195416/seat.jpg" alt="" /></p>
+            <h3>販売情報</h3>
+            <h6>一般発売（受付終了）</h6>
+            <p>受付期間：2026年8月29日(土) 10:00 ～</p>
+            <h2 id="Ticket_trade">チケットトレード</h2>
+            <p>本公演では公式チケットトレードを受付いたします。</p>
+            <h6>トレード申し込み・詳細はこちら</h6>
+            <p><a href="https://trade.tixplus.jp/artists/tour/15286" target="_blank" rel="noopener">https://trade.tixplus.jp/artists/tour/15286</a><br />
+            ※受付開始後に遷移可能となります。</p>
+            <h6>トレード受付期間</h6>
+            <p>2026年9月14日(月) 12:00 ～ 9月18日(金) 11:59</p>
+          </div>
+        </article>
+        """
+
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/morfonica_live_2026/", title: "Morfonica LIVE「Movement」")
+
+        let benefit = try XCTUnwrap(refreshed.ticketBenefits.first)
+        XCTAssertEqual(benefit.status, .confirmed)
+        XCTAssertEqual(benefit.detail, "イロドリコースター＋二重奏グラス")
+        XCTAssertEqual(benefit.notes, "※二重奏グラスについて、特典の性質上、ロゴ部分に印刷のカスレが入る場合がございます。あらかじめご了承ください。")
+        XCTAssertEqual(benefit.redemptionLocation, "TACHIKAWA STAGE GARDEN 入場口付近 特典引換所")
+        XCTAssertEqual(benefit.redemptionWindow, "9/22(火・祝) 13:00～16:30、17:00～終演後 列が途切れ次第終了")
+        XCTAssertEqual(benefit.redemptionNote?.contains("グッズ引換券"), true)
+        XCTAssertEqual(benefit.redemptionNote?.contains("※開場時間中"), true)
+        XCTAssertEqual(benefit.mediaAssetIDs.count, 1)
+        let image = try XCTUnwrap(refreshed.mediaAssets.first { benefit.mediaAssetIDs.contains($0.id) })
+        XCTAssertEqual(image.originalURL, "https://bang-dream.com/wordpress/wp-content/uploads/2026/09/05161644/benefit-1024x778.jpg")
+        XCTAssertEqual(image.caption, "グッズ付きチケット特典")
+        XCTAssertEqual(refreshed.evidence.first { $0.recordID == benefit.id }?.field, "ticket.benefit")
+
+        let bundled = try XCTUnwrap(refreshed.ticketTiers.first { $0.name == "スタンド指定席(特製グッズ付き)" })
+        XCTAssertEqual(bundled.includes, "イロドリコースター＋二重奏グラス")
+        XCTAssertNil(refreshed.ticketTiers.first { $0.name == "スタンド指定席" }?.includes)
+
+        let trade = try XCTUnwrap(refreshed.ticketRounds.first { $0.kind == .resale })
+        XCTAssertEqual(trade.officialName, "トレード受付期間")
+        XCTAssertEqual(trade.applyURL, "https://trade.tixplus.jp/artists/tour/15286", "the button-only sibling heading lends its link")
+        XCTAssertEqual(trade.applyStartAt, Self.date("2026-09-14T03:00:00Z"))
+        XCTAssertFalse(refreshed.ticketRounds.contains { $0.officialName.contains("こちら") }, "a pointer heading is never a round of its own")
+    }
+
+    func testSharedVendorButtonUnderSalesContainerHeadingIsNotARound() async throws {
+        // Source: https://bang-dream.com/events/mygo_9th/ (captured 2026-09-22)
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">MyGO!!!!! 9th LIVE</h1>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>日程・会場</h2>
+            <h6>DAY1</h6><p>日程：2026年8月1日(土)<br>会場：Kアリーナ横浜</p>
+            <h6>DAY2</h6><p>日程：2026年8月2日(日)<br>会場：Kアリーナ横浜</p>
+            <h2>チケット</h2>
+            <h3>販売情報</h3>
+            <p><a class="c-button--blog-large c-button--red-grad" href="https://eplus.jp/mygo-9th/" target="_blank" rel="noopener">受付はこちら</a></p>
+            <h6>見切れ席・2F後方立ち見エリア発売（DAY2のみ）</h6>
+            <p>受付期間：2026年7月17日(金) 20:00 ～</p>
+            <h6>一般発売（受付終了）</h6>
+            <p>受付期間：2026年6月6日(土) 12:00 ～</p>
+          </div>
+        </article>
+        """
+
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/mygo_9th/", title: "MyGO!!!!! 9th LIVE")
+
+        XCTAssertEqual(refreshed.ticketRounds.map(\.officialName), ["見切れ席・2F後方立ち見エリア発売（DAY2のみ）", "一般発売（受付終了）"], "the 販売情報 container is not a round")
+        XCTAssertTrue(refreshed.ticketRounds.allSatisfy { $0.applyURL == "https://eplus.jp/mygo-9th/" }, "the shared button reaches every round")
+        XCTAssertTrue(refreshed.ticketRounds.allSatisfy { $0.scope == .unconfirmed }, "two dates: never guess which day")
+    }
+
+    func testBenefitContentsInChildHeadingAreNotOfficiallyTBA() async throws {
+        // Source: https://bang-dream.com/events/arale_acousticlive2025/ (captured 2026-09-22)
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">仲町あられ Acoustic LIVE</h1>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>日程</h2><p>2025年10月18日(土)　開場17:00／開演18:00</p>
+            <h2>会場</h2><p>Zepp Shinjuku</p>
+            <h2>チケット</h2>
+            <h3>料金</h3><p>指定席(特製グッズ付き)：8,800円(税込)</p>
+            <h3>グッズ付きチケット特典</h3>
+            <h6>仲町あられ 直筆サイン&amp;ニックネーム入りポストカード</h6>
+            <p><strong>その場でポストカードに直筆サイン＆ご希望のニックネーム（もしくはお名前）を入れてお渡しいたします！</strong></p>
+            <p>●お名前、ニックネームは、整列時に配布する用紙に事前にご記入いただきます。</p>
+            <h3>販売情報</h3>
+            <h6>一般発売</h6>
+            <p>受付期間：2025年9月6日(土) 12:00 ～<br>受付URL：<a href="https://eplus.jp/nakamachiarale/">https://eplus.jp/nakamachiarale/</a></p>
+          </div>
+        </article>
+        """
+
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/arale_acousticlive2025/", title: "仲町あられ Acoustic LIVE")
+
+        let benefit = try XCTUnwrap(refreshed.ticketBenefits.first)
+        XCTAssertEqual(benefit.status, .confirmed)
+        XCTAssertEqual(benefit.detail?.hasPrefix("仲町あられ 直筆サイン&ニックネーム入りポストカード\nその場でポストカードに"), true, "\(benefit.detail ?? "nil")")
+        XCTAssertEqual(refreshed.ticketTiers.first?.includes, benefit.detail)
+        XCTAssertEqual(refreshed.ticketRounds.map(\.officialName), ["一般発売"], "the benefit's child heading is not a round")
+    }
+
+    func testVendorButtonWithoutPeriodTextStillBecomesARound() async throws {
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Button Only LIVE</h1>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>日程</h2><p>2027年3月6日(土)　開場17:00／開演18:00</p>
+            <h2>会場</h2><p>Zepp Haneda</p>
+            <h2>チケット</h2>
+            <h3>販売情報</h3>
+            <h6>プレイガイド先行</h6>
+            <p><a class="c-button--blog-large c-button--red-grad" href="https://eplus.jp/button-only/" target="_blank" rel="noopener">受付はこちら</a></p>
+          </div>
+        </article>
+        """
+
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/button-only/", title: "Button Only LIVE")
+
+        let round = try XCTUnwrap(refreshed.ticketRounds.first)
+        XCTAssertEqual(round.officialName, "プレイガイド先行")
+        XCTAssertEqual(round.applyURL, "https://eplus.jp/button-only/")
+        XCTAssertNil(round.applyStartAt)
+        XCTAssertEqual(round.status, .confirmed)
+        XCTAssertTrue(refreshed.ticketBenefits.isEmpty)
+    }
+
     func testApplicationResultAndPaymentIntervalsDoNotBleedIntoEachOther() async throws {
         // Source: https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest
         let html = """
@@ -857,6 +1056,141 @@ final class OfficialAuditRegressionTests: XCTestCase {
         XCTAssertEqual(bundle.ticketTiers.map(\.name).sorted(), ["A席", "S席"])
         let grouping = ImportantInformationPolicy.ticketsTabGrouping(rounds: bundle.ticketRounds + bundle.ticketRounds, now: Date(), configurations: [:])
         XCTAssertEqual(grouping.open.count + grouping.upcoming.count + grouping.closed.count, bundle.ticketRounds.count)
+    }
+
+    func testJimoaiDayBlocksScopeInlineCastToEachDaysSessions() async throws {
+        // Source: https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai5th (LL09)
+        let html = """
+        <html><head><meta property="og:description" content="ラブライブ！サンシャイン!! 第５回沼津地元愛まつり｜ラブライブ！サンシャイン!!"></head>
+        <body><article>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">開催概要・出演者</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">＜Day.1＞<br> 2027年3月20日（土）<br> ＜昼公演＞13:00開場／14:00開演<br> ＜夜公演＞17:30開場／18:30開演<br> 【出演】伊波杏樹（高海千歌役）、小宮有紗（黒澤ダイヤ役）、降幡 愛（黒澤ルビィ役）<br><br> ＜Day.2＞<br> 2027年3月21日（日）<br> ＜昼公演＞13:00開場／14:00開演<br> ＜夜公演＞17:30開場／18:30開演<br> 【出演】逢田梨香子（桜内梨子役）、高槻かなこ（国木田花丸役）、鈴木愛奈（小原鞠莉役）<br> &nbsp;</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">会場</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">キラメッセぬまづ（静岡県沼津市大手1丁目1−4）</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">チケット</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">全席指定：8,500円（税込）<br>※開場・開演時間、出演者は諸事情により変更になる場合がございます。</div></div></div>
+        </article></body></html>
+        """
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai5th",
+                                          title: "ラブライブ！サンシャイン!! 第５回沼津地元愛まつり", franchise: .lovelive)
+        let day1 = ["伊波杏樹（高海千歌役）", "小宮有紗（黒澤ダイヤ役）", "降幡 愛（黒澤ルビィ役）"]
+        let day2 = ["逢田梨香子（桜内梨子役）", "高槻かなこ（国木田花丸役）", "鈴木愛奈（小原鞠莉役）"]
+        XCTAssertEqual(refreshed.performances.map(\.localDate), ["2027-03-20", "2027-03-20", "2027-03-21", "2027-03-21"])
+        XCTAssertEqual(refreshed.performances.map(\.performers), [day1, day1, day2, day2])
+    }
+
+    func testJimoai2025PublicDayCastHeadingInsideOverview() async throws {
+        // Source: https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai2025 (LL20)
+        let html = """
+        <html><head><meta property="og:description" content="ラブライブ！サンシャイン!! 沼津地元愛まつり 2025｜ラブライブ！サンシャイン!!"></head>
+        <body><article>
+          <div data-type="component-livetext"><div class="text-area"><a id="top" name="top"><h3 class="ke-live_text ke-live_text_01">開催概要</h3></a></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">公演日・出演</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody=""><strong>＜Day.1＞</strong><br> 2025年11月1日（土）<br> ＜昼公演＞13:00開場／14:00開演<br> 【出演】諏訪ななか（松浦果南役）、小林愛香（津島善子役）、降幡 愛（黒澤ルビィ役）<br><br><strong>＜Day.2＞</strong><br> 2025年11月2日（日）<br> ＜昼公演＞13:00開場／14:00開演<br> 【出演】伊波杏樹（高海千歌役）、逢田梨香子（桜内梨子役）、鈴木愛奈（小原鞠莉役）</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">会場</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">キラメッセぬまづ</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h3 class="ke-live_text ke-live_text_01">チケット情報</h3></div></div>
+        </article></body></html>
+        """
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai2025",
+                                          title: "ラブライブ！サンシャイン!! 沼津地元愛まつり 2025", franchise: .lovelive)
+        XCTAssertEqual(refreshed.performances.map(\.performers), [
+            ["諏訪ななか（松浦果南役）", "小林愛香（津島善子役）", "降幡 愛（黒澤ルビィ役）"],
+            ["伊波杏樹（高海千歌役）", "逢田梨香子（桜内梨子役）", "鈴木愛奈（小原鞠莉役）"],
+        ])
+    }
+
+    func testNijigasaki8thDivTitledCastWithIndentedContinuationAndSupport() async throws {
+        // Source: https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=8thlive (LL11)
+        let html = """
+        <html><head><meta property="og:description" content="ラブライブ！虹ヶ咲学園スクールアイドル同好会 8thライブ"></head>
+        <article>
+          <div data-type="component-livetext"><div class="text-area"><a id="top" name="top" value="top"><h3 data-priset="1" class="ke-live_text ke-live_text_01">ライブTOP</h3></a></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody=""><strong>＜大阪公演＞</strong><br> 【日程】Day.1　2026年6月6日（土）16:00開場／17:00開演<br> 【会場】大阪城ホール<br> 【出演】虹ヶ咲学園スクールアイドル同好会<br><br><strong>＜東京公演＞</strong><br> 【日程】Day.1　2026年6月13日（土）16:00開場／17:00開演<br> 【会場】京王アリーナ TOKYO<br> 【出演】虹ヶ咲学園スクールアイドル同好会</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><div data-priset="1" class="ke-live_text ke-live_text_01">出演</div></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">【出演】虹ヶ咲学園スクールアイドル同好会<br> 　　　大西亜玖璃（上原歩夢役）、相良茉優（中須かすみ役）、<br> 　　　法元明菜（鐘 嵐珠役）<br> 【応援出演】矢野妃菜喜（高咲 侑役）</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><div data-priset="1" class="ke-live_text ke-live_text_01">チケット料金</div></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">全席指定：13,500円（税込）<br>※完全見切れ席はステージ裏側にあるため、出演者・ステージを直接ご覧いただけないお席となります。</div></div></div>
+          <div class="ticket" data-target="ticket"><div data-type="component-livetext"><a id="ticket" name="ticket"><h3 class="ke-live_text ke-live_text_01">チケット情報</h3></a></div></div>
+        </article></html>
+        """
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=8thlive",
+                                          title: "ラブライブ！虹ヶ咲学園スクールアイドル同好会 8th Live! TOKIMEKI Express", franchise: .lovelive)
+        XCTAssertEqual(refreshed.performances.map(\.localDate), ["2026-06-06", "2026-06-13"])
+        XCTAssertTrue(refreshed.performances.allSatisfy {
+            $0.performers == ["虹ヶ咲学園スクールアイドル同好会", "大西亜玖璃（上原歩夢役）", "相良茉優（中須かすみ役）", "法元明菜（鐘 嵐珠役）", "矢野妃菜喜（高咲 侑役）"]
+        })
+    }
+
+    func testFlowerLiveSiblingCastHeadingSplitsUnitsByDayAndKeepsSupportOnBoth() async throws {
+        // Source: https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=flower_live (LL16)
+        let html = """
+        <html><head><meta property="og:description" content="ラブライブ！虹ヶ咲学園スクールアイドル同好会 FLOWER MUSIC LIVE"></head>
+        <article>
+          <div data-type="component-livetext"><div class="text-area"><a id="top" name="top" value="top"><h4 class="ke-live_text ke-live_text_03">ライブTOP</h4></a></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">【日程】DAY.1：2026年1月17日（土）16:00開場／17:00開演<br> 　　　DAY.2：2026年1月18日（日）15:00開場／16:00開演<br><br> 【会場】京王アリーナ TOKYO</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">出演</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">【出演】<br> 〈DAY.1〉<br> タンポポ：相良茉優（中須かすみ役）、指出毬亜（エマ・ヴェルデ役）<br> ヒナギク：田中ちえ美（天王寺璃奈役）<br><br> 〈DAY.2〉<br> アサガオ：前田佳織里（桜坂しずく役）、鬼頭明里（近江彼方役）<br><br> 【応援出演】DAY.1&amp;DAY.2 矢野妃菜喜（高咲 侑役）</div></div></div>
+          <div data-type="component-livetext"><div class="text-area"><h4 class="ke-live_text ke-live_text_03">チケット料金</h4></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody="">全席指定：12,000円（税込）</div></div></div>
+        </article></html>
+        """
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=flower_live",
+                                          title: "FLOWER MUSIC LIVE『Boooooom Boooooom Bee!!』", franchise: .lovelive)
+        XCTAssertEqual(refreshed.performances.map(\.dayLabel), ["DAY1", "DAY2"])
+        XCTAssertEqual(refreshed.performances.map(\.performers), [
+            ["相良茉優（中須かすみ役）", "指出毬亜（エマ・ヴェルデ役）", "田中ちえ美（天王寺璃奈役）", "矢野妃菜喜（高咲 侑役）"],
+            ["前田佳織里（桜坂しずく役）", "鬼頭明里（近江彼方役）", "矢野妃菜喜（高咲 侑役）"],
+        ])
+    }
+
+    func testFestCastDropsLinkLabelsGuestHeadingAndSupportPrefix() async throws {
+        // Source: https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest (LL01)
+        let html = """
+        <html><head><meta property="og:description" content="LoveLive! Series 15th Anniversary ラブライブ！フェス｜ラブライブ！"></head>
+        <body><article><div data-target="top">
+          <div data-type="component-midashi"><div class="text-area"><h3>日程・会場</h3></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody="">■日程<br>Day.1：2026年11月14日（土）14:30開場／16:30開演<br>Day.2：2026年11月15日（日）13:30開場／15:30開演<br><br>■会場<br>愛知・ <a href="https://www.nagoya-dome.co.jp/sp/access.php">バンテリンドーム ナゴヤ</a></div></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h3>出演者</h3></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody=""><strong>『ラブライブ！虹ヶ咲学園スクールアイドル同好会』</strong><br>大西亜玖璃（上原歩夢役）、法元明菜（鐘 嵐珠役）<br>応援出演：矢野妃菜喜（高咲 侑役）<br><a class="link" href="https://www.lovelive-anime.jp/nijigasaki/about_nijigasaki.php">作品サイト</a></div></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody=""><span>ゲスト出演</span><br><strong>『スクールアイドルミュージカル2026』</strong><br> 堀内まり菜（椿 ルリカ役）<br><a class="link" href="https://www.lovelive-anime.jp/musical/member.php">作品サイト</a></div></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h3>チケット料金</h3></div></div>
+        </div></article></body></html>
+        """
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest",
+                                          title: "LoveLive! Series 15th Anniversary ラブライブ！フェス", franchise: .lovelive)
+        XCTAssertEqual(refreshed.performances.count, 2)
+        XCTAssertTrue(refreshed.performances.allSatisfy {
+            $0.performers == ["『ラブライブ！虹ヶ咲学園スクールアイドル同好会』", "大西亜玖璃（上原歩夢役）", "法元明菜（鐘 嵐珠役）",
+                              "矢野妃菜喜（高咲 侑役）", "『スクールアイドルミュージカル2026』", "堀内まり菜（椿 ルリカ役）"]
+        })
+    }
+
+    func testFilmLiveDateSubsectionsScopeCastAndSkipTalkPartBlock() async throws {
+        // Source: https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai (LL02)
+        let html = """
+        <html><head><meta property="og:description" content="前夜祭 FILM LIVE｜ラブライブ！"></head>
+        <body><article>
+          <div data-type="component-livetext"><div class="text-area"><h3 class="ke-live_text ke-live_text_01">イベント概要</h3></div></div>
+          <div data-textblock="" data-type="component-text"><div class="text-area"><div data-textbody=""></div></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h4>日程</h4></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody="">2026年10月10日（土）<br> ＜昼公演＞13:30開場／14:30開演<br><br> 2026年10月11日（日）<br> ＜昼公演＞13:00開場／14:00開演</div></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h4>出演</h4></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h5>10日（土）公演</h5></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody=""><strong>『スクールアイドルミュージカル』&nbsp;</strong><br> 堀内まり菜（椿&nbsp;ルリカ役）、浅井七海（皇 ユズハ役）&nbsp;<br><br> 【10日（土）トークパート出演者】<br> ●昼公演<br> 虹ヶ咲学園スクールアイドル同好会、蓮ノ空女学院スクールアイドルクラブ<br> MC：堀内まり菜（椿 ルリカ役）（「スクールアイドルミュージカル」より）</div></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h5>11日（日）公演</h5></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody=""><strong>『ラブライブ！スーパースター!!』 Liella!&nbsp;</strong><br> 伊達さゆり（澁谷かのん役）、結那（ウィーン・マルガレーテ役）&nbsp;<br><br> 【11日（日）トークパート出演者】<br> ●昼公演<br> Liella!、いきづらい部！</div></div></div>
+          <div data-type="component-midashi"><div class="text-area"><h4>チケット料金</h4></div></div>
+          <div data-type="component-text"><div class="text-area"><div data-textbody="">全席指定：8,900円（税込）</div></div></div>
+        </article></body></html>
+        """
+        let refreshed = try await refresh(html: html, url: "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai",
+                                          title: "前夜祭 FILM LIVE", franchise: .lovelive)
+        XCTAssertEqual(refreshed.performances.map(\.localDate), ["2026-10-10", "2026-10-11"])
+        XCTAssertEqual(refreshed.performances.map(\.performers), [
+            ["『スクールアイドルミュージカル』", "堀内まり菜（椿 ルリカ役）", "浅井七海（皇 ユズハ役）"],
+            ["『ラブライブ！スーパースター!!』 Liella!", "伊達さゆり（澁谷かのん役）", "結那（ウィーン・マルガレーテ役）"],
+        ])
     }
 
     private func refresh(

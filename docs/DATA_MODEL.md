@@ -62,10 +62,17 @@
 
 **关键字段**：`id`、`eventID`、`officialName`（如「先行抽选」「一般发售」「升级受付」）、`kind`（`lottery` / `firstComeFirstServed` / `resale` / `upgrade` / `other`）、`scope`（`Scope`）、`applyStartAt`／`applyEndAt`／`resultAt`／`paymentDeadlineAt`、`eligibility`（资格前提）、`announcementURL`／`applyURL`／`overseasURL`、`officialStatus`（官方原文状态）、`status`（`DataStatus`）、`links`（官方页面上其它具名链接，`OfficialLink[]`，默认 `[]`）。
 
+结构化补充字段（均为可选，默认 `nil` / `[]`）：`applyWindowText`（受付期間／受付時間／申込期間／発売日／発売日時 的原文，多行用 `\n` 连接）、`resultText`（当落発表／当選発表／抽選結果 原文）、`paymentStartAt`（入金期間起始时间，仅当原文写明区间起止两端时才有值）、`paymentWindowText`（入金期間／支払期間／支払期限 原文）、`quantityLimit`（枚数制限 原文）、`lotteryProducts`（抽选用商品／封入申込券对应的商品名数组，逐条原文，默认 `[]`）、`applicationTarget`（★申込対象 原文，已去掉外层的 ＜＞）、`notes`（`TicketNote[]`，默认 `[]`，见下文）。
+
+**TicketNote（重要提示）**：`kind`（`faceRecognition` 顔認証 / `companionRegistration` 同行者登録 / `identityCheck` 本人確認 / `smartTicketOnly` スマチケのみ / `creditCardOnly` クレジットカード決済のみ / `membershipRequired` 会員登録必要 / `other`）、`text`（原文句子，可能多行）、`links`（该提示相关的官方引导链接，`OfficialLink[]`，默认 `[]`）。
+
+**OfficialLink.role**：`application`（真正的申请/受付入口）、`overseasApplication`（海外申请入口，如 ib.* / KKTIX / Cityline）、`support`（票务服务商的客服／FAQ／会员／引导页面）、`product`（关联商品页，如封入申込券所属的专辑页）、`other`（其余）。分类由 `OfficialLink.classify(label:url:)` 统一计算，规则详见该方法实现，`role` 为可选字段，旧数据解码为 `nil`。
+
 **不变量**：
 - 每一轮受付是独立记录，旧轮次不会被新轮次覆盖；多轮可以同时存在，各自的时间、资格、价格关系互相独立。
 - 「申请时间已开始」不等于「目前一定还有票」——`officialStatus` 与 `status` 分别保存官方原文状态和采集器推断状态，不混为一谈。
 - `scope` 遵循全局规则 2／3：受付适用的场次范围必须显式给出，无法确认时为 `unconfirmed`。
+- 只有官网明确写出的信息才会出现在这些字段中（没有 = `nil` / 空数组），链接分类只用于展示分组，不改变 `links` 的原文与顺序。
 
 ## TicketOffer（受付-票种-场次关联）
 
@@ -75,6 +82,17 @@
 
 **不变量**：
 - 一个 `TicketRound` 可以对应多个 `TicketOffer`（不同票种、不同场次组合），价格关系（完整价 vs. 升级差额）在票种层已经区分，`TicketOffer.priceJPY` 承载该组合下的具体金额。
+
+## TicketBenefit（グッズ付きチケット特典）
+
+**用途**：官方页面在「料金」下方以「グッズ付きチケット特典」／「チケット特典」标题刊登的、随特定票种附赠的周边内容，以及现场领取方式。与 `TicketTier` 并列展示，不混入 `GoodsCampaign`。
+
+**关键字段**：`id`、`eventID`、`officialName`（标题原文）、`scope`（`Scope`）、`tierIDs`（名称含「グッズ付」的票种 ID）、`detail`（特典内容原文，官方待公布时为 `nil`）、`notes`（※ 备注；官方写「後日公開」时保存该句原文）、`redemptionLocation`／`redemptionWindow`（「引換場所」「引換日時」原文）、`redemptionNote`（引换说明其余原文）、`mediaAssetIDs`（特典图片，`MediaAsset.kind = product`）、`status`（`DataStatus`）、`links`（`OfficialLink[]`）。
+
+**不变量**：
+- `status = officiallyTBA` 只表示官方明确写了「後日公開／未定」；页面完全没有该标题时不生成记录，由客户端根据「グッズ付」票种显示「官方尚未公布」占位。
+- `detail` 有值时会复制到对应 `TicketTier.includes`（仅当 `includes` 原本为空）。
+- 单场公演的 `scope` 为该场次；多场公演在未能确认前为 `unconfirmed`。
 
 ## GoodsCampaign（物贩批次）
 

@@ -19,12 +19,14 @@ public enum DetailTab: String, CaseIterable, Hashable, Sendable {
 
 public enum RootTab: String, CaseIterable, Hashable, Sendable {
     case dashboard
+    case pastLives
     case myLives
     case settings
 
     public var titleZH: String {
         switch self {
         case .dashboard: return "演出"
+        case .pastLives: return "往期"
         case .myLives: return "我的"
         case .settings: return "设置"
         }

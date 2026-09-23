@@ -12,6 +12,8 @@ public enum CardType: String, Codable, Hashable, Sendable {
     // Tickets (one card per round, keyed by round entity ID)
     case ticketRound
     case streamOffer
+    // Tickets (one card per goods-bundled ticket benefit, keyed by benefit entity ID)
+    case ticketBenefit
     // Seating
     case eventSeatingMap
     case venueGenericSeatingMap

@@ -52,8 +52,8 @@ public enum OfficialMediaError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidResponse: String(localized: "无法下载官方图片")
-        case .invalidImage: String(localized: "官方链接未返回有效图片")
+        case .invalidResponse: String(localized: "无法下载官方图片", bundle: .kit)
+        case .invalidImage: String(localized: "官方链接未返回有效图片", bundle: .kit)
         }
     }
 }

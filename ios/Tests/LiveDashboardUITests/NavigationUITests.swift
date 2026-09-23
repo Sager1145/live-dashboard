@@ -8,9 +8,9 @@ final class NavigationUITests: XCTestCase {
 
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
-        XCTAssertEqual(tabBar.buttons.count, 3)
+        XCTAssertEqual(tabBar.buttons.count, 4)
 
-        tabBar.buttons.element(boundBy: 2).tap()
+        tabBar.buttons.element(boundBy: 3).tap()
         XCTAssertFalse(app.textFields["apiBaseURLField"].exists)
         XCTAssertTrue(app.buttons["officialRefreshButton"].waitForExistence(timeout: 3))
 

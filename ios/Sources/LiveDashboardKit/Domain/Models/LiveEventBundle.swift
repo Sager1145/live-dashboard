@@ -20,6 +20,8 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
     public let streamOffers: [StreamOffer]
     public let products: [Product]
     public let goodsSessions: [GoodsSession]
+    /// Goods bundled with specific ticket tiers (グッズ付きチケット特典).
+    public let ticketBenefits: [TicketBenefit]
     public let sourceHealth: SourceHealthState
     /// Plain-text rendering of the official detail page, including inline
     /// annotations for links and images (see `OfficialEventScraper.HTML.linkedText`).
@@ -45,6 +47,7 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
         streamOffers: [StreamOffer] = [],
         products: [Product] = [],
         goodsSessions: [GoodsSession] = [],
+        ticketBenefits: [TicketBenefit] = [],
         sourceHealth: SourceHealthState = .healthy,
         sourceText: String? = nil
     ) {
@@ -65,6 +68,7 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
         self.streamOffers = streamOffers
         self.products = products
         self.goodsSessions = goodsSessions
+        self.ticketBenefits = ticketBenefits
         self.sourceHealth = sourceHealth
         self.sourceText = sourceText
     }
@@ -72,7 +76,7 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, revision, contentRevision, publishedAt, event, stops, performances
         case ticketTiers, ticketRounds, ticketOffers, goodsCampaigns, mediaAssets, media
-        case notices, evidence, editions, streamOffers, products, goodsSessions, sourceHealth
+        case notices, evidence, editions, streamOffers, products, goodsSessions, ticketBenefits, sourceHealth
         case sourceText
     }
 
@@ -97,6 +101,7 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
         streamOffers = try c.decodeIfPresent([StreamOffer].self, forKey: .streamOffers) ?? []
         products = try c.decodeIfPresent([Product].self, forKey: .products) ?? []
         goodsSessions = try c.decodeIfPresent([GoodsSession].self, forKey: .goodsSessions) ?? []
+        ticketBenefits = try c.decodeIfPresent([TicketBenefit].self, forKey: .ticketBenefits) ?? []
         sourceHealth = try c.decodeIfPresent(SourceHealthState.self, forKey: .sourceHealth) ?? .healthy
         sourceText = try c.decodeIfPresent(String.self, forKey: .sourceText)
     }
@@ -120,6 +125,7 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
         try c.encode(streamOffers, forKey: .streamOffers)
         try c.encode(products, forKey: .products)
         try c.encode(goodsSessions, forKey: .goodsSessions)
+        try c.encode(ticketBenefits, forKey: .ticketBenefits)
         try c.encode(sourceHealth, forKey: .sourceHealth)
         try c.encodeIfPresent(sourceText, forKey: .sourceText)
     }
@@ -127,7 +133,7 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
 
 extension LiveEventBundle {
     public func replacingSourceHealth(_ value: SourceHealthState) -> LiveEventBundle {
-        LiveEventBundle(schemaVersion: schemaVersion, revision: revision, publishedAt: publishedAt, event: event, stops: stops, performances: performances, ticketTiers: ticketTiers, ticketRounds: ticketRounds, ticketOffers: ticketOffers, goodsCampaigns: goodsCampaigns, mediaAssets: mediaAssets, notices: notices, evidence: evidence, editions: editions, streamOffers: streamOffers, products: products, goodsSessions: goodsSessions, sourceHealth: value, sourceText: sourceText)
+        LiveEventBundle(schemaVersion: schemaVersion, revision: revision, publishedAt: publishedAt, event: event, stops: stops, performances: performances, ticketTiers: ticketTiers, ticketRounds: ticketRounds, ticketOffers: ticketOffers, goodsCampaigns: goodsCampaigns, mediaAssets: mediaAssets, notices: notices, evidence: evidence, editions: editions, streamOffers: streamOffers, products: products, goodsSessions: goodsSessions, ticketBenefits: ticketBenefits, sourceHealth: value, sourceText: sourceText)
     }
 
     /// Decoder configured for the API_CONTRACT.md wire format: ISO-8601 dates

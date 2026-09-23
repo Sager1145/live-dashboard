@@ -159,7 +159,9 @@ final class ContractTests: XCTestCase {
         let round = TicketRound(id: "unconfirmed", eventID: base.event.id, officialName: "upgrade", kind: .upgrade, scope: .unconfirmed, applyStartAt: Date().addingTimeInterval(-60), applyEndAt: Date().addingTimeInterval(3600), resultAt: nil, paymentDeadlineAt: nil, eligibility: nil, announcementURL: nil, applyURL: nil, overseasURL: nil, officialStatus: nil, status: .confirmed)
         let tier = TicketTier(id: "unrelated", eventID: base.event.id, name: "Unrelated", priceJPY: 100, priceKind: .full, includes: nil, feeNote: nil, taxNote: nil)
         let bundle = LiveEventBundle(schemaVersion: 1, publishedAt: base.publishedAt, event: base.event, stops: base.stops, performances: base.performances, ticketTiers: [tier], ticketRounds: [round], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: [])
-        let store = DashboardStore(repository: StaticRepository(bundle: bundle), userDataStore: UserDataStore(container: UserDataStore.makeContainer(inMemory: true)))
+        // Pinned before the fixture's 2027-01-01 performance so the event stays in the upcoming list.
+        let store = DashboardStore(repository: StaticRepository(bundle: bundle), userDataStore: UserDataStore(container: UserDataStore.makeContainer(inMemory: true)),
+            now: { ISO8601DateFormatter().date(from: "2026-09-23T01:00:00Z")! })
         await store.load()
         let summary = try XCTUnwrap(store.visibleSummaries.first)
         XCTAssertNil(summary.currentRoundLabel)

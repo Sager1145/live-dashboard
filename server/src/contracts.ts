@@ -9,9 +9,30 @@ const url = z
   .refine((v) => new URL(v).protocol === "https:", "HTTPS URL required");
 const nullableURL = url.nullable().default(null);
 const optionalText = text.nullable().default(null);
+export const officialLinkRoleSchema = z.enum([
+  "application",
+  "overseasApplication",
+  "support",
+  "product",
+  "other",
+]);
 export const officialLinkSchema = z.object({
   label: z.string().min(1),
   url: z.url(),
+  role: officialLinkRoleSchema.nullable().optional(),
+});
+export const ticketNoteSchema = z.object({
+  kind: z.enum([
+    "faceRecognition",
+    "companionRegistration",
+    "identityCheck",
+    "smartTicketOnly",
+    "creditCardOnly",
+    "membershipRequired",
+    "other",
+  ]),
+  text: z.string().min(1),
+  links: z.array(officialLinkSchema).default([]),
 });
 export const moneySchema = z.object({
   minorUnits: z.number().int().nonnegative().safe(),
@@ -134,6 +155,31 @@ export const bundleSchema = z.object({
         applyURL: nullableURL,
         overseasURL: nullableURL,
         officialStatus: optionalText,
+        status,
+        links: z.array(officialLinkSchema).default([]),
+        applyWindowText: optionalText,
+        resultText: optionalText,
+        paymentStartAt: nullableTime,
+        paymentWindowText: optionalText,
+        quantityLimit: optionalText,
+        lotteryProducts: z.array(z.string()).default([]),
+        applicationTarget: optionalText,
+        notes: z.array(ticketNoteSchema).default([]),
+      }),
+    )
+    .default([]),
+  ticketBenefits: z
+    .array(
+      z.object({
+        ...scoped,
+        officialName: text,
+        tierIDs: z.array(id).default([]),
+        detail: optionalText,
+        notes: optionalText,
+        redemptionLocation: optionalText,
+        redemptionWindow: optionalText,
+        redemptionNote: optionalText,
+        mediaAssetIDs: z.array(id).default([]),
         status,
         links: z.array(officialLinkSchema).default([]),
       }),

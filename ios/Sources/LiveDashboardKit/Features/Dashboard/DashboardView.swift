@@ -8,10 +8,12 @@ public struct DashboardView: View {
     let router: AppRouter
     let installationService: InstallationService
     let assistant: AssistantCoordinator
+    /// `.upcoming` is the main "演出" tab; `.past` is the "往期" tab showing ended events.
+    let scope: DashboardScope
     @State private var showsFilters = false
     @State private var path: [DetailRoute] = []
 
-    public init(store: DashboardStore, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, router: AppRouter, installationService: InstallationService, assistant: AssistantCoordinator) {
+    public init(store: DashboardStore, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, router: AppRouter, installationService: InstallationService, assistant: AssistantCoordinator, scope: DashboardScope = .upcoming) {
         self.store = store
         self.userDataStore = userDataStore
         self.reminderService = reminderService
@@ -19,13 +21,20 @@ public struct DashboardView: View {
         self.router = router
         self.installationService = installationService
         self.assistant = assistant
+        self.scope = scope
+    }
+
+    /// The scope's own filter state on the shared store.
+    private var filters: Binding<DashboardFilters> {
+        Binding(get: { store.filters(for: scope) }, set: { store.setFilters($0, for: scope) })
     }
 
     public var body: some View {
+        let summaries = store.visibleSummaries(in: scope)
         NavigationStack(path: $path) {
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(store.visibleSummaries) { summary in
+                    ForEach(summaries) { summary in
                         Button {
                             path = [DetailRoute(eventID: summary.id)]
                         } label: {
@@ -55,11 +64,13 @@ public struct DashboardView: View {
                 .padding()
             }
             .overlay {
-                if store.visibleSummaries.isEmpty && !store.isLoading {
+                if summaries.isEmpty && !store.isLoading {
                     if store.isRefreshing {
                         ProgressView("正在检查官方资料…")
+                    } else if scope == .past, !store.bundles.isEmpty, !store.bundles.contains(where: { store.scope(of: $0) == .past }) {
+                        ContentUnavailableView("还没有已结束的演出", systemImage: "clock.arrow.circlepath", description: Text("演出结束后会移到这里。"))
                     } else if !store.bundles.isEmpty {
-                        ContentUnavailableView("没有符合条件的演出", systemImage: "calendar", description: Text("请选择其他年份、月份，或调整筛选条件。"))
+                        ContentUnavailableView(scope == .past ? "没有符合条件的往期演出" : "没有符合条件的演出", systemImage: "calendar", description: Text("请选择其他年份、月份，或调整筛选条件。"))
                     } else if let error = store.errorMessage {
                         ContentUnavailableView("无法更新公演资料", systemImage: "exclamationmark.triangle", description: Text(error))
                     } else {
@@ -76,8 +87,8 @@ public struct DashboardView: View {
                         .padding().frame(maxWidth: .infinity).background(.regularMaterial)
                 }
             }
-            .navigationTitle("演出")
-            .searchable(text: $store.filters.searchText, prompt: "公演或团体")
+            .navigationTitle(scope == .past ? "往期" : "演出")
+            .searchable(text: filters.searchText, prompt: "公演或团体")
             .navigationDestination(for: DetailRoute.self) { route in
                 if let bundle = store.bundles.first(where: { $0.event.id == route.eventID }) {
                     // Keyed on the route so replacing the stack for a deep link rebuilds the
@@ -116,10 +127,11 @@ public struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showsFilters) {
-                DashboardFiltersView(filters: $store.filters, groups: Array(Set(store.bundles.flatMap { $0.event.groups })).sorted())
+                DashboardFiltersView(filters: filters, groups: Array(Set(store.bundles.flatMap { $0.event.groups })).sorted())
             }
             .task {
-                await store.load()
+                // The upcoming tab owns the daily refresh; the past tab only fills an empty store.
+                if scope == .upcoming || store.bundles.isEmpty { await store.load() }
                 consumeDeepLink()
             }
             .onChange(of: router.deepLinkRequestCount) { _, _ in consumeDeepLink() }
@@ -140,9 +152,9 @@ public struct DashboardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HorizontalSelectionStrip(
                     title: "企划",
-                    selection: $store.filters.franchise,
+                    selection: filters.franchise,
                     options: [
-                        HorizontalSelectionOption(value: Franchise?.none, title: String(localized: "全部企划")),
+                        HorizontalSelectionOption(value: Franchise?.none, title: String(localized: "全部企划", bundle: .kit)),
                         HorizontalSelectionOption(value: Franchise?.some(.lovelive), title: "Love Live!"),
                         HorizontalSelectionOption(value: Franchise?.some(.bangdream), title: "BanG Dream!")
                     ]
@@ -151,26 +163,26 @@ public struct DashboardView: View {
 
                 HorizontalSelectionStrip(
                     title: "年份",
-                    selection: $store.filters.year,
-                    options: [HorizontalSelectionOption(value: Int?.none, title: String(localized: "全部年份"))] + Array(Set(store.availableYears + [store.filters.year].compactMap { $0 })).sorted().map { year in
-                        HorizontalSelectionOption(value: Int?.some(year), title: String(localized: "\(String(year))年"))
+                    selection: filters.year,
+                    options: [HorizontalSelectionOption(value: Int?.none, title: String(localized: "全部年份", bundle: .kit))] + Array(Set(store.availableYears(in: scope) + [filters.wrappedValue.year].compactMap { $0 })).sorted().map { year in
+                        HorizontalSelectionOption(value: Int?.some(year), title: String(localized: "\(String(year))年", bundle: .kit))
                     }
                 )
                 .accessibilityIdentifier("eventYearPicker")
 
                 HorizontalSelectionStrip(
                     title: "月份",
-                    selection: $store.filters.month,
-                    options: [HorizontalSelectionOption(value: Int?.none, title: String(localized: "全部月份"))] + (1...12).map { month in
-                        HorizontalSelectionOption(value: Int?.some(month), title: String(localized: "\(month)月"))
+                    selection: filters.month,
+                    options: [HorizontalSelectionOption(value: Int?.none, title: String(localized: "全部月份", bundle: .kit))] + Array(Set(store.availableMonths(in: scope) + [filters.wrappedValue.month].compactMap { $0 })).sorted().map { month in
+                        HorizontalSelectionOption(value: Int?.some(month), title: String(localized: "\(month)月", bundle: .kit))
                     }
                 )
                 .accessibilityIdentifier("eventMonthPicker")
 
-                if store.filters.year != nil || store.filters.month != nil {
+                if filters.wrappedValue.year != nil || filters.wrappedValue.month != nil {
                     Button("重置") {
-                        store.filters.year = nil
-                        store.filters.month = nil
+                        filters.wrappedValue.year = nil
+                        filters.wrappedValue.month = nil
                     }
                     .font(.subheadline)
                     .accessibilityLabel("重置年份和月份")
@@ -185,9 +197,12 @@ public struct DashboardView: View {
     /// Replaces the whole navigation stack so a reminder or notification lands on
     /// its event even when another event's detail is already open, per DESIGN.md 七.3.
     private func consumeDeepLink() {
-        // Peek before consuming: a push tapped at cold launch arrives while `store.load()`
-        // is still running, and consuming it here would discard it before the bundle exists.
-        guard let target = router.pendingDeepLink, store.bundles.contains(where: { $0.event.id == target.eventID }) else { return }
+        // The router always switches to the upcoming tab for a deep link, so only that
+        // instance may consume it. Peek before consuming: a push tapped at cold launch
+        // arrives while `store.load()` is still running, and consuming it here would
+        // discard it before the bundle exists.
+        guard scope == .upcoming, let target = router.pendingDeepLink,
+              store.bundles.contains(where: { $0.event.id == target.eventID }) else { return }
         _ = router.consumePendingDeepLink()
         path = [DetailRoute(eventID: target.eventID, performanceID: target.performanceID, tab: target.tab)]
     }
@@ -215,7 +230,7 @@ struct DashboardFiltersView: View {
                         title: "企划",
                         selection: $filters.franchise,
                         options: [
-                            HorizontalSelectionOption(value: Franchise?.none, title: String(localized: "全部")),
+                            HorizontalSelectionOption(value: Franchise?.none, title: String(localized: "全部", bundle: .kit)),
                             HorizontalSelectionOption(value: Franchise?.some(.bangdream), title: "BanG Dream!"),
                             HorizontalSelectionOption(value: Franchise?.some(.lovelive), title: "Love Live!")
                         ]
@@ -225,7 +240,7 @@ struct DashboardFiltersView: View {
                     HorizontalSelectionStrip(
                         title: "团体",
                         selection: $filters.group,
-                        options: [HorizontalSelectionOption(value: String?.none, title: String(localized: "全部"))] + groups.map { group in
+                        options: [HorizontalSelectionOption(value: String?.none, title: String(localized: "全部", bundle: .kit))] + groups.map { group in
                             HorizontalSelectionOption(value: String?.some(group), title: group)
                         }
                     )
@@ -233,11 +248,11 @@ struct DashboardFiltersView: View {
                         title: "活动类型",
                         selection: $filters.eventType,
                         options: [
-                            HorizontalSelectionOption(value: EventType?.none, title: String(localized: "全部")),
+                            HorizontalSelectionOption(value: EventType?.none, title: String(localized: "全部", bundle: .kit)),
                             HorizontalSelectionOption(value: EventType?.some(.live), title: "Live"),
                             HorizontalSelectionOption(value: EventType?.some(.fanMeeting), title: "Fan Meeting"),
-                            HorizontalSelectionOption(value: EventType?.some(.screening), title: String(localized: "上映会")),
-                            HorizontalSelectionOption(value: EventType?.some(.other), title: String(localized: "其他"))
+                            HorizontalSelectionOption(value: EventType?.some(.screening), title: String(localized: "上映会", bundle: .kit)),
+                            HorizontalSelectionOption(value: EventType?.some(.other), title: String(localized: "其他", bundle: .kit))
                         ]
                     )
                     Toggle("只看关注", isOn: $filters.onlyFollowed)

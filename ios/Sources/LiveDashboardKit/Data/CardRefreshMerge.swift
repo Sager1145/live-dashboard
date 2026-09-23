@@ -18,6 +18,7 @@ enum CardRefreshMerge {
         var streams = saved.streamOffers
         var goods = saved.goodsCampaigns
         var media = saved.mediaAssets
+        var benefits = saved.ticketBenefits
         switch cardType {
         case .timeAndVenue, .performers:
             let fields = cardType == .timeAndVenue ? ["performance.schedule", "performance.venueName"] : ["performance.performers"]
@@ -51,6 +52,15 @@ enum CardRefreshMerge {
             selectedEvidence = evidence.filter { $0.recordID == entityID && $0.field.hasPrefix("stream.") }
             guard let value = fresh.streamOffers.first(where: { $0.id == entityID }), !selectedEvidence.isEmpty else { throw CardRefreshError.unavailable }
             streams.removeAll { $0.id == entityID }; streams.append(value)
+        case .ticketBenefit:
+            selectedEvidence = evidence.filter { $0.recordID == entityID && $0.field.hasPrefix("ticket.") }
+            guard let value = fresh.ticketBenefits.first(where: { $0.id == entityID }), !selectedEvidence.isEmpty else { throw CardRefreshError.unavailable }
+            benefits.removeAll { $0.id == entityID }; benefits.append(value)
+            let assetIDs = Set(value.mediaAssetIDs)
+            for asset in fresh.mediaAssets where assetIDs.contains(asset.id) {
+                media.removeAll { $0.id == asset.id }; media.append(asset)
+            }
+            selectedEvidence += evidence.filter { assetIDs.contains($0.recordID) && $0.field.hasPrefix("media.") }
         case .goodsCampaign:
             selectedEvidence = evidence.filter { $0.recordID == entityID && $0.field.hasPrefix("goods.") }
             guard let value = fresh.goodsCampaigns.first(where: { $0.id == entityID }), !selectedEvidence.isEmpty else { throw CardRefreshError.unavailable }
@@ -77,7 +87,7 @@ enum CardRefreshMerge {
             event: saved.event, stops: saved.stops, performances: performances, ticketTiers: tiers,
             ticketRounds: rounds, ticketOffers: saved.ticketOffers, goodsCampaigns: goods, mediaAssets: media,
             notices: saved.notices, evidence: mergedEvidence, editions: saved.editions, streamOffers: streams,
-            products: saved.products, goodsSessions: saved.goodsSessions, sourceHealth: saved.sourceHealth,
+            products: saved.products, goodsSessions: saved.goodsSessions, ticketBenefits: benefits, sourceHealth: saved.sourceHealth,
             sourceText: fresh.sourceText ?? saved.sourceText)
     }
 }

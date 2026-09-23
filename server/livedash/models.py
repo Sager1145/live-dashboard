@@ -110,6 +110,34 @@ class TicketTier(BaseModel):
     tax_note: str | None = Field(default=None, alias="taxNote")
 
 
+OfficialLinkRole = Literal["application", "overseasApplication", "support", "product", "other"]
+TicketNoteKind = Literal[
+    "faceRecognition",
+    "companionRegistration",
+    "identityCheck",
+    "smartTicketOnly",
+    "creditCardOnly",
+    "membershipRequired",
+    "other",
+]
+
+
+class OfficialLink(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    label: str
+    url: str
+    role: OfficialLinkRole | None = None
+
+
+class TicketNote(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    kind: TicketNoteKind
+    text: str
+    links: list[OfficialLink] = Field(default_factory=list)
+
+
 class TicketRound(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -128,6 +156,15 @@ class TicketRound(BaseModel):
     overseas_url: str | None = Field(default=None, alias="overseasURL")
     official_status: str | None = Field(default=None, alias="officialStatus")
     status: DataStatus = "confirmed"
+    links: list[OfficialLink] = Field(default_factory=list)
+    apply_window_text: str | None = Field(default=None, alias="applyWindowText")
+    result_text: str | None = Field(default=None, alias="resultText")
+    payment_start_at: str | None = Field(default=None, alias="paymentStartAt")
+    payment_window_text: str | None = Field(default=None, alias="paymentWindowText")
+    quantity_limit: str | None = Field(default=None, alias="quantityLimit")
+    lottery_products: list[str] = Field(default_factory=list, alias="lotteryProducts")
+    application_target: str | None = Field(default=None, alias="applicationTarget")
+    notes: list[TicketNote] = Field(default_factory=list)
 
 
 class TicketOffer(BaseModel):

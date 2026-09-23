@@ -65,6 +65,7 @@ public struct CardSettingsView: View {
         case .admission: "入场条件"
         case .ticketRound: "售票轮次"
         case .streamOffer: "配信"
+        case .ticketBenefit: "票券特典"
         case .eventSeatingMap: "公演座位图"
         case .venueGenericSeatingMap: "场馆座位图"
         case .goodsCampaign: "周边批次"
@@ -73,5 +74,5 @@ public struct CardSettingsView: View {
 }
 
 extension CardType: CaseIterable {
-    public static var allCases: [CardType] { [.assistantSummary, .timeAndVenue, .performers, .pricing, .admission, .ticketRound, .streamOffer, .eventSeatingMap, .venueGenericSeatingMap, .goodsCampaign] }
+    public static var allCases: [CardType] { [.assistantSummary, .timeAndVenue, .performers, .pricing, .admission, .ticketRound, .streamOffer, .ticketBenefit, .eventSeatingMap, .venueGenericSeatingMap, .goodsCampaign] }
 }
