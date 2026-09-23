@@ -20,6 +20,7 @@ import {
   PARSER_VERSION,
   selectedText,
   sourceKey,
+  ticketLinksAndProducts,
   text,
   uniqueLinks,
   wholeEvent,
@@ -572,9 +573,10 @@ function extractBangDreamCommerce(
       ),
     ).map((link) => link.url);
     if (section === "チケット" && /発売|先行|抽選|チケット/.test(heading)) {
-      for (const [offset, item] of block.entries()) {
-        const raw = text($(item).text());
-        if (!/受付期間/.test(raw)) continue;
+      const groups = ticketRoundGroups($, block);
+      let emittedRound = false;
+      for (const { nodes, offset } of groups) {
+        const raw = text(nodes.map((item) => $(item).text()).join(" "));
         const window = parseJapaneseDateTimeWindow(raw, "受付期間");
         if (!window.startAt) continue;
         const namedDay = raw
@@ -595,13 +597,17 @@ function extractBangDreamCommerce(
                 sourceKey: `${sourceKey(snapshot.finalUrl)}#performance:${dayLabel}`,
               }
             : ref;
-        const itemUrl = $(item)
-          .find("a[href]")
-          .map((_i, link) =>
-            absolute($(link).attr("href") ?? "", snapshot.finalUrl),
-          )
-          .get()
-          .find((url) => url?.includes("eplus.jp"));
+        const ticketDetails = ticketLinksAndProducts(
+          $,
+          nodes,
+          snapshot.finalUrl,
+        );
+        const applicationLinks = ticketDetails.links.filter(
+          (link) => link.role === "application",
+        );
+        const overseasLinks = ticketDetails.links.filter(
+          (link) => link.role === "overseasApplication",
+        );
         const eligibility = /封入|申込券|シリアル/.test(raw)
           ? raw
           : /封入|申込券|シリアル/.test(blockRaw)
@@ -626,12 +632,14 @@ function extractBangDreamCommerce(
               }
             : {}),
           ...(eligibility ? { eligibility } : {}),
-          ...((itemUrl ?? blockUrls.find((url) => url.includes("eplus.jp")))
-            ? {
-                applyURL:
-                  itemUrl ?? blockUrls.find((url) => url.includes("eplus.jp")),
-              }
+          ...(applicationLinks[0] ? { applyURL: applicationLinks[0].url } : {}),
+          ...(overseasLinks[0] ? { overseasURL: overseasLinks[0].url } : {}),
+          ...(ticketDetails.links.length ? { links: ticketDetails.links } : {}),
+          ...(ticketDetails.lotteryProducts.length
+            ? { lotteryProducts: ticketDetails.lotteryProducts }
             : {}),
+          ...(namedDay ? { applicationTarget: namedDay } : {}),
+          applyWindowText: window.raw,
           windowRaw: window.raw,
         };
         result.candidates.push(
@@ -648,6 +656,45 @@ function extractBangDreamCommerce(
               : dayLabel
                 ? { kind: "unresolved", rawText: dayLabel }
                 : { kind: "unresolved", rawText: "3DAYS or unspecified" },
+          ),
+        );
+        emittedRound = true;
+      }
+      if (
+        !emittedRound &&
+        /封入|申込券|シリアル/.test(blockRaw) &&
+        /後日公開|後日発表|追って|未定/.test(blockRaw)
+      ) {
+        const ticketDetails = ticketLinksAndProducts(
+          $,
+          block,
+          snapshot.finalUrl,
+        );
+        const officialStatus =
+          blockRaw.match(
+            /[^。]*(?:後日公開|後日発表|追って|未定)[^。]*。?/,
+          )?.[0] ?? "後日公開";
+        result.candidates.push(
+          fact(
+            snapshot,
+            ref,
+            "ticket.round",
+            {
+              officialName: heading,
+              kind: "lottery",
+              eligibility: blockRaw,
+              officialStatus,
+              status: "officiallyTBA",
+              ...(ticketDetails.links.length
+                ? { links: ticketDetails.links }
+                : {}),
+              ...(ticketDetails.lotteryProducts.length
+                ? { lotteryProducts: ticketDetails.lotteryProducts }
+                : {}),
+            },
+            `.p-live-event-detail__content > :nth-child(${index + 1})`,
+            blockRaw,
+            ["チケット", heading],
           ),
         );
       }
@@ -698,6 +745,22 @@ function extractBangDreamCommerce(
       );
     }
   }
+}
+
+function ticketRoundGroups(
+  $: CheerioAPI,
+  block: readonly AnyNode[],
+): { nodes: AnyNode[]; offset: number }[] {
+  const starts = block
+    .map((node, index) => (/受付期間/.test(text($(node).text())) ? index : -1))
+    .filter((index) => index >= 0);
+  return starts.map((start, index) => ({
+    nodes: block.slice(
+      index === 0 ? 0 : start,
+      starts[index + 1] ?? block.length,
+    ),
+    offset: index === 0 ? 0 : start,
+  }));
 }
 
 function extractBangDreamAncillary(

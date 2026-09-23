@@ -9,6 +9,7 @@ import {
   parseJapaneseSchedules,
   parseSnapshot,
 } from "../src/ingestion/index.js";
+import { ticketLinksAndProducts } from "../src/ingestion/adapters/common.js";
 
 const fixtureRoot = path.resolve("tests/fixtures/snapshots");
 
@@ -178,6 +179,108 @@ test("each BanG Dream 13th day detail keeps its own schedule, ticket tiers, roun
       performanceIds: [performanceId],
     });
   }
+});
+
+test("BanG Dream 13th serial rounds retain every product and its application URL", async () => {
+  const result = parseSnapshot(
+    await fixture(
+      "bangdream_13th_live_day3.html",
+      "https://bang-dream.com/events/13th-live-day3/",
+    ),
+    {
+      performanceRefs: {
+        DAY1: "day-1-uuid",
+        DAY2: "day-2-uuid",
+        DAY3: "day-3-uuid",
+      },
+    },
+  );
+  const rounds = result.candidates
+    .filter((candidate) => candidate.field === "ticket.round")
+    .map((candidate) => candidate.value as any);
+  const dayRounds = rounds.filter((round) =>
+    round.officialName.startsWith("各公演チケット DAY"),
+  );
+  assert.equal(dayRounds.length, 3);
+  assert.deepEqual(
+    dayRounds.map((round) => round.applyURL),
+    [
+      "https://eplus.jp/serial/ppp_22ndsg/",
+      "https://eplus.jp/serial/ymmt_journey_to_exoplanet_x/",
+      "https://eplus.jp/serial/ras_explosion/",
+    ],
+  );
+  for (const round of dayRounds) {
+    assert.equal(round.lotteryProducts.length, 1);
+    const application = round.links.find(
+      (link: any) => link.role === "application",
+    );
+    assert.deepEqual(application.productNames, round.lotteryProducts);
+    assert.equal(
+      round.links.filter((link: any) => link.role === "product").length,
+      1,
+    );
+  }
+  const through = rounds.find(
+    (round) => round.officialName === "3DAYS通しチケット",
+  );
+  assert.equal(through.lotteryProducts.length, 3);
+  assert.equal(
+    through.links.filter((link: any) => link.role === "product").length,
+    3,
+  );
+});
+
+test("BanG Dream TBA lottery rounds retain their eligible product", async () => {
+  const result = parseSnapshot(
+    await researchFixture(
+      "BD05.html",
+      "https://bang-dream.com/events/roselia-10th-anniversary-live-tour/",
+    ),
+  );
+  const round = result.candidates.find(
+    (candidate) =>
+      candidate.field === "ticket.round" &&
+      (candidate.value as any).officialName === "最速先行抽選",
+  )?.value as any;
+  assert.equal(round.status, "officiallyTBA");
+  assert.deepEqual(round.lotteryProducts, [
+    "Roselia 10th Anniversary Best Album「Lehre der Rose」",
+  ]);
+  assert.equal(round.links[0].role, "product");
+});
+
+test("ticket link extraction retains sibling plain product titles without ambiguous pairing", () => {
+  const $ = cheerio.load(`
+    <main>
+      <p>Test Single「A」</p>
+      <p>封入申込券にて受付</p>
+      <p>受付期間：2026年1月1日～1月2日</p>
+      <p><a href="https://ticket.pia.jp/apply">受付はこちら</a></p>
+    </main>
+  `);
+  const single = ticketLinksAndProducts(
+    $,
+    $("main").children().toArray(),
+    "https://example.org/live",
+  );
+  assert.deepEqual(single.lotteryProducts, ["Test Single「A」"]);
+  assert.deepEqual(single.links[0]?.productNames, ["Test Single「A」"]);
+
+  const ambiguous = cheerio.load(`
+    <p>
+      Test Single「A」 / Test Single「B」 封入申込券
+      <a href="https://eplus.jp/a">受付A</a>
+      <a href="https://l-tike.com/b">受付B</a>
+    </p>
+  `);
+  const multiple = ticketLinksAndProducts(
+    ambiguous,
+    ambiguous("p").toArray(),
+    "https://example.org/live",
+  );
+  assert.equal(multiple.links.length, 2);
+  assert.ok(multiple.links.every((link) => link.productNames === undefined));
 });
 
 test("captured BD02-BD10 pages remain classified as verified BanG Dream details", async () => {
@@ -433,6 +536,14 @@ test("Love Live detail produces structured schedules, ticket tiers, and scoped m
     resultAt: "2026-10-03T13:00:00+09:00",
     paymentDeadlineAt: "2026-10-06T21:00:00+09:00",
     applyURL: "https://eplus.jp/ll15th/",
+    links: [
+      {
+        label: "https://eplus.jp/ll15th/",
+        url: "https://eplus.jp/ll15th/",
+        role: "application",
+      },
+    ],
+    applyWindowText: "2026年9月5日(土)12:00~9月27日(日)23:59",
     windowRaw: "2026年9月5日(土)12:00~9月27日(日)23:59",
   });
   const cast = result.candidates.filter(

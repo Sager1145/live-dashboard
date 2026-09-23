@@ -913,7 +913,80 @@ private extension OfficialEventScraper {
     // MARK: - Link classification / notes / structured field helpers (shared by BD & LL parsers)
 
     static func classifiedLinks(_ links: [OfficialLink]) -> [OfficialLink] {
-        links.map { OfficialLink(label: $0.label, url: $0.url, role: OfficialLink.classify(label: $0.label, url: $0.url)) }
+        links.map { OfficialLink(label: $0.label, url: $0.url, role: OfficialLink.classify(label: $0.label, url: $0.url), productNames: $0.productNames) }
+    }
+
+    /// Pair only source-local product groups or explicit product labels. A
+    /// generic link separated by receipt fields stays at round level.
+    static func associateProductLinks(_ links: [OfficialLink], products: [String], lines: [(text: String, links: [OfficialLink])]) -> [OfficialLink] {
+        func normalized(_ value: String) -> String {
+            value.replacingOccurrences(of: #"[\s　]+"#, with: "", options: .regularExpression)
+        }
+        func matches(_ text: String) -> [String] {
+            let value = normalized(text)
+            return products.filter { value.contains(normalized($0)) }
+        }
+        var associations: [String: [String]] = [:]
+        var pending: [String] = []
+        var applied = false
+        for line in lines {
+            let named = matches(line.text)
+            if !named.isEmpty {
+                if applied { pending = []; applied = false }
+                for name in named where !pending.contains(name) { pending.append(name) }
+            } else if line.text.range(of: #"^(?:[■□◆●※]?\s*(?:受付期間|申込期間|当落発表|入金期間)|[-ー─]{5,}|⟪H⟫)"#, options: .regularExpression) != nil {
+                pending = []
+                applied = false
+            }
+            for link in line.links {
+                let role = link.role ?? OfficialLink.classify(label: link.label, url: link.url)
+                guard role == .application || role == .overseasApplication || role == .product else { continue }
+                let explicit = matches(link.label)
+                let names = !explicit.isEmpty ? explicit : pending
+                guard !names.isEmpty else { continue }
+                for name in names where !(associations[link.id] ?? []).contains(name) {
+                    associations[link.id, default: []].append(name)
+                }
+                if role != .product { applied = true }
+            }
+        }
+        return links.map { link in
+            OfficialLink(label: link.label, url: link.url, role: link.role,
+                         productNames: associations[link.id] ?? link.productNames)
+        }
+    }
+
+    /// A paragraph/list item/table row may print the receipt before its
+    /// product. Use that bounded source context rather than URL order.
+    static func associateProductBlocks(_ links: [OfficialLink], products: [String], html: String, sourceURL: URL?) -> [OfficialLink] {
+        var namesByLink: [String: [String]] = [:]
+        for tag in ["p", "li", "tr"] {
+            for block in HTML.blocks(html, tag: tag, className: nil) {
+                let text = HTML.text(block).replacingOccurrences(of: #"[\s　]+"#, with: "", options: .regularExpression)
+                let names = products.filter {
+                    text.contains($0.replacingOccurrences(of: #"[\s　]+"#, with: "", options: .regularExpression))
+                }
+                let blockLinks = classifiedLinks(HTML.links(block, relativeTo: sourceURL))
+                let applications = blockLinks.filter { $0.role == .application || $0.role == .overseasApplication }
+                guard !names.isEmpty, names.count == 1 || Set(applications.map(\.url)).count == 1 else { continue }
+                for link in blockLinks where link.role == .application || link.role == .overseasApplication || (link.role == .product && names.count == 1) {
+                    let explicitNames = names.filter { link.label.contains($0) }
+                    let associatedNames = explicitNames.isEmpty ? names : explicitNames
+                    for name in associatedNames where !(namesByLink[link.id] ?? []).contains(name) {
+                        namesByLink[link.id, default: []].append(name)
+                    }
+                }
+            }
+        }
+        var seen: Set<String> = []
+        return links.map { link in
+            OfficialLink(label: link.label, url: link.url, role: link.role,
+                productNames: namesByLink[link.id] ?? link.productNames)
+        }.filter { link in
+            // Generic repeated buttons collapse; distinct product associations
+            // remain separate even when they share the same destination.
+            seen.insert(link.url + "::" + link.productNames.sorted().joined(separator: "|")).inserted
+        }
     }
 
     static func applicationURL(in links: [OfficialLink]) -> String? {
@@ -1059,12 +1132,21 @@ private extension OfficialEventScraper {
             guard !cleaned.isEmpty, seen.insert(cleaned).inserted else { return }
             products.append(cleaned)
         }
+        let linkLabels = Set(HTML.links(html ?? "", relativeTo: nil).filter {
+            let role = OfficialLink.classify(label: $0.label, url: $0.url)
+            return role == .application || role == .overseasApplication || role == .support
+        }.map(\.label))
+        func isListDetail(_ value: String) -> Bool {
+            value.isEmpty || linkLabels.contains(value) || value.hasPrefix("https://")
+                || value.range(of: #"^(?:\d{4}年)?\d{1,2}[月/]\d{1,2}日?.*(?:発売|リリース)$"#, options: .regularExpression) != nil
+        }
         func titlesBefore(_ index: Int) -> [String] {
             var found: [String] = []
             var cursor = index - 1
             while cursor >= 0 {
                 let candidate = lines[cursor].trimmingCharacters(in: .whitespaces)
-                if candidate.range(of: #"^\d{4}年\d{1,2}月\d{1,2}日.*発売$"#, options: .regularExpression) != nil || candidate.hasPrefix("★") { break }
+                if candidate.hasPrefix("★") { break }
+                if isListDetail(candidate) { cursor -= 1; continue }
                 guard isProductTitle(candidate) else { break }
                 found.insert(candidate, at: 0)
                 cursor -= 1
@@ -1077,6 +1159,7 @@ private extension OfficialEventScraper {
             while cursor < lines.count {
                 let candidate = lines[cursor].trimmingCharacters(in: .whitespaces)
                     .replacingOccurrences(of: #"^[・①②③④⑤⑥⑦⑧⑨⑩]+"#, with: "", options: .regularExpression)
+                if isListDetail(candidate) { cursor += 1; continue }
                 guard isProductTitle(candidate) else { break }
                 found.append(candidate)
                 cursor += 1
@@ -1176,7 +1259,10 @@ private extension OfficialEventScraper {
             // A vendor button (e.g. 受付はこちら) under a round heading is a sales
             // entry even when the page prints no period next to it.
             let buttonRound = linkOnly && namesRound && !pointsElsewhere && !hasChildHeadings
-            return Candidate(links: links, hasApplication: hasApplication, isRound: hasPeriod || buttonRound, isLinkCarrier: linkOnly && !buttonRound)
+            let announcedProductRound = namesRound && raw.contains("封入")
+                && raw.range(of: "申込券|シリアル", options: .regularExpression) != nil
+                && raw.range(of: "後日|追って|未定", options: .regularExpression) != nil
+            return Candidate(links: links, hasApplication: hasApplication, isRound: hasPeriod || buttonRound || announcedProductRound, isLinkCarrier: linkOnly && !buttonRound && !announcedProductRound)
         }
         // Official pages sometimes split a round into a button-only heading and
         // a period-only heading at the same level (トレード申し込み・詳細はこちら /
@@ -1219,8 +1305,6 @@ private extension OfficialEventScraper {
             }
             let dates = parseExplicitDateTimes(period ?? "").compactMap { reinterpretJapanWallTime($0, in: timeZone) }
             let waiting = dates.isEmpty && raw.range(of: "後日|追って|未定", options: .regularExpression) != nil
-            let id = cached.first(where: { ticketRoundIdentity($0.officialName) == ticketRoundIdentity(section.heading) })?.id
-                ?? "\(eventID)-round-\(stableHash(ticketRoundIdentity(section.heading)))"
 
             var ownLinks = candidates[index].links + (carrierFor[index].map { candidates[$0].links } ?? [])
             let hasOwnApplication = ownLinks.contains { $0.role == .application || $0.role == .overseasApplication }
@@ -1228,7 +1312,18 @@ private extension OfficialEventScraper {
                 ownLinks += classifiedSharedLinks.filter { $0.role == .application || $0.role == .overseasApplication }
             }
             let lines = raw.components(separatedBy: "\n")
+            let products = lotteryProducts(in: lines, html: section.html)
+            let identity = ticketRoundIdentity(section.heading)
+            let repeated = headings.filter { ticketRoundIdentity($0.heading) == identity }.count > 1
+            let applicationURLs = Set(ownLinks.filter { $0.role == .application || $0.role == .overseasApplication }.map(\.url))
+            let discriminator = repeated ? "|" + products.joined(separator: "|") + "|" + (period ?? "") + "|" + applicationURLs.sorted().joined(separator: "|") : ""
+            let id = cached.first(where: {
+                ticketRoundIdentity($0.officialName) == identity && (!repeated || ($0.lotteryProducts == products && $0.applyStartAt == dates.first && Set($0.allApplicationLinks.map(\.url)) == applicationURLs))
+            })?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
+            ownLinks = associateProductLinks(ownLinks, products: products,
+                lines: HTML.annotatedLines(section.html, relativeTo: sourceURL).map { (text: $0.text, links: $0.links) })
 
+            ownLinks = associateProductBlocks(ownLinks, products: products, html: section.html, sourceURL: sourceURL)
             let paymentWindowText = markedLineText(raw, markers: ["入金期間", "支払期間", "支払期限"])
             let paymentDates = parseExplicitDateTimes(paymentWindowText ?? "")
 
@@ -1251,7 +1346,7 @@ private extension OfficialEventScraper {
                 paymentStartAt: paymentDates.count >= 2 ? reinterpretJapanWallTime(paymentDates.first, in: timeZone) : nil,
                 paymentWindowText: paymentWindowText,
                 quantityLimit: quantityLimitText(in: lines),
-                lotteryProducts: lotteryProducts(in: lines, html: section.html),
+                lotteryProducts: products,
                 applicationTarget: nil,
                 notes: ticketNotes(in: lines, links: ownLinks)
             )
@@ -1545,8 +1640,11 @@ private extension OfficialEventScraper {
                     currentBlock?.paymentWindowText = value
                     currentBlock?.paymentDates = parseExplicitDateTimes(injectYearIfNeeded(value, referenceDate: referenceDate))
                 case "受付URL", "申込URL":
-                    if line.links.isEmpty, let url = regex(#"https?://\S+"#, value).first.flatMap({ group($0, 0, in: value) }) {
-                        currentBlock?.receiptLinks.append(OfficialLink(label: "受付URL", url: url))
+                    for match in regex(#"https?://[^\s<>]+"#, value) {
+                        if let url = group(match, 0, in: value),
+                           !(currentBlock?.allLines.flatMap(\.links).contains { $0.url == url } ?? false) {
+                            currentBlock?.receiptLinks.append(OfficialLink(label: "受付URL", url: url))
+                        }
                     }
                 case "対象公演":
                     if currentBlock?.applicationTargetField == nil { currentBlock?.applicationTargetField = value }
@@ -1591,6 +1689,11 @@ private extension OfficialEventScraper {
             var results: [String] = []
             for line in productLines {
                 var text = line.text
+                if text.hasPrefix("http://") || text.hasPrefix("https://") { continue }
+                if !line.links.isEmpty, line.links.allSatisfy({
+                    let role = OfficialLink.classify(label: $0.label, url: $0.url)
+                    return role == .application || role == .overseasApplication || role == .support
+                }), !isProductTitle(text) { continue }
                 if regex(targetRE, text).first != nil { continue }
                 if regex(separatorRE, text).first != nil { continue }
                 if regex(#"^\d{4}年\d{1,2}月\d{1,2}日.*発売$"#, text).first != nil { continue }
@@ -1628,7 +1731,11 @@ private extension OfficialEventScraper {
             let headingClosed = block.roundHeading.contains("（終了）") || block.roundHeading.contains("(終了)") || block.roundHeading.contains("受付終了")
             let officialStatus: String? = (allStruck || headingClosed) ? "受付終了" : nil
 
-            let ownLinks = classifiedLinks(block.allLines.flatMap(\.links) + block.productLines.flatMap(\.links) + block.receiptLinks)
+            let lotteryProducts = loveLiveLotteryProducts(block.productLines)
+            let lineLinks = associateProductLinks(
+                classifiedLinks(block.allLines.flatMap(\.links) + block.receiptLinks),
+                products: lotteryProducts, lines: block.allLines.map { (text: $0.text, links: $0.links) })
+            let ownLinks = associateProductBlocks(lineLinks, products: lotteryProducts, html: html, sourceURL: sourceURL)
             let applyDates = block.applyDates.compactMap { reinterpretJapanWallTime($0, in: timeZone) }
             let resultDate = block.resultDates.last.flatMap { reinterpretJapanWallTime($0, in: timeZone) }
             let paymentDates = block.paymentDates.compactMap { reinterpretJapanWallTime($0, in: timeZone) }
@@ -1640,10 +1747,16 @@ private extension OfficialEventScraper {
             let hasDates = !applyDates.isEmpty || resultDate != nil || !paymentDates.isEmpty
             let isWaiting = !hasDates && nameAndFields.range(of: "後日|追って|未定", options: .regularExpression) != nil
 
-            let lotteryProducts = loveLiveLotteryProducts(block.productLines)
             let identity = ticketRoundIdentity(officialName)
-            let id = cached.first(where: { ticketRoundIdentity($0.officialName) == identity })?.id
-                ?? "\(eventID)-round-\(stableHash(identity))"
+            let repeated = blocks.filter { other in
+                let name = other.target.map { "\(other.roundHeading)（\($0)）" } ?? other.roundHeading
+                return ticketRoundIdentity(name) == identity
+            }.count > 1
+            let applicationURLs = Set(ownLinks.filter { $0.role == .application || $0.role == .overseasApplication }.map(\.url))
+            let discriminator = repeated ? "|" + lotteryProducts.joined(separator: "|") + "|" + (block.applyWindowText ?? "") + "|" + applicationURLs.sorted().joined(separator: "|") : ""
+            let id = cached.first(where: {
+                ticketRoundIdentity($0.officialName) == identity && (!repeated || ($0.lotteryProducts == lotteryProducts && $0.applyStartAt == applyDates.first && Set($0.allApplicationLinks.map(\.url)) == applicationURLs))
+            })?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
 
             return TicketRound(
                 id: id, eventID: eventID,
@@ -3057,7 +3170,8 @@ private enum HTML {
             let isMarker = rawLine.hasPrefix(headingLineMarker)
             let bodyForLinks = isMarker ? String(rawLine.dropFirst(headingLineMarker.count)) : rawLine
             let links = links(bodyForLinks, relativeTo: base)
-            let strippedText = text(bodyForLinks)
+            let bodyText = text(bodyForLinks)
+            let strippedText = bodyText.isEmpty ? links.map(\.label).joined(separator: " ") : bodyText
             guard !strippedText.isEmpty else { continue }
             let finalText = isMarker ? headingLineMarker + strippedText : strippedText
             result.append((text: finalText, struck: startDepth > 0 || lineHadOpen, links: links))
@@ -3066,7 +3180,7 @@ private enum HTML {
     }
 
     /// Every `<a href=...>...</a>` in `html`, resolved to an absolute URL and
-    /// deduplicated by `OfficialEventScraper.canonicalURL`, preserving the
+    /// deduplicated by URL and label, preserving the
     /// order they first appear in the document. Direct image links, empty
     /// hrefs, and `javascript:`/fragment-only hrefs are never links.
     static func links(_ html: String, relativeTo base: URL?) -> [OfficialLink] {
@@ -3090,7 +3204,7 @@ private enum HTML {
                     ?? firstAttribute(anchorTag, tag: "a", name: "aria-label").map(decode)
                     ?? url.host ?? ""
             }
-            let key = OfficialEventScraper.canonicalURL(url.absoluteString)
+            let key = "\(url.absoluteString)::\(label)"
             guard seen.insert(key).inserted else { continue }
             results.append(OfficialLink(label: label, url: url.absoluteString))
         }

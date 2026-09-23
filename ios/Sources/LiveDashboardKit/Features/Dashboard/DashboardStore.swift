@@ -41,7 +41,9 @@ public enum DashboardScope: String, CaseIterable, Hashable, Sendable {
 @Observable
 @MainActor
 public final class DashboardStore {
-    public private(set) var bundles: [LiveEventBundle] = []
+    public private(set) var bundles: [LiveEventBundle] = [] {
+        didSet { summaryCacheVersion &+= 1 }
+    }
     /// Filters for the upcoming list.
     public var filters = DashboardFilters()
     /// Filters for the past list, independent so switching tabs never carries a selection over.
@@ -56,6 +58,40 @@ public final class DashboardStore {
     public private(set) var lastHistoryFetch: HistoryFetchSummary?
     /// True while `isRefreshing` is caused by a manual history fetch rather than a catalog refresh.
     public private(set) var isFetchingHistory = false
+
+    /// The single running refresh (automatic or manual), so a second caller never starts a
+    /// second network pass. `inFlightIsManual` records which kind is running so a manual
+    /// request arriving during an *automatic* pass knows to queue one more manual pass once
+    /// it finishes, while a manual request arriving during another *manual* pass just joins it.
+    private var inFlightRefresh: Task<Void, Never>?
+    private var inFlightIsManual = false
+    /// A manual pass queued to run right after the current automatic pass finishes; concurrent
+    /// manual callers all await this same task instead of each queuing their own extra pass.
+    private var queuedManualTask: Task<Void, Never>?
+    /// The single running manual history fetch, tracked the same way as `inFlightRefresh` so a
+    /// catalog `refresh()`/`refreshIfNeeded()` arriving mid-fetch waits for it instead of racing
+    /// it for `bundles`.
+    private var inFlightHistoryFetch: Task<HistoryFetchSummary?, Never>?
+
+    /// Bumped whenever `bundles` changes, so the summary cache below knows to recompute.
+    /// `@ObservationIgnored` because these are a plain memoization cache, not view state:
+    /// mutating them during `visibleSummaries(in:)` (which views call from `body`) must never
+    /// register as an observed write, or SwiftUI would re-invoke `body` while it is running.
+    @ObservationIgnored
+    private var summaryCacheVersion = 0
+    @ObservationIgnored
+    private var summaryCache: [DashboardScope: (key: SummaryCacheKey, result: [DashboardEventSummary])] = [:]
+
+    /// Everything `visibleSummaries(in:)`'s result depends on, besides the scope itself.
+    /// Includes the follow-state token and the phone's calendar day so a follow toggle or a
+    /// midnight scope change (upcoming → past) invalidates the cache even though `bundles`
+    /// itself did not change.
+    private struct SummaryCacheKey: Equatable {
+        let bundlesVersion: Int
+        let filters: DashboardFilters
+        let followedIDs: Set<String>
+        let phoneDay: String
+    }
 
     public struct HistoryFetchSummary: Equatable, Sendable {
         public let start: String
@@ -90,6 +126,12 @@ public final class DashboardStore {
         scope(of: bundle, day: phoneDay)
     }
 
+    /// `scope(of:)` looked up by event ID, for views that only hold a summary/ID (e.g. "My
+    /// Lives" sectioning followed events into upcoming/past). `nil` when the bundle isn't cached.
+    public func scope(ofEventID eventID: String) -> DashboardScope? {
+        bundles.first(where: { $0.event.id == eventID }).map { scope(of: $0) }
+    }
+
     private var phoneDay: String { LocalRefreshPolicy.phoneDay(now: now(), timeZone: timeZone) }
 
     private func scope(of bundle: LiveEventBundle, day: String) -> DashboardScope {
@@ -110,8 +152,51 @@ public final class DashboardStore {
         await refreshIfNeeded()
     }
 
-    public func refreshIfNeeded() async { await update(manual: false) }
-    public func refresh() async { await update(manual: true) }
+    /// Dismisses the current error banner without retrying, e.g. from a user tapping "关闭".
+    public func dismissError() { errorMessage = nil }
+
+    public func refreshIfNeeded() async {
+        if let historyTask = inFlightHistoryFetch { _ = await historyTask.value }
+        if let queued = queuedManualTask { await queued.value; return }
+        if let current = inFlightRefresh { await current.value; return }
+        await runRefresh(manual: false)
+    }
+
+    public func refresh() async {
+        if let historyTask = inFlightHistoryFetch { _ = await historyTask.value }
+        if let queued = queuedManualTask { await queued.value; return }
+        if let current = inFlightRefresh {
+            if inFlightIsManual {
+                // Identical concurrent manual request: join the pass already running.
+                await current.value
+                return
+            }
+            // A manual refresh requested during an automatic one: wait for it, then run
+            // exactly one more manual pass, shared by every caller that arrives while we wait.
+            let task = Task { [weak self] in
+                await current.value
+                await self?.runRefresh(manual: true)
+            }
+            queuedManualTask = task
+            await task.value
+            if queuedManualTask == task { queuedManualTask = nil }
+            isRefreshing = (inFlightRefresh != nil) || (inFlightHistoryFetch != nil)
+            return
+        }
+        await runRefresh(manual: true)
+    }
+
+    private func runRefresh(manual: Bool) async {
+        let task = Task { await self.update(manual: manual) }
+        inFlightRefresh = task
+        inFlightIsManual = manual
+        isRefreshing = true
+        await task.value
+        if inFlightRefresh == task {
+            inFlightRefresh = nil
+            isRefreshing = (queuedManualTask != nil) || (inFlightHistoryFetch != nil)
+        }
+    }
 
     public func acceptRefreshedBundle(_ updated: LiveEventBundle) {
         if let index = bundles.firstIndex(where: { $0.event.id == updated.event.id }) { bundles[index] = updated }
@@ -132,12 +217,29 @@ public final class DashboardStore {
     }
 
     /// Returns the summary of this run, or nil when nothing ran or the whole fetch failed.
+    /// Routed through `inFlightHistoryFetch` the same way `refresh()` uses `inFlightRefresh`: a
+    /// concurrent caller joins the same pass instead of starting a second one, and a catalog
+    /// `refresh()`/`refreshIfNeeded()` arriving mid-fetch waits for this pass first.
     @discardableResult
     public func fetchHistory(from startDate: Date, to endDate: Date) async -> HistoryFetchSummary? {
+        if let historyTask = inFlightHistoryFetch { return await historyTask.value }
+        if let queued = queuedManualTask { await queued.value }
+        if let current = inFlightRefresh { await current.value }
         guard !isRefreshing else { return nil }
+        let task = Task { await self.runHistoryFetch(from: startDate, to: endDate) }
+        inFlightHistoryFetch = task
         isRefreshing = true
         isFetchingHistory = true
-        defer { isRefreshing = false; isFetchingHistory = false }
+        let result = await task.value
+        if inFlightHistoryFetch == task {
+            inFlightHistoryFetch = nil
+            isFetchingHistory = false
+            isRefreshing = (inFlightRefresh != nil) || (queuedManualTask != nil)
+        }
+        return result
+    }
+
+    private func runHistoryFetch(from startDate: Date, to endDate: Date) async -> HistoryFetchSummary? {
         var start = LocalRefreshPolicy.phoneDay(now: startDate, timeZone: timeZone)
         var end = LocalRefreshPolicy.phoneDay(now: endDate, timeZone: timeZone)
         if end < start { swap(&start, &end) }
@@ -164,9 +266,6 @@ public final class DashboardStore {
     }
 
     private func update(manual: Bool) async {
-        guard !isRefreshing else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
         do {
             bundles = try await (manual ? repository.refresh() : repository.refreshIfNeeded())
             userDataStore.reconcile(remaps: await repository.consumeRemaps(), availableBundles: bundles)
@@ -226,12 +325,34 @@ public final class DashboardStore {
     }
 
     /// Upcoming events run soonest first with unknown dates last; past events run most recent first.
+    /// Cached per scope: recomputed only when `bundles` changes or this scope's filters differ from
+    /// the cached ones, so the view can call this from `body` more than once per render for free.
     public func visibleSummaries(in scope: DashboardScope) -> [DashboardEventSummary] {
         let filters = filters(for: scope)
+        // Touch these on every call, including a cache hit, so SwiftUI's observation tracking
+        // still sees `bundles`/`filters`/`userDataStore.eventStates` as read dependencies of
+        // `body` even when the memoized result below is returned without recomputing.
+        let followedIDs = Set(userDataStore.eventStates.values.filter(\.isFollowed).map(\.eventID))
+        let day = phoneDay
+        _ = bundles.count
+        let key = SummaryCacheKey(bundlesVersion: summaryCacheVersion, filters: filters, followedIDs: followedIDs, phoneDay: day)
+        if let cached = summaryCache[scope], cached.key == key {
+            return cached.result
+        }
+        let result = computeVisibleSummaries(in: scope, filters: filters)
+        summaryCache[scope] = (key, result)
+        return result
+    }
+
+    private func computeVisibleSummaries(in scope: DashboardScope, filters: DashboardFilters) -> [DashboardEventSummary] {
         let summaries = bundles(in: scope)
             .filter { matchesCalendarFilters($0, filters: filters) }
-            .map(summarize)
+            .map { summarize($0, finished: scope == .past) }
             .filter { matchesFilters($0, filters: filters) }
+        return sorted(summaries, in: scope)
+    }
+
+    private func sorted(_ summaries: [DashboardEventSummary], in scope: DashboardScope) -> [DashboardEventSummary] {
         switch scope {
         case .upcoming:
             return summaries.sorted { lhs, rhs in
@@ -257,7 +378,15 @@ public final class DashboardStore {
         }
     }
 
-    private func summarize(_ bundle: LiveEventBundle) -> DashboardEventSummary {
+    /// Every followed event regardless of either tab's filters, upcoming first (soonest date
+    /// first, unknown last) then past (most recent first) — for the "My Lives" list.
+    public func followedSummaries() -> [DashboardEventSummary] {
+        let upcoming = sorted(bundles(in: .upcoming).map { summarize($0, finished: false) }.filter(\.isFollowed), in: .upcoming)
+        let past = sorted(bundles(in: .past).map { summarize($0, finished: true) }.filter(\.isFollowed), in: .past)
+        return upcoming + past
+    }
+
+    private func summarize(_ bundle: LiveEventBundle, finished: Bool) -> DashboardEventSummary {
         let now = now()
         let userState = userDataStore.state(for: bundle.event.id)
         let sortedPerformances = bundle.performances.sorted { lhs, rhs in
@@ -318,9 +447,22 @@ public final class DashboardStore {
             ticketBadges: TicketPhaseBadgeBuilder.badges(rounds: bundle.ticketRounds, now: now),
             nextDeadline: soonestDeadline,
             hasPendingAction: soonestDeadline != nil,
-            hasImportantUpdate: !bundle.notices.isEmpty,
+            hasImportantUpdate: Self.hasImportantUpdate(bundle: bundle, now: now, finished: finished),
             timeZoneIdentifier: deadlineTimeZone
         )
+    }
+
+    /// True when the event has a notice published within the last 7 days and the event has not
+    /// already finished. Notices without a `publishedAt` (some scraped sources omit it) cannot be
+    /// judged "recent", so they never trigger this badge — falling back to `false` rather than
+    /// treating every undated notice as a fresh update.
+    private static func hasImportantUpdate(bundle: LiveEventBundle, now: Date, finished: Bool) -> Bool {
+        guard !finished else { return false }
+        return bundle.notices.contains { notice in
+            guard let publishedAt = notice.publishedAt else { return false }
+            let age = now.timeIntervalSince(publishedAt)
+            return age >= 0 && age <= 7 * 24 * 3600
+        }
     }
 
     private func matchesFilters(_ summary: DashboardEventSummary, filters: DashboardFilters) -> Bool {
@@ -334,12 +476,27 @@ public final class DashboardStore {
         if filters.onlyFollowed, !summary.isFollowed { return false }
         if filters.onlyWithPendingAction, !summary.hasPendingAction { return false }
         if let range = filters.dateRange {
-            guard let first = summary.firstLocalDate,
-                  let date = DateFormatter.localDate.date(from: first) else { return false }
-            if !range.contains(date) { return false }
+            guard let first = summary.firstLocalDate else { return false }
+            let lower = Self.phoneLocalDateFormatter.string(from: range.lowerBound)
+            let upper = Self.phoneLocalDateFormatter.string(from: range.upperBound)
+            if !(lower <= first && first <= upper) { return false }
         }
         return true
     }
+
+    /// Formats a `Date` as "yyyy-MM-dd" in the phone's own calendar/time zone, so a DatePicker
+    /// bound (an instant) compares against `firstLocalDate` (already a calendar-day string) by
+    /// calendar day rather than by instant.
+    private static let phoneLocalDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        formatter.calendar = calendar
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 extension DateFormatter {

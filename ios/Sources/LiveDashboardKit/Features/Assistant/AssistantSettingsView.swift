@@ -8,15 +8,44 @@ public struct AssistantSettingsView: View {
 
     @State private var apiKey = ""
     @State private var customModel = ""
-    @State private var isSigningIn = false
+    @State private var showsCustomModelField = false
+    @State private var isSigningInWithChatGPT = false
+    @State private var isSigningInWithAPIKey = false
     @State private var signInError: String?
+    @State private var signInErrorWasFromAPIKey = false
+    @State private var isAPIKeySectionExpanded = false
     @State private var isTestingConnection = false
-    @State private var connectionResult: String?
+    @State private var connectionResult: ConnectionResult?
     @State private var availableModels: [String] = []
     @State private var isLoadingModels = false
+    @State private var modelListError: String?
+    @State private var showsSignOutConfirmation = false
+    @State private var showsClearSummariesConfirmation = false
+    @State private var clearSummariesFeedback: String?
+    @State private var isClearingSummaries = false
+    @FocusState private var isAPIKeyFieldFocused: Bool
+    @FocusState private var isCustomModelFieldFocused: Bool
+
+    private var isSigningIn: Bool { isSigningInWithChatGPT || isSigningInWithAPIKey }
+
+    private var apiKeySectionExpanded: Binding<Bool> {
+        Binding(
+            get: { isAPIKeySectionExpanded || signInErrorWasFromAPIKey },
+            set: { isAPIKeySectionExpanded = $0 }
+        )
+    }
 
     @AppStorage("assistant.oauthClientID") private var oauthClientID = ""
     @AppStorage("assistant.oauthRedirectURI") private var oauthRedirectURI = ""
+
+    /// Ids that never make sense as a chat/completions model, e.g.
+    /// embeddings, TTS/whisper, dall-e or moderation models.
+    private static let nonChatModelMarkers = ["embedding", "tts", "whisper", "dall-e", "moderation"]
+
+    enum ConnectionResult {
+        case ok(model: String)
+        case failed(String)
+    }
 
     public init(assistant: AssistantCoordinator) {
         self.assistant = assistant
@@ -26,11 +55,12 @@ public struct AssistantSettingsView: View {
         Form {
             accountSection
             modelSection
+            testConnectionSection
             autoSummarizeSection
-            advancedOAuthSection
+            advancedOAuthLink
             dataSection
         }
-        .navigationTitle("ChatGPT 助手")
+        .navigationTitle(Text("ChatGPT 助手", bundle: .kit))
         .onAppear { customModel = assistant.model }
         .onChange(of: assistant.account) { _, _ in
             availableModels = []
@@ -40,35 +70,114 @@ public struct AssistantSettingsView: View {
             customModel = newModel
             connectionResult = nil
         }
+        .onChange(of: showsCustomModelField) { _, isShown in
+            guard isShown else { return }
+            // The custom-model field is revealed by a `.navigationLink`
+            // picker popping back to this page; focusing immediately steals
+            // focus mid-transition. Wait for the pop animation to settle.
+            Task {
+                try? await Task.sleep(for: .milliseconds(350))
+                isCustomModelFieldFocused = true
+            }
+        }
     }
 
     @ViewBuilder
     private var accountSection: some View {
-        Section("账号") {
+        Section {
             accountStatusRow
 
             switch assistant.account {
             case .signedOut:
-                if isSigningIn {
-                    ProgressView()
-                } else {
-                    Button("使用 ChatGPT 账号登录") {
-                        Task { await signInWithChatGPT() }
+                if assistant.signInPhase == .waitingForOAuth {
+                    LabeledContent {
+                        ProgressView()
+                    } label: {
+                        Text("正在等待 ChatGPT 登录…", bundle: .kit)
                     }
-                    .accessibilityIdentifier("chatGPTSignInButton")
                 }
-                SecureField("OpenAI API Key", text: $apiKey)
-                Button("使用 API Key 登录") {
-                    Task { await signIn(apiKey: apiKey) }
+                Button {
+                    Task { await signInWithChatGPT() }
+                } label: {
+                    if isSigningInWithChatGPT {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("使用 ChatGPT 账号登录", bundle: .kit)
+                        }
+                    } else {
+                        Text("使用 ChatGPT 账号登录", bundle: .kit)
+                    }
                 }
-                .disabled(apiKey.trimmingCharacters(in: .whitespaces).isEmpty || isSigningIn)
-                if let signInError {
-                    Text(signInError).font(.caption).foregroundStyle(.red)
+                .disabled(isSigningIn || assistant.signInPhase == .waitingForOAuth)
+                .accessibilityIdentifier("chatGPTSignInButton")
+
+                if !signInErrorWasFromAPIKey, let signInError {
+                    Label {
+                        Text(verbatim: signInError)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.statusCritical)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                DisclosureGroup(isExpanded: apiKeySectionExpanded) {
+                    SecureField(text: $apiKey, prompt: Text(verbatim: "sk-…")) {
+                        Text("OpenAI API Key", bundle: .kit)
+                    }
+                    .textContentType(.password)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.done)
+                    .privacySensitive()
+                    .focused($isAPIKeyFieldFocused)
+                    .onSubmit { Task { await signIn(apiKey: apiKey) } }
+
+                    Button {
+                        Task { await signIn(apiKey: apiKey) }
+                    } label: {
+                        Text("使用 API Key 登录", bundle: .kit)
+                    }
+                    .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSigningIn)
+
+                    if signInErrorWasFromAPIKey, let signInError {
+                        Label {
+                            Text(verbatim: signInError)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(Color.statusCritical)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                } label: {
+                    Text("使用 API Key 连接", bundle: .kit)
                 }
             case .apiKey, .chatGPT:
-                Button("退出登录", role: .destructive) {
-                    Task { await assistant.signOut() }
+                Button(role: .destructive) {
+                    showsSignOutConfirmation = true
+                } label: {
+                    Text("退出登录", bundle: .kit)
                 }
+            }
+        } footer: {
+            if case .signedOut = assistant.account {
+                Text("登录后，官网页面文字与已解析的资料会发送至 OpenAI 生成摘要；生成会消耗账号额度。凭据仅保存在本机钥匙串。", bundle: .kit)
+            }
+        }
+        .confirmationDialog(
+            Text("退出登录后将无法继续生成新摘要，已生成的摘要仍会保留。", bundle: .kit),
+            isPresented: $showsSignOutConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await assistant.signOut() }
+            } label: {
+                Text("退出登录", bundle: .kit)
+            }
+            Button(role: .cancel) {} label: {
+                Text("取消", bundle: .kit)
             }
         }
     }
@@ -77,109 +186,265 @@ public struct AssistantSettingsView: View {
     private var accountStatusRow: some View {
         switch assistant.account {
         case .signedOut:
-            LabeledContent("账号", value: "未登录")
+            LabeledContent {
+                Text(verbatim: String(localized: "未登录", bundle: .kit))
+            } label: {
+                Text("账号", bundle: .kit)
+            }
         case .apiKey(let hint):
-            LabeledContent("账号", value: "API Key \(hint)")
+            LabeledContent {
+                Text(verbatim: "API Key \(hint)")
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            } label: {
+                Text("账号", bundle: .kit)
+            }
         case .chatGPT(let email, let accountID):
-            LabeledContent("账号", value: "ChatGPT \(email ?? accountID ?? "已登录")")
+            LabeledContent {
+                Text(verbatim: "ChatGPT \(email ?? accountID ?? String(localized: "已登录", bundle: .kit))")
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            } label: {
+                Text("账号", bundle: .kit)
+            }
         }
     }
 
     @ViewBuilder
     private var modelSection: some View {
-        Section("模型") {
-            LabeledContent("当前模型", value: assistant.model)
-            TextField("自定义模型名称", text: $customModel)
+        Section {
+            Picker(selection: modelPickerSelection) {
+                ForEach(suggestedModels, id: \.self) { model in
+                    Text(verbatim: model).tag(ModelPickerSelection.suggested(model))
+                }
+                Text("自定义…", bundle: .kit).tag(ModelPickerSelection.custom)
+            } label: {
+                Text("模型", bundle: .kit)
+            }
+            .pickerStyle(.navigationLink)
+
+            if showsCustomModelField {
+                TextField(text: $customModel) {
+                    Text("自定义模型名称", bundle: .kit)
+                }
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.done)
                 .onSubmit { applyCustomModel() }
+                .focused($isCustomModelFieldFocused)
                 .accessibilityIdentifier("assistantCustomModelField")
-            Button("切换到此模型") { applyCustomModel() }
+                Button {
+                    applyCustomModel()
+                } label: {
+                    Text("使用此模型", bundle: .kit)
+                }
                 .disabled(customModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                           || customModel.trimmingCharacters(in: .whitespacesAndNewlines) == assistant.model)
                 .accessibilityIdentifier("assistantApplyModelButton")
-            Text("点选推荐模型可立即切换，也可输入模型名称后点击切换。选择会自动保存，下次 AI 整理生效；已有摘要可点「重新整理」更新。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(assistant.usesChatGPTBackend
-                 ? "ChatGPT 登录默认使用 gpt-6-luna。推荐模型的可用性取决于账号权限，可修改模型后测试连接。"
-                 : "API Key 默认使用 gpt-5-mini，可载入账号的可用模型列表。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Button {
-                Task { await testConnection() }
-            } label: {
-                if isTestingConnection {
-                    ProgressView()
-                } else {
-                    Text("测试连接")
-                }
-            }
-            .disabled(isTestingConnection || !assistant.account.isSignedIn)
-            if let connectionResult {
-                Text(connectionResult).font(.caption).foregroundStyle(.secondary)
             }
 
-            if assistant.usesChatGPTBackend {
-                HorizontalSelectionStrip(
-                    title: "Codex 推荐模型",
-                    selection: $assistant.model,
-                    options: Array(Set(AssistantCoordinator.suggestedChatGPTModels + [assistant.model])).sorted().map {
-                        HorizontalSelectionOption(value: $0, title: $0)
-                    }
-                )
-            } else {
+            if !assistant.usesChatGPTBackend {
                 Button {
                     Task { await loadAvailableModels() }
                 } label: {
                     if isLoadingModels {
                         ProgressView()
                     } else {
-                        Text("载入可用模型列表")
+                        Label {
+                            Text("载入可用模型列表", bundle: .kit)
+                        } icon: {
+                            Image(systemName: "arrow.clockwise")
+                        }
                     }
                 }
                 .disabled(isLoadingModels || !assistant.account.isSignedIn)
-                if !availableModels.isEmpty {
-                    Picker("可用模型", selection: $assistant.model) {
-                        ForEach(Array(Set(availableModels + [assistant.model])).sorted(), id: \.self) { Text($0).tag($0) }
+                if let modelListError {
+                    Label {
+                        Text(verbatim: modelListError)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
                     }
+                    .font(.caption)
+                    .foregroundStyle(Color.statusCritical)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        } header: {
+            Text("模型", bundle: .kit)
+        } footer: {
+            Text("点选推荐模型可立即切换，或选择「自定义…」输入模型名称。选择会自动保存，下次 AI 整理生效；已有摘要可点「重新整理」更新。", bundle: .kit)
+        }
+    }
+
+    private enum ModelPickerSelection: Hashable {
+        case suggested(String)
+        case custom
+    }
+
+    private var suggestedModels: [String] {
+        let base = assistant.usesChatGPTBackend
+            ? AssistantCoordinator.suggestedChatGPTModels
+            : (availableModels.isEmpty ? [AssistantCoordinator.defaultAPIModel] : chatCapableModels(availableModels))
+        return Array(Set(base + [assistant.model])).sorted()
+    }
+
+    private func chatCapableModels(_ ids: [String]) -> [String] {
+        ids.filter { id in
+            let lowered = id.lowercased()
+            return !Self.nonChatModelMarkers.contains { lowered.contains($0) }
+        }
+    }
+
+    private var modelPickerSelection: Binding<ModelPickerSelection> {
+        Binding(
+            get: { showsCustomModelField ? .custom : .suggested(assistant.model) },
+            set: { newValue in
+                switch newValue {
+                case .suggested(let model):
+                    showsCustomModelField = false
+                    assistant.model = model
+                    customModel = model
+                case .custom:
+                    showsCustomModelField = true
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var testConnectionSection: some View {
+        Section {
+            Button {
+                Task { await testConnection() }
+            } label: {
+                HStack(spacing: 8) {
+                    if isTestingConnection {
+                        ProgressView()
+                    }
+                    Text("测试连接", bundle: .kit)
+                }
+            }
+            .disabled(isTestingConnection || !assistant.account.isSignedIn)
+
+            if let connectionResult {
+                connectionResultLabel(connectionResult)
+            }
+        } header: {
+            Text("连接", bundle: .kit)
+        }
+    }
+
+    @ViewBuilder
+    private func connectionResultLabel(_ result: ConnectionResult) -> some View {
+        switch result {
+        case .ok(let model):
+            Label {
+                Text("连接成功：\(model)", bundle: .kit)
+            } icon: {
+                Image(systemName: "checkmark.circle.fill")
+            }
+            .font(.caption)
+            .foregroundStyle(Color.statusPositive)
+        case .failed(let message):
+            Label {
+                Text("连接失败：\(message)", bundle: .kit)
+            } icon: {
+                Image(systemName: "xmark.circle.fill")
+            }
+            .font(.caption)
+            .foregroundStyle(Color.statusCritical)
         }
     }
 
     @ViewBuilder
     private var autoSummarizeSection: some View {
-        Section("自动整理") {
-            Toggle("官网资料更新后自动生成摘要", isOn: $assistant.autoSummarizeAfterRefresh)
-            Text("开启后，每次官方资料刷新且内容有变化的公演会自动生成新摘要，会消耗 AI 用量或额度。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        Section {
+            Toggle(isOn: $assistant.autoSummarizeAfterRefresh) { Text("官网资料更新后自动整理 AI 字段", bundle: .kit) }
+                .disabled(!assistant.account.isSignedIn)
+        } footer: {
+            if !assistant.account.isSignedIn {
+                Text("登录后才能开启自动整理。", bundle: .kit)
+            } else {
+                Text("开启后，每次官方资料刷新且内容有变化的公演会自动生成新摘要，会消耗 AI 用量或额度。", bundle: .kit)
+            }
         }
     }
 
     @ViewBuilder
-    private var advancedOAuthSection: some View {
-        Section("高级（OAuth）") {
-            TextField("Client ID", text: $oauthClientID, prompt: Text("app_EMoamEEZ73f0CkXaXp7hrann"))
-            TextField("回调地址", text: $oauthRedirectURI, prompt: Text("http://localhost:1455/auth/callback"))
-            Text("默认使用 OpenAI 官方的 ChatGPT 登录客户端（PKCE）。如需使用你自己注册的“Sign in with ChatGPT”应用，请填写 Client ID 与回调地址；自定义 scheme 请用 live-dashboard://oauth/openai。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private var advancedOAuthLink: some View {
+        Section {
+            NavigationLink {
+                advancedOAuthForm
+            } label: {
+                Text("OAuth 客户端设置", bundle: .kit)
+            }
         }
+    }
+
+    @ViewBuilder
+    private var advancedOAuthForm: some View {
+        Form {
+            if assistant.account.isSignedIn {
+                Section {
+                    Text("请先退出登录再修改", bundle: .kit)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section {
+                TextField(text: $oauthClientID, prompt: Text(verbatim: "app_EMoamEEZ73f0CkXaXp7hrann")) {
+                    Text("Client ID", bundle: .kit)
+                }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .disabled(assistant.account.isSignedIn)
+                TextField(text: $oauthRedirectURI, prompt: Text(verbatim: "http://localhost:1455/auth/callback")) {
+                    Text("回调地址", bundle: .kit)
+                }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .disabled(assistant.account.isSignedIn)
+            } footer: {
+                Text("默认使用 OpenAI 官方的 ChatGPT 登录客户端（PKCE）。如需使用你自己注册的“Sign in with ChatGPT”应用，请填写 Client ID 与回调地址；自定义 scheme 请用 live-dashboard://oauth/openai。已登录时无法修改，请先退出登录。", bundle: .kit)
+            }
+        }
+        .navigationTitle(Text("OAuth 客户端设置", bundle: .kit))
     }
 
     @ViewBuilder
     private var dataSection: some View {
-        Section("数据") {
-            Button("清除全部 AI 摘要", role: .destructive) {
-                Task {
-                    for eventID in assistant.summaries.keys {
-                        await assistant.removeSummary(eventID: eventID)
+        Section {
+            Button(role: .destructive) {
+                showsClearSummariesConfirmation = true
+            } label: {
+                if isClearingSummaries {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("清除全部 AI 摘要", bundle: .kit)
                     }
+                } else {
+                    Text("清除全部 AI 摘要", bundle: .kit)
                 }
+            }
+            .disabled(assistant.summaries.isEmpty || isClearingSummaries)
+            if let clearSummariesFeedback {
+                Text(verbatim: clearSummariesFeedback).font(.caption).foregroundStyle(.secondary)
+            }
+        } footer: {
+            Text("共 \(assistant.summaries.count) 份已保存的摘要。", bundle: .kit)
+        }
+        .confirmationDialog(
+            Text("确定清除全部 \(assistant.summaries.count) 份 AI 摘要吗？此操作无法撤销。", bundle: .kit),
+            isPresented: $showsClearSummariesConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await clearAllSummaries() }
+            } label: {
+                Text("清除全部 AI 摘要", bundle: .kit)
+            }
+            Button(role: .cancel) {} label: {
+                Text("取消", bundle: .kit)
             }
         }
     }
@@ -192,41 +457,66 @@ public struct AssistantSettingsView: View {
     }
 
     private func signInWithChatGPT() async {
-        isSigningIn = true
+        isSigningInWithChatGPT = true
         signInError = nil
-        defer { isSigningIn = false }
+        signInErrorWasFromAPIKey = false
+        defer { isSigningInWithChatGPT = false }
         do {
             try await assistant.signInWithChatGPT()
+        } catch ChatGPTOAuthError.cancelled {
+            // User-cancelled OAuth is not an error worth surfacing.
         } catch {
             signInError = error.localizedDescription
+            signInErrorWasFromAPIKey = false
         }
     }
 
     private func signIn(apiKey: String) async {
-        isSigningIn = true
+        isSigningInWithAPIKey = true
         signInError = nil
-        defer { isSigningIn = false }
+        signInErrorWasFromAPIKey = false
+        defer { isSigningInWithAPIKey = false }
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            try await assistant.signIn(apiKey: apiKey)
+            try await assistant.signIn(apiKey: trimmed)
             self.apiKey = ""
         } catch {
             signInError = error.localizedDescription
+            signInErrorWasFromAPIKey = true
+            isAPIKeyFieldFocused = true
         }
+    }
+
+    private func clearAllSummaries() async {
+        isClearingSummaries = true
+        defer { isClearingSummaries = false }
+        await assistant.removeAllSummaries()
+        clearSummariesFeedback = String(localized: "已清除全部 AI 摘要", bundle: .kit)
+        AccessibilityNotification.Announcement(String(localized: "已清除全部 AI 摘要", bundle: .kit)).post()
     }
 
     private func testConnection() async {
         isTestingConnection = true
         defer { isTestingConnection = false }
         do {
-            connectionResult = try await assistant.testConnection()
+            let model = try await assistant.testConnection()
+            connectionResult = .ok(model: model)
+            AccessibilityNotification.Announcement(String(localized: "连接成功", bundle: .kit)).post()
         } catch {
-            connectionResult = error.localizedDescription
+            let message = error.localizedDescription
+            connectionResult = .failed(message)
+            AccessibilityNotification.Announcement(String(localized: "连接失败：\(message)", bundle: .kit)).post()
         }
     }
 
     private func loadAvailableModels() async {
         isLoadingModels = true
+        modelListError = nil
         defer { isLoadingModels = false }
-        availableModels = await assistant.availableModels()
+        let models = await assistant.availableModels()
+        if models.isEmpty {
+            modelListError = String(localized: "载入模型列表失败", bundle: .kit)
+        }
+        availableModels = chatCapableModels(models)
     }
 }

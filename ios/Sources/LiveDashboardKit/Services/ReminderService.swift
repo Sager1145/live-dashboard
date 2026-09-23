@@ -7,6 +7,7 @@ import UserNotifications
 /// reminder is scheduled under a stable identifier derived from the entity.
 public protocol ReminderScheduling: Sendable {
     func requestAuthorizationIfNeeded() async -> Bool
+    func authorizationStatus() async -> UNAuthorizationStatus
     func scheduleDeadlineReminder(
         identifier: ReminderIdentifier,
         title: String,
@@ -55,10 +56,14 @@ public final class ReminderService: ReminderScheduling, @unchecked Sendable {
         case .denied:
             return false
         case .notDetermined:
-            return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+            return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
         @unknown default:
             return false
         }
+    }
+
+    public func authorizationStatus() async -> UNAuthorizationStatus {
+        await center.notificationSettings().authorizationStatus
     }
 
     public func scheduleDeadlineReminder(

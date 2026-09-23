@@ -20,6 +20,7 @@ import {
   PARSER_VERSION,
   selectedText,
   sourceKey,
+  ticketLinksAndProducts,
   text,
   uniqueLinks,
   wholeEvent,
@@ -462,7 +463,11 @@ function extractLoveLiveTypedSections(
     }
     const raw = text(block.map((item) => $(item).text()).join(" "));
     if (
-      !/受付期間/.test(raw) ||
+      (!/受付期間/.test(raw) &&
+        !(
+          /封入|申込券|シリアル/.test(raw) &&
+          /後日公開|後日発表|追って|未定/.test(raw)
+        )) ||
       block.some(
         (item) =>
           $(item).is(".ke-atension") || $(item).find(".ke-atension").length > 0,
@@ -483,7 +488,12 @@ function extractLoveLiveTypedSections(
   ticket.find(".ke-atension").each((index, node) => {
     const heading = text($(node).find(".atension_header").first().text());
     const raw = text($(node).text());
-    if (heading && /受付期間/.test(raw))
+    if (
+      heading &&
+      (/受付期間/.test(raw) ||
+        (/封入|申込券|シリアル/.test(raw) &&
+          /後日公開|後日発表|追って|未定/.test(raw)))
+    )
       emitLoveLiveRound(
         $,
         snapshot,
@@ -574,19 +584,18 @@ function emitLoveLiveRound(
   eligibilityOverride?: string,
 ): void {
   const window = parseJapaneseDateTimeWindow(raw, "受付期間");
-  if (!window.startAt) return;
+  const officiallyTBA =
+    !window.startAt && /後日公開|後日発表|追って|未定/.test(raw);
+  if (!window.startAt && !officiallyTBA) return;
   const resultAt = parseJapaneseDateTime(raw, "当落発表");
   const payment = parseJapaneseDateTimeWindow(raw, "入金期間");
-  const url = nodes
-    .flatMap((node) =>
-      $(node)
-        .find("a[href]")
-        .map((_i, link) =>
-          absolute($(link).attr("href") ?? "", snapshot.finalUrl),
-        )
-        .get(),
-    )
-    .find((candidate) => candidate?.includes("eplus.jp"));
+  const ticketDetails = ticketLinksAndProducts($, nodes, snapshot.finalUrl);
+  const applicationLinks = ticketDetails.links.filter(
+    (link) => link.role === "application",
+  );
+  const overseasLinks = ticketDetails.links.filter(
+    (link) => link.role === "overseasApplication",
+  );
   const eligibility =
     eligibilityOverride ??
     (/封入|申込券|ムビチケ|ご当選・ご購入/.test(raw) ? raw : undefined);
@@ -598,13 +607,29 @@ function emitLoveLiveRound(
       {
         officialName: heading,
         kind: "lottery",
-        applyStartAt: window.startAt,
+        ...(window.startAt ? { applyStartAt: window.startAt } : {}),
         ...(window.endAt ? { applyEndAt: window.endAt } : {}),
         ...(resultAt ? { resultAt } : {}),
         ...(payment.endAt ? { paymentDeadlineAt: payment.endAt } : {}),
         ...(eligibility ? { eligibility } : {}),
-        ...(url ? { applyURL: url } : {}),
-        windowRaw: window.raw,
+        ...(applicationLinks[0] ? { applyURL: applicationLinks[0].url } : {}),
+        ...(overseasLinks[0] ? { overseasURL: overseasLinks[0].url } : {}),
+        ...(ticketDetails.links.length ? { links: ticketDetails.links } : {}),
+        ...(ticketDetails.lotteryProducts.length
+          ? { lotteryProducts: ticketDetails.lotteryProducts }
+          : {}),
+        ...(window.raw
+          ? { applyWindowText: window.raw, windowRaw: window.raw }
+          : {}),
+        ...(officiallyTBA
+          ? {
+              officialStatus:
+                raw.match(
+                  /[^。]*(?:後日公開|後日発表|追って|未定)[^。]*。?/,
+                )?.[0] ?? "後日公開",
+              status: "officiallyTBA",
+            }
+          : {}),
       },
       locator,
       raw,

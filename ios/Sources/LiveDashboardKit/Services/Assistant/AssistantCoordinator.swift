@@ -3,10 +3,21 @@ import Observation
 
 /// The single entry point the UI talks to for the assistant feature: sign
 /// in/out, generating summaries, and reading cached results.
+/// Phase of an interactive ChatGPT sign-in, surfaced so the UI can disable
+/// (not replace) its buttons and show progress while OAuth is in flight.
+public enum AssistantSignInPhase: Equatable, Sendable {
+    case idle
+    case waitingForOAuth
+}
+
 @MainActor
 @Observable
 public final class AssistantCoordinator {
     public private(set) var account: AssistantAccountState = .signedOut
+    /// Set when a 401 forced an automatic sign-out (credential invalid or
+    /// expired beyond recovery); cleared as soon as sign-in succeeds again.
+    public private(set) var lastSignOutReason: String?
+    public private(set) var signInPhase: AssistantSignInPhase = .idle
     public var autoSummarizeAfterRefresh: Bool {
         didSet {
             defaults.set(autoSummarizeAfterRefresh, forKey: Self.autoSummarizeDefaultsKey)
@@ -32,8 +43,17 @@ public final class AssistantCoordinator {
     private let accountStore: AssistantAccountStore
     private let summaryStore: AssistantSummaryStore
     private let client: OpenAIResponsesClient
+    private let officialPageSession: URLSession?
     private let urlSession: URLSession
     private var signInFlowBox: ChatGPTSignInFlow?
+
+    private var deletingEventIDs: Set<String> = []
+    private var isRemovingAllSummaries = false
+    private static let deletedEventsDefaultsKey = "assistant.deletedEventIDs"
+    private var deletedEventIDs: Set<String> {
+        get { Set(defaults.stringArray(forKey: Self.deletedEventsDefaultsKey) ?? []) }
+        set { defaults.set(Array(newValue).sorted(), forKey: Self.deletedEventsDefaultsKey) }
+    }
 
     private static let autoSummarizeDefaultsKey = "assistant.autoSummarize"
     public static let defaultAPIModel = "gpt-5-mini"
@@ -62,6 +82,7 @@ public final class AssistantCoordinator {
     private var isGeneratingStale = false
 
     public init(
+        officialPageSession: URLSession? = .shared,
         accountStore: AssistantAccountStore = AssistantAccountStore(),
         summaryStore: AssistantSummaryStore = AssistantSummaryStore(),
         client: OpenAIResponsesClient = OpenAIResponsesClient(),
@@ -69,6 +90,7 @@ public final class AssistantCoordinator {
         signInFlow: ChatGPTSignInFlow? = nil,
         defaults: UserDefaults = .standard
     ) {
+        self.officialPageSession = officialPageSession
         self.defaults = defaults
         self.accountStore = accountStore
         self.summaryStore = summaryStore
@@ -104,14 +126,32 @@ public final class AssistantCoordinator {
         errors[eventID]
     }
 
+    /// Cached per (event, summary generation, bundle content) so repeated
+    /// `body` evaluations for an unchanged bundle never re-hash the source
+    /// text. Keyed on `bundle.hashValue` — Swift's synthesized `Hashable`
+    /// conformance covers every field (including `sourceText`), so it is a
+    /// cheap stand-in for the bundle's content that never goes stale itself;
+    /// only recomputing the actual SHA-256 fingerprint when either the
+    /// summary or the bundle content has changed.
+    private var staleCache: [String: (summaryStamp: Date, bundleToken: Int, isStale: Bool)] = [:]
+
     public func isStale(_ bundle: LiveEventBundle) -> Bool {
         guard let summary = summaries[bundle.event.id] else { return true }
-        return summary.sourceFingerprint != AssistantSummarizer.fingerprint(of: bundle)
+        let token = bundle.hashValue
+        if let cached = staleCache[bundle.event.id],
+           cached.summaryStamp == summary.generatedAt,
+           cached.bundleToken == token {
+            return cached.isStale
+        }
+        let stale = summary.sourceFingerprint != AssistantSummarizer.fingerprint(of: bundle)
+        staleCache[bundle.event.id] = (summary.generatedAt, token, stale)
+        return stale
     }
 
     @discardableResult
     public func generate(for bundle: LiveEventBundle, force: Bool = false) async -> AssistantEventSummary? {
         let eventID = bundle.event.id
+        guard !isRemovingAllSummaries, !deletingEventIDs.contains(eventID) else { return nil }
         if !force, !isStale(bundle), let cached = summaries[eventID] {
             return cached
         }
@@ -123,16 +163,41 @@ public final class AssistantCoordinator {
             guard let self else { return nil }
             do {
                 let summary = try await self.runSummarize(bundle: bundle)
-                try? await self.summaryStore.save(summary)
-                await MainActor.run {
+                // `cancelGeneration`/`removeAllSummaries` only mark the task
+                // cancelled — the underlying request may still finish. Never
+                // let a cancelled generation resurrect a summary the user
+                // already asked to remove.
+                guard !Task.isCancelled else { return nil }
+                do {
+                    try await self.summaryStore.save(summary)
+                } catch {
+                    throw AssistantError.provider(String(localized: "AI 整理结果保存失败，请重试。", bundle: .kit))
+                }
+                // The task may have been cancelled while the save was in
+                // flight (e.g. `removeAllSummaries`); never leave a summary
+                // on disk that the user already asked to remove.
+                guard !Task.isCancelled else {
+                    try? await self.summaryStore.remove(eventID: eventID, ifGeneratedAt: summary.generatedAt)
+                    return nil
+                }
+                let applied = await MainActor.run { () -> Bool in
+                    guard !Task.isCancelled else { return false }
                     self.summaries[eventID] = summary
+                    self.deletedEventIDs.remove(eventID)
                     self.lastError = nil
                     self.errors.removeValue(forKey: eventID)
+                    return true
+                }
+                guard applied else {
+                    try? await self.summaryStore.remove(eventID: eventID, ifGeneratedAt: summary.generatedAt)
+                    return nil
                 }
                 return summary
             } catch {
+                guard !Task.isCancelled else { return nil }
                 let message = (error as? LocalizedError)?.errorDescription ?? "\(error)"
                 await MainActor.run {
+                    guard !Task.isCancelled else { return }
                     self.lastError = message
                     self.errors[eventID] = message
                 }
@@ -142,9 +207,22 @@ public final class AssistantCoordinator {
         generatingEventIDs.insert(eventID)
         inFlightGenerations[eventID] = task
         let result = await task.value
+        // Only clear bookkeeping if this is still the task we registered —
+        // a cancel-then-regenerate may have already replaced it with a
+        // newer task, which must be left running/registered.
+        if inFlightGenerations[eventID] == task {
+            inFlightGenerations.removeValue(forKey: eventID)
+            generatingEventIDs.remove(eventID)
+        }
+        return result
+    }
+
+    /// Cancels an in-flight generation for `eventID`, if any, and clears its
+    /// generating/error state.
+    public func cancelGeneration(for eventID: String) {
+        inFlightGenerations[eventID]?.cancel()
         inFlightGenerations.removeValue(forKey: eventID)
         generatingEventIDs.remove(eventID)
-        return result
     }
 
     /// Resolves a transport and runs the summarizer. A 401 from the ChatGPT
@@ -155,11 +233,12 @@ public final class AssistantCoordinator {
     private func runSummarize(bundle: LiveEventBundle) async throws -> AssistantEventSummary {
         let requestModel = model
         let transport = try await currentTransport()
-        let summarizer = AssistantSummarizer(client: client)
+        let summarizer = AssistantSummarizer(client: client, officialPageSession: officialPageSession)
         do {
             return try await summarizer.summarize(bundle: bundle, model: requestModel, transport: transport)
         } catch AssistantError.http(401, _) {
             guard case .chatGPTBackend = transport else {
+                lastSignOutReason = Self.invalidCredentialMessage
                 await signOut()
                 throw AssistantCredentialInvalidError()
             }
@@ -167,9 +246,27 @@ public final class AssistantCoordinator {
             do {
                 return try await summarizer.summarize(bundle: bundle, model: requestModel, transport: refreshedTransport)
             } catch AssistantError.http(401, _) {
+                lastSignOutReason = Self.invalidCredentialMessage
+                await signOut()
                 throw AssistantCredentialInvalidError()
             }
         }
+    }
+
+    private static let invalidCredentialMessage = String(localized: "凭据无效，已退出登录", bundle: .kit)
+
+    /// Best-effort detection of an OpenAI "model not found"/"does not exist"
+    /// error, as distinct from an invalid-key rejection — used so `signIn`
+    /// only falls back to the default model for a model problem, never for
+    /// a credential problem.
+    private static func looksLikeModelNotFound(status: Int, body: String) -> Bool {
+        if status == 404 { return true }
+        let lowered = body.lowercased()
+        guard lowered.contains("model") else { return false }
+        return lowered.contains("not found")
+            || lowered.contains("does not exist")
+            || lowered.contains("invalid model")
+            || lowered.contains("model_not_found")
     }
 
     public func generateStale(in bundles: [LiveEventBundle]) async {
@@ -180,8 +277,11 @@ public final class AssistantCoordinator {
 
         let stale = bundles
             .filter { bundle in
-                guard let sourceText = bundle.sourceText,
-                      !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+                guard !deletedEventIDs.contains(bundle.event.id) else { return false }
+                if officialPageSession == nil {
+                    guard let sourceText = bundle.sourceText,
+                          !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+                }
                 guard isStale(bundle) else { return false }
                 return !failedFingerprints.contains(AssistantSummarizer.fingerprint(of: bundle))
             }
@@ -192,7 +292,10 @@ public final class AssistantCoordinator {
             }
             .prefix(20)
 
+        let batchRevision = configurationRevision
         for bundle in stale {
+            guard !isRemovingAllSummaries, batchRevision == configurationRevision else { break }
+            guard !deletedEventIDs.contains(bundle.event.id) else { continue }
             let fingerprint = AssistantSummarizer.fingerprint(of: bundle)
             let revision = configurationRevision
             let result = await generate(for: bundle)
@@ -202,26 +305,45 @@ public final class AssistantCoordinator {
         }
     }
 
+    /// Tests the candidate API key against the API backend before persisting
+    /// anything: a bad key never reaches the Keychain or replaces a working
+    /// credential.
     public func signIn(apiKey: String) async throws {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            throw AssistantError.invalidOutput("API key 不能为空")
+            throw AssistantError.invalidOutput(String(localized: "API key 不能为空", bundle: .kit))
         }
+        let testModel = defaults.string(forKey: "assistant.model.api") ?? Self.defaultAPIModel
+        do {
+            _ = try await performConnectionTest(transport: .openAIAPI(apiKey: trimmed), model: testModel)
+        } catch AssistantError.http(let status, let body)
+            where status != 401 && testModel != Self.defaultAPIModel && Self.looksLikeModelNotFound(status: status, body: body) {
+            // The saved API model may no longer exist (renamed/retired) —
+            // that says nothing about whether the key itself is valid, so
+            // retry the connection test against the default model before
+            // rejecting the key.
+            _ = try await performConnectionTest(transport: .openAIAPI(apiKey: trimmed), model: Self.defaultAPIModel)
+        }
+
         let credential = AssistantCredential.apiKey(trimmed)
         try await accountStore.save(credential)
         self.credential = credential
         self.account = credential.accountState
+        self.lastSignOutReason = nil
         restoreModel()
         resetFailures()
     }
 
     public func signInWithChatGPT() async throws {
+        signInPhase = .waitingForOAuth
+        defer { signInPhase = .idle }
         let configuration = ChatGPTOAuthConfiguration.stored()
         let session = try await signInFlow.signIn(configuration: configuration, urlSession: urlSession)
         let credential = AssistantCredential.chatGPT(session)
         try await accountStore.save(credential)
         self.credential = credential
         self.account = credential.accountState
+        self.lastSignOutReason = nil
         restoreModel()
         resetFailures()
     }
@@ -236,6 +358,12 @@ public final class AssistantCoordinator {
     public func testConnection() async throws -> String {
         let requestModel = model
         let transport = try await currentTransport()
+        return try await performConnectionTest(transport: transport, model: requestModel)
+    }
+
+    /// Shared ping used by `testConnection()` and `signIn(apiKey:)` (which
+    /// tests a candidate credential that has not been persisted yet).
+    private func performConnectionTest(transport: AssistantTransport, model requestModel: String) async throws -> String {
         let schema: [String: Any] = [
             "type": "object",
             "properties": ["ok": ["type": "string"]],
@@ -259,8 +387,49 @@ public final class AssistantCoordinator {
     }
 
     public func removeSummary(eventID: String) async {
-        try? await summaryStore.remove(eventID: eventID)
-        summaries.removeValue(forKey: eventID)
+        guard !deletingEventIDs.contains(eventID) else { return }
+        deletingEventIDs.insert(eventID)
+        defer { deletingEventIDs.remove(eventID) }
+        let generation = inFlightGenerations[eventID]
+        cancelGeneration(for: eventID)
+        // Wait for a cancelled save to finish before removing its on-disk result.
+        _ = await generation?.value
+        do {
+            try await summaryStore.remove(eventID: eventID)
+            summaries.removeValue(forKey: eventID)
+            errors.removeValue(forKey: eventID)
+            staleCache.removeValue(forKey: eventID)
+            deletedEventIDs.insert(eventID)
+        } catch {
+            let message = String(localized: "无法删除本公演的 AI 整理结果，请重试。", bundle: .kit)
+            errors[eventID] = message
+            lastError = message
+        }
+    }
+
+    /// Cancels every in-flight generation first, then clears every stored
+    /// summary — so a generation that finishes mid-clear cannot resurrect a
+    /// summary the user just asked to remove.
+    public func removeAllSummaries() async {
+        guard !isRemovingAllSummaries else { return }
+        isRemovingAllSummaries = true
+        configurationRevision += 1
+        defer { isRemovingAllSummaries = false }
+        let generations = inFlightGenerations
+        for eventID in generations.keys { cancelGeneration(for: eventID) }
+        for task in generations.values { _ = await task.value }
+        do {
+            let persisted = try await summaryStore.all()
+            let deleted = Set(persisted.keys).union(summaries.keys).union(generations.keys)
+            try await summaryStore.removeAll()
+            summaries.removeAll()
+            errors.removeAll()
+            staleCache.removeAll()
+            deletedEventIDs.formUnion(deleted)
+            lastError = nil
+        } catch {
+            lastError = String(localized: "无法删除 AI 整理结果，请重试。", bundle: .kit)
+        }
     }
 
     private func restoreModel() {
@@ -351,6 +520,7 @@ public final class AssistantCoordinator {
         } catch {
             refreshTask = nil
             if case ChatGPTOAuthError.invalidGrant = error {
+                lastSignOutReason = Self.invalidCredentialMessage
                 await signOut()
             }
             self.lastError = (error as? LocalizedError)?.errorDescription ?? "\(error)"
@@ -362,5 +532,5 @@ public final class AssistantCoordinator {
 /// Thrown when a credential is invalid or expired and could not be
 /// recovered by a refresh/retry; surfaces a re-login message to the UI.
 private struct AssistantCredentialInvalidError: Error, LocalizedError {
-    var errorDescription: String? { "凭据无效或已过期，请重新登录" }
+    var errorDescription: String? { String(localized: "凭据无效或已过期，请重新登录", bundle: .kit) }
 }

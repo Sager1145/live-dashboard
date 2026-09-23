@@ -60,26 +60,24 @@ public enum OfficialMediaError: Error, LocalizedError, Sendable {
 
 /// Displays official image assets inline regardless of the legacy display
 /// policy. Non-image assets remain links and are never fetched automatically.
+/// Preview decoding and zoom-viewer decoding both go through
+/// `OfficialImagePipeline`, which caches original bytes and downsampled
+/// images so switching performances doesn't re-download the same asset.
 public struct OfficialMediaView: View {
     public let asset: MediaAsset
     public let compact: Bool
-    private let loader: any OfficialMediaLoading
 
     @State private var previewImage: UIImage?
-    @State private var isLoadingPreview = false
-    @State private var isDownloading = false
-    @State private var message: String?
+    /// The `previewTaskID` that `previewImage` was loaded for, so a stale load from a
+    /// previous `previewTaskID` (e.g. a fast performance switch) is never shown or shared.
+    @State private var loadedPreviewID: String?
+    @State private var loadError: String?
     @State private var showsZoom = false
-    @State private var shareFileURL: ShareFileURL?
+    @State private var copyFeedback = false
 
-    public init(
-        asset: MediaAsset,
-        compact: Bool = false,
-        loader: any OfficialMediaLoading = URLSessionOfficialMediaLoader()
-    ) {
+    public init(asset: MediaAsset, compact: Bool = false) {
         self.asset = asset
         self.compact = compact
-        self.loader = loader
     }
 
     public var body: some View {
@@ -94,17 +92,9 @@ public struct OfficialMediaView: View {
             guard asset.isImage else { return }
             await loadPreview()
         }
-        .sheet(isPresented: $showsZoom) {
-            ZoomableImageSheet(
-                imageURL: originalURL,
-                caption: asset.caption,
-                sourceURL: distinctSourceURL,
-                loader: loader
-            )
-        }
-        .sheet(item: $shareFileURL) { wrapper in
-            OfficialImageShareSheet(fileURL: wrapper.url) {
-                try? FileManager.default.removeItem(at: wrapper.url.deletingLastPathComponent())
+        .fullScreenCover(isPresented: $showsZoom) {
+            if let originalURL {
+                ZoomableImageViewer(imageURL: originalURL, caption: asset.caption, sourceURL: distinctSourceURL)
             }
         }
     }
@@ -112,67 +102,103 @@ public struct OfficialMediaView: View {
     @ViewBuilder
     private var imageContent: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button {
-                if previewImage != nil { showsZoom = true }
-            } label: {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(.quaternary)
-                    if let previewImage {
-                        Image(uiImage: previewImage)
-                            .resizable()
-                            .scaledToFit()
-                            .padding(4)
-                    } else if isLoadingPreview {
-                        ProgressView()
-                    } else {
-                        ContentUnavailableView("无法显示图片", systemImage: "photo")
-                    }
-                }
-                .aspectRatio(previewImage.map { $0.size.width / max($0.size.height, 1) } ?? (16.0 / 9.0), contentMode: .fit)
-                .frame(maxWidth: .infinity)
-                .frame(maxHeight: compact ? 160 : 340)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(previewImage == nil)
-            .accessibilityLabel("打开原图并缩放")
-            .accessibilityIdentifier("mediaImage-\(asset.id)")
-            .contextMenu {
+            ZStack {
                 Button {
-                    Task { await prepareShare() }
+                    if displayedPreviewImage != nil { showsZoom = true }
                 } label: {
-                    Label("分享图片", systemImage: "square.and.arrow.up")
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(.quaternary)
+                        if let displayedPreviewImage {
+                            Image(uiImage: displayedPreviewImage)
+                                .resizable()
+                                .scaledToFit()
+                                .padding(4)
+                                .transition(.opacity)
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.caption)
+                                .padding(6)
+                                .background(.ultraThinMaterial, in: Circle())
+                                .accessibilityHidden(true)
+                                .padding(8)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        } else if loadError == nil {
+                            PreviewLoadingIndicator()
+                        }
+                    }
+                    .aspectRatio(displayedPreviewImage.map { $0.size.width / max($0.size.height, 1) } ?? (16.0 / 9.0), contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: compact ? 160 : 340)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(displayedPreviewImage == nil)
+                .accessibilityLabel(Text(verbatim: asset.caption ?? String(localized: "官方图片", bundle: .kit)))
+                .accessibilityHint(Text("打开原图并缩放", bundle: .kit))
+                .accessibilityIdentifier("mediaImage-\(asset.id)")
+
+                if let loadError {
+                    VStack(spacing: 6) {
+                        Label {
+                            Text(loadError).font(.caption)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle").foregroundStyle(.statusWarning)
+                        }
+                        Button {
+                            Task { await loadPreview() }
+                        } label: {
+                            Text("重试", bundle: .kit)
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: compact ? 160 : 340)
+                    .allowsHitTesting(true)
                 }
             }
+            .motionAnimation(previewImage != nil)
 
             if let caption = asset.caption, !caption.isEmpty {
-                Text(caption)
+                Text(verbatim: caption)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            // The original image URL and its official source page are shown in
-            // the zoom sheet after the image is opened, not on the card itself.
-            Button {
-                Task { await prepareShare() }
-            } label: {
-                if isDownloading {
-                    HStack {
-                        ProgressView()
-                        Text("正在准备原图…")
+            if let originalURL {
+                HStack(spacing: 12) {
+                    if let displayedPreviewImage {
+                        ShareLink(
+                            item: OfficialImageTransfer(url: originalURL, caption: asset.caption),
+                            preview: SharePreview(asset.caption ?? String(localized: "官方图片", bundle: .kit), image: Image(uiImage: displayedPreviewImage))
+                        ) {
+                            Label { Text("分享原图", bundle: .kit) } icon: { Image(systemName: "square.and.arrow.up") }
+                        }
+                        .accessibilityIdentifier("mediaShare-\(asset.id)")
                     }
-                } else {
-                    Label("分享原图", systemImage: "square.and.arrow.up")
+                    Menu {
+                        Link(destination: originalURL) {
+                            Label { Text("在浏览器打开原图", bundle: .kit) } icon: { Image(systemName: "safari") }
+                        }
+                        Button {
+                            UIPasteboard.general.string = originalURL.absoluteString
+                            copyFeedback.toggle()
+                        } label: {
+                            Label { Text("复制链接", bundle: .kit) } icon: { Image(systemName: "doc.on.doc") }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel(Text("更多操作", bundle: .kit))
+                    .accessibilityIdentifier("mediaMoreActions-\(asset.id)")
+                    if let host = originalURL.host {
+                        Text(host).font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-            }
-            .disabled(isDownloading || originalURL == nil)
-            .accessibilityIdentifier("mediaShare-\(asset.id)")
-
-            if let message {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .sensoryFeedback(.success, trigger: copyFeedback)
             }
         }
     }
@@ -181,21 +207,36 @@ public struct OfficialMediaView: View {
     private var originalLink: some View {
         if let originalURL {
             Link(destination: originalURL) {
-                Label {
-                    Text(originalURL.absoluteString)
+                VStack(alignment: .leading, spacing: 2) {
+                    Label { Text("打开官方附件", bundle: .kit) } icon: { Image(systemName: "doc") }
                         .font(.caption)
-                        .multilineTextAlignment(.leading)
-                } icon: {
-                    Image(systemName: asset.isImage ? "photo" : "link")
+                    if let host = originalURL.host {
+                        Text(host).font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
             }
-            .textSelection(.enabled)
+            .contextMenu {
+                Button {
+                    UIPasteboard.general.string = originalURL.absoluteString
+                } label: {
+                    Label { Text("复制链接", bundle: .kit) } icon: { Image(systemName: "doc.on.doc") }
+                }
+            }
+            .accessibilityValue(Text(originalURL.absoluteString))
             .accessibilityIdentifier("mediaOriginalLink-\(asset.id)")
         } else {
-            Text(asset.originalURL)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("链接格式无效", bundle: .kit)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(asset.originalURL)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+            }
+            .accessibilityIdentifier("mediaOriginalLink-\(asset.id)")
         }
     }
 
@@ -210,12 +251,19 @@ public struct OfficialMediaView: View {
         "\(asset.id)::v\(asset.version)::\(asset.thumbnailURL ?? "")::\(asset.originalURL)"
     }
 
+    /// `previewImage`, but only once it has actually finished loading for the *current*
+    /// `previewTaskID` — never an image left over from a previous performance/asset.
+    private var displayedPreviewImage: UIImage? {
+        loadedPreviewID == previewTaskID ? previewImage : nil
+    }
+
     @MainActor
     private func loadPreview() async {
-        previewImage = nil
-        message = nil
-        isLoadingPreview = true
-        defer { isLoadingPreview = false }
+        // Intentionally does not reset `previewImage` to nil first: keeping the
+        // last-decoded image on screen while a retry/refresh runs avoids the
+        // card flashing to a spinner for an asset it can already display.
+        let id = previewTaskID
+        loadError = nil
 
         var urls: [URL] = []
         if let thumbnail = asset.thumbnailURL.flatMap(URL.init(string:)) { urls.append(thumbnail) }
@@ -223,189 +271,179 @@ public struct OfficialMediaView: View {
 
         for url in urls {
             do {
-                let response = try await loader.load(url)
+                let image = try await OfficialImagePipeline.shared.image(for: url, maxPixelSize: 1200)
                 try Task.checkCancellation()
-                guard let image = UIImage(data: response.data) else { throw OfficialMediaError.invalidImage }
+                guard previewTaskID == id else { return }
                 previewImage = image
-                message = nil
+                loadedPreviewID = id
+                loadError = nil
                 return
             } catch {
                 if Task.isCancelled || isCancellation(error) { return }
-                message = error.localizedDescription
+                guard previewTaskID == id else { return }
+                // A same-id retry may keep showing the previously loaded image; a genuinely
+                // new id that never succeeded must show the error state without any image.
+                if loadedPreviewID != id { previewImage = nil }
+                loadError = error.localizedDescription
             }
-        }
-    }
-
-    @MainActor
-    private func prepareShare() async {
-        guard let originalURL else { return }
-        isDownloading = true
-        message = nil
-        defer { isDownloading = false }
-        do {
-            let response = try await loader.load(originalURL)
-            try Task.checkCancellation()
-            guard UIImage(data: response.data) != nil else { throw OfficialMediaError.invalidImage }
-            let fileURL = try prepareShareFile(response: response, url: originalURL)
-            shareFileURL = ShareFileURL(url: fileURL)
-        } catch {
-            guard !Task.isCancelled, !isCancellation(error) else { return }
-            message = error.localizedDescription
         }
     }
 }
 
-/// Compatible replacement for the former SwiftUI scale-effect sheet.
-public struct ZoomableImageSheet: View {
-    let imageURL: URL?
+/// Shows the spinner immediately; the "loading" caption only appears once the
+/// load has taken noticeably long, so quick loads never flash the label.
+private struct PreviewLoadingIndicator: View {
+    @State private var showsLabel = false
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ProgressView()
+            if showsLabel {
+                Text("正在载入…", bundle: .kit)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            showsLabel = true
+        }
+    }
+}
+
+/// Full-screen zoomable viewer for an official image, backed by
+/// `OfficialImagePipeline.viewerImage(for:)` (full-resolution, capped at
+/// 4096px). Presented via `.fullScreenCover` so the image reads edge-to-edge.
+public struct ZoomableImageViewer: View {
+    let imageURL: URL
     let caption: String?
     let sourceURL: URL?
-    private let loader: any OfficialMediaLoading
 
     @Environment(\.dismiss) private var dismiss
     @State private var image: UIImage?
-    @State private var isLoading = false
-    @State private var isDownloading = false
-    @State private var message: String?
-    @State private var shareFileURL: ShareFileURL?
+    @State private var loadError: String?
+    @State private var copyFeedback = false
 
-    public init(
-        imageURL: URL?,
-        caption: String? = nil,
-        sourceURL: URL? = nil,
-        loader: any OfficialMediaLoading = URLSessionOfficialMediaLoader()
-    ) {
+    public init(imageURL: URL, caption: String? = nil, sourceURL: URL? = nil) {
         self.imageURL = imageURL
         self.caption = caption
         self.sourceURL = sourceURL
-        self.loader = loader
     }
 
     public var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                Color.black.ignoresSafeArea()
                 if let image {
-                    ZoomableUIImageView(image: image)
-                        .background(Color.black)
-                } else if isLoading {
-                    ProgressView("正在载入原图…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ZoomableUIImageView(image: image, caption: caption)
+                } else if let loadError {
+                    ContentUnavailableView {
+                        Label { Text("无法显示图片", bundle: .kit) } icon: { Image(systemName: "photo") }
+                    } description: {
+                        Text(loadError)
+                    } actions: {
+                        VStack(spacing: 8) {
+                            Button {
+                                Task { await loadImage() }
+                            } label: {
+                                Text("重试", bundle: .kit)
+                            }
+                            .buttonStyle(.bordered)
+                            Link(destination: imageURL) {
+                                Text("在浏览器中打开", bundle: .kit)
+                            }
+                        }
+                    }
+                        .foregroundStyle(.white)
                 } else {
-                    ContentUnavailableView("无法显示图片", systemImage: "photo", description: message.map { Text($0) })
+                    ProgressView {
+                        Text("正在载入原图…", bundle: .kit)
+                    }
+                        .tint(.white)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
-                    if let caption, !caption.isEmpty { Text(caption).font(.footnote) }
-                    if let imageURL {
-                        Link(imageURL.absoluteString, destination: imageURL)
-                            .font(.caption)
-                            .textSelection(.enabled)
+                    if let caption, !caption.isEmpty { Text(verbatim: caption).font(.footnote) }
+                    if let host = imageURL.host() {
+                        Text(host).font(.caption).foregroundStyle(.secondary)
                     }
-                    if let sourceURL, sourceURL != imageURL {
-                        Link(sourceURL.absoluteString, destination: sourceURL)
+                    DisclosureGroup {
+                        VStack(alignment: .leading, spacing: 8) {
+                            sourceDetailRow(url: imageURL)
+                            if let sourceURL, sourceURL != imageURL {
+                                sourceDetailRow(url: sourceURL)
+                            }
+                        }
+                        .padding(.top, 4)
+                    } label: {
+                        Text("来源详情", bundle: .kit)
                             .font(.caption)
-                            .textSelection(.enabled)
-                    }
-                    if let message {
-                        Text(message)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.thinMaterial)
+                .sensoryFeedback(.success, trigger: copyFeedback)
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("关闭", bundle: .kit)
+                    }
                         .accessibilityIdentifier("zoomDoneButton")
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        Task { await prepareShare() }
-                    } label: {
-                        if isDownloading { ProgressView() }
-                        else { Label("分享", systemImage: "square.and.arrow.up") }
+                    if let image {
+                        ShareLink(
+                            item: OfficialImageTransfer(url: imageURL, caption: caption),
+                            preview: SharePreview(caption ?? String(localized: "官方图片", bundle: .kit), image: Image(uiImage: image))
+                        ) {
+                            Label { Text("分享", bundle: .kit) } icon: { Image(systemName: "square.and.arrow.up") }
+                        }
+                        .accessibilityIdentifier("zoomShareButton")
                     }
-                    .disabled(isDownloading || imageURL == nil)
-                    .accessibilityIdentifier("zoomShareButton")
                 }
             }
-            .task(id: imageURL) { await loadImage() }
-            .sheet(item: $shareFileURL) { wrapper in
-                OfficialImageShareSheet(fileURL: wrapper.url) {
-                    try? FileManager.default.removeItem(at: wrapper.url.deletingLastPathComponent())
-                }
-            }
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
+        .task(id: imageURL) { await loadImage() }
     }
 
     @MainActor
     private func loadImage() async {
-        guard let imageURL else { return }
-        isLoading = true
-        message = nil
-        defer { isLoading = false }
+        loadError = nil
         do {
-            let response = try await loader.load(imageURL)
+            let loaded = try await OfficialImagePipeline.shared.viewerImage(for: imageURL)
             try Task.checkCancellation()
-            guard let loaded = UIImage(data: response.data) else { throw OfficialMediaError.invalidImage }
             image = loaded
         } catch {
             guard !Task.isCancelled, !isCancellation(error) else { return }
-            message = error.localizedDescription
+            loadError = error.localizedDescription
         }
     }
 
-    @MainActor
-    private func prepareShare() async {
-        guard let imageURL else { return }
-        isDownloading = true
-        message = nil
-        defer { isDownloading = false }
-        do {
-            let response = try await loader.load(imageURL)
-            try Task.checkCancellation()
-            guard UIImage(data: response.data) != nil else { throw OfficialMediaError.invalidImage }
-            let fileURL = try prepareShareFile(response: response, url: imageURL)
-            shareFileURL = ShareFileURL(url: fileURL)
-        } catch {
-            guard !Task.isCancelled, !isCancellation(error) else { return }
-            message = error.localizedDescription
+    @ViewBuilder
+    private func sourceDetailRow(url: URL) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(url.absoluteString)
+                .font(.caption)
+                .textSelection(.enabled)
+            Spacer(minLength: 0)
+            Button {
+                UIPasteboard.general.string = url.absoluteString
+                copyFeedback.toggle()
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .accessibilityLabel(Text("复制", bundle: .kit))
         }
     }
-}
-
-/// Presents the system share sheet for a locally staged image file. The share
-/// sheet itself offers "Save Image"/"Save to Files", so downloading remains
-/// possible through it.
-public struct OfficialImageShareSheet: UIViewControllerRepresentable {
-    public let fileURL: URL
-    public let onComplete: () -> Void
-
-    public init(fileURL: URL, onComplete: @escaping () -> Void) {
-        self.fileURL = fileURL
-        self.onComplete = onComplete
-    }
-
-    public func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-        controller.excludedActivityTypes = nil
-        controller.completionWithItemsHandler = { _, _, _, _ in
-            onComplete()
-        }
-        return controller
-    }
-
-    public func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-/// Identifiable wrapper so a staged share file URL can drive `.sheet(item:)`.
-struct ShareFileURL: Identifiable {
-    let url: URL
-    var id: URL { url }
 }
 
 /// Writes the downloaded image bytes to a temporary file, keeping the nice
@@ -428,13 +466,15 @@ func prepareShareFile(response: OfficialMediaResponse, url: URL) throws -> URL {
 
 private struct ZoomableUIImageView: UIViewRepresentable {
     let image: UIImage
+    let caption: String?
+    var fallbackAccessibilityLabel: String = String(localized: "官方图片", bundle: .kit)
 
     func makeUIView(context: Context) -> NativeImageZoomView {
-        NativeImageZoomView(image: image)
+        NativeImageZoomView(image: image, caption: caption, fallbackAccessibilityLabel: fallbackAccessibilityLabel)
     }
 
     func updateUIView(_ view: NativeImageZoomView, context: Context) {
-        view.setImage(image)
+        view.setImage(image, caption: caption, fallbackAccessibilityLabel: fallbackAccessibilityLabel)
     }
 }
 
@@ -442,8 +482,12 @@ private final class NativeImageZoomView: UIScrollView, UIScrollViewDelegate {
     private let zoomedImageView = UIImageView()
     private var imageIdentity: ObjectIdentifier?
     private var lastBoundsSize: CGSize = .zero
+    private var fallbackAccessibilityLabel: String
+    private var caption: String?
 
-    init(image: UIImage) {
+    init(image: UIImage, caption: String?, fallbackAccessibilityLabel: String) {
+        self.fallbackAccessibilityLabel = fallbackAccessibilityLabel
+        self.caption = caption
         super.init(frame: .zero)
         delegate = self
         minimumZoomScale = 1
@@ -452,19 +496,31 @@ private final class NativeImageZoomView: UIScrollView, UIScrollViewDelegate {
         showsHorizontalScrollIndicator = false
         showsVerticalScrollIndicator = false
         backgroundColor = .black
+        contentInsetAdjustmentBehavior = .never
         zoomedImageView.contentMode = .scaleAspectFit
         addSubview(zoomedImageView)
+
+        isAccessibilityElement = true
+        accessibilityTraits = .image
+        accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: String(localized: "放大", bundle: .kit), target: self, selector: #selector(handleAccessibilityZoomIn)),
+            UIAccessibilityCustomAction(name: String(localized: "缩小", bundle: .kit), target: self, selector: #selector(handleAccessibilityZoomOut)),
+            UIAccessibilityCustomAction(name: String(localized: "重置", bundle: .kit), target: self, selector: #selector(handleAccessibilityResetZoom))
+        ]
 
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
         addGestureRecognizer(doubleTap)
-        setImage(image)
+        setImage(image, caption: caption, fallbackAccessibilityLabel: fallbackAccessibilityLabel)
     }
 
     required init?(coder: NSCoder) { nil }
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        // Zoom is reset only when the image identity or the view's bounds
+        // size changes — not on every layout pass — so rotating back to the
+        // same size or a benign re-layout doesn't discard the user's zoom.
         if bounds.size != lastBoundsSize {
             lastBoundsSize = bounds.size
             layoutImage(resetZoom: true)
@@ -473,7 +529,10 @@ private final class NativeImageZoomView: UIScrollView, UIScrollViewDelegate {
         }
     }
 
-    func setImage(_ image: UIImage) {
+    func setImage(_ image: UIImage, caption: String?, fallbackAccessibilityLabel: String) {
+        self.caption = caption
+        self.fallbackAccessibilityLabel = fallbackAccessibilityLabel
+        accessibilityLabel = (caption?.isEmpty == false) ? caption : fallbackAccessibilityLabel
         let identity = ObjectIdentifier(image)
         guard identity != imageIdentity else { return }
         imageIdentity = identity
@@ -503,22 +562,46 @@ private final class NativeImageZoomView: UIScrollView, UIScrollViewDelegate {
         let horizontal = max((bounds.width - contentSize.width) / 2, 0)
         let vertical = max((bounds.height - contentSize.height) / 2, 0)
         contentInset = UIEdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
+        accessibilityValue = "\(Int((zoomScale * 100).rounded()))%"
     }
+
+    // Reduce Motion turns off the animation for programmatic zoom changes
+    // (double-tap and the VoiceOver custom actions); pinch-to-zoom is driven
+    // by the system gesture and is left untouched.
+    private var zoomAnimated: Bool { !UIAccessibility.isReduceMotionEnabled }
 
     @objc private func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
         if zoomScale > minimumZoomScale {
-            setZoomScale(minimumZoomScale, animated: true)
+            setZoomScale(minimumZoomScale, animated: zoomAnimated)
             return
         }
+        zoomIn(at: recognizer.location(in: zoomedImageView))
+    }
+
+    private func zoomIn(at point: CGPoint) {
         let targetScale = min(maximumZoomScale, 3)
-        let point = recognizer.location(in: zoomedImageView)
         let size = CGSize(width: bounds.width / targetScale, height: bounds.height / targetScale)
         zoom(to: CGRect(
             x: point.x - size.width / 2,
             y: point.y - size.height / 2,
             width: size.width,
             height: size.height
-        ), animated: true)
+        ), animated: zoomAnimated)
+    }
+
+    @objc private func handleAccessibilityZoomIn() -> Bool {
+        zoomIn(at: CGPoint(x: zoomedImageView.bounds.midX, y: zoomedImageView.bounds.midY))
+        return true
+    }
+
+    @objc private func handleAccessibilityZoomOut() -> Bool {
+        setZoomScale(max(minimumZoomScale, zoomScale / 2), animated: zoomAnimated)
+        return true
+    }
+
+    @objc private func handleAccessibilityResetZoom() -> Bool {
+        setZoomScale(minimumZoomScale, animated: zoomAnimated)
+        return true
     }
 }
 

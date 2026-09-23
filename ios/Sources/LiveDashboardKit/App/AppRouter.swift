@@ -9,10 +9,10 @@ public enum DetailTab: String, CaseIterable, Hashable, Sendable {
 
     public var titleZH: String {
         switch self {
-        case .overview: return "概要"
-        case .tickets: return "售票"
-        case .seating: return "座位"
-        case .goods: return "周边"
+        case .overview: return String(localized: "概要", bundle: .kit)
+        case .tickets: return String(localized: "售票", bundle: .kit)
+        case .seating: return String(localized: "座位", bundle: .kit)
+        case .goods: return String(localized: "周边", bundle: .kit)
         }
     }
 }
@@ -25,10 +25,10 @@ public enum RootTab: String, CaseIterable, Hashable, Sendable {
 
     public var titleZH: String {
         switch self {
-        case .dashboard: return "演出"
-        case .pastLives: return "往期"
-        case .myLives: return "我的"
-        case .settings: return "设置"
+        case .dashboard: return String(localized: "演出", bundle: .kit)
+        case .pastLives: return String(localized: "往期", bundle: .kit)
+        case .myLives: return String(localized: "我的", bundle: .kit)
+        case .settings: return String(localized: "设置", bundle: .kit)
         }
     }
 }

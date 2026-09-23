@@ -43,7 +43,7 @@ public extension LiveRepository {
 
 public enum HistoryFetchError: Error, LocalizedError, Sendable {
     case unavailable
-    public var errorDescription: String? { "此数据源不支持抓取过往公演" }
+    public var errorDescription: String? { String(localized: "此数据源不支持抓取过往公演", bundle: .kit) }
 }
 
 public struct CatalogRemap: Hashable, Sendable { public let eventID: String; public let replacementID: String }

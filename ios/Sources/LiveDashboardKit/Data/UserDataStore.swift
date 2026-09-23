@@ -211,6 +211,12 @@ public final class UserDataStore {
         commit()
     }
 
+    /// Count of cards of the given types hidden either globally or for this event.
+    public func hiddenCardCount(cardTypes: [CardType], eventID: String) -> Int {
+        let configs = effectiveConfigurations(eventID: eventID)
+        return configs.values.filter { cardTypes.contains($0.cardType) && $0.isHidden }.count
+    }
+
     public func unhideCards(cardTypes: [CardType], eventID: String) {
         let rawValues = Set(cardTypes.map(\.rawValue))
         let records = (try? context.fetch(FetchDescriptor<CardPreferenceRecord>())) ?? []

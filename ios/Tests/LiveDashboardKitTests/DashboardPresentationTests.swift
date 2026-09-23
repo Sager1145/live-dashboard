@@ -188,7 +188,8 @@ final class DashboardPresentationTests: XCTestCase {
             overseasURL: nil, officialStatus: nil, status: .confirmed)
         store.acceptRefreshedBundle(bundle("live", dates: ["2026-09-23"], rounds: [round]))
         let summary = try XCTUnwrap(store.visibleSummaries.first)
-        let expected = String(localized: "第", bundle: .kit) + "1" + String(localized: "次", bundle: .kit) + String(localized: "抽选", bundle: .kit) + String(localized: "中", bundle: .kit)
+        let phase = String(localized: "第\(1)次", bundle: .kit) + String(localized: "抽选", bundle: .kit)
+        let expected = String(localized: "\(phase)中", bundle: .kit)
         XCTAssertEqual(summary.ticketBadges.map(\.text), [expected])
         XCTAssertNil(summary.currentRoundLabel)
     }
@@ -209,4 +210,83 @@ final class DashboardPresentationTests: XCTestCase {
         XCTAssertEqual(store.visibleSummaries.first?.officialThumbnail?.id, "updated-cover")
     }
 
+    func testConcurrentManualRefreshesShareOneRepositoryPass() async {
+        let fixedNow = ISO8601DateFormatter().date(from: "2026-09-23T01:00:00Z")!
+        let repository = CountingRepository(bundles: [bundle("live", dates: ["2027-01-01"])])
+        let store = DashboardStore(repository: repository,
+            userDataStore: UserDataStore(container: UserDataStore.makeContainer(inMemory: true)),
+            timeZone: TimeZone(identifier: "Asia/Tokyo")!, now: { fixedNow })
+
+        async let first: () = store.refresh()
+        async let second: () = store.refresh()
+        _ = await (first, second)
+
+        let count = await repository.refreshCallCount
+        XCTAssertEqual(count, 1, "two concurrent manual refreshes should share a single repository pass")
+    }
+
+    /// A manual refresh requested while the automatic one is still running must not start its
+    /// own pass immediately (racing the automatic one for `bundles`); it should wait and then
+    /// run exactly one shared extra pass, joined by every manual caller that arrived meanwhile.
+    func testManualRefreshDuringAutomaticRunsExactlyOneExtraPass() async {
+        let fixedNow = ISO8601DateFormatter().date(from: "2026-09-23T01:00:00Z")!
+        let repository = CountingRepository(bundles: [bundle("live", dates: ["2027-01-01"])])
+        let store = DashboardStore(repository: repository,
+            userDataStore: UserDataStore(container: UserDataStore.makeContainer(inMemory: true)),
+            timeZone: TimeZone(identifier: "Asia/Tokyo")!, now: { fixedNow })
+
+        let automatic = Task { await store.refreshIfNeeded() }
+        // Wait until the automatic pass has actually started before issuing manual calls,
+        // instead of relying on `async let` scheduling order (which isn't guaranteed).
+        while !store.isRefreshing { await Task.yield() }
+
+        async let manualFirst: () = store.refresh()
+        async let manualSecond: () = store.refresh()
+        _ = await (automatic.value, manualFirst, manualSecond)
+
+        let count = await repository.refreshCallCount
+        XCTAssertEqual(count, 2, "one automatic pass plus exactly one shared manual pass, not one per manual caller")
+        XCTAssertFalse(store.isRefreshing)
+    }
+
+    func testAccessibilitySummaryContainsTitleAndZoneLabel() {
+        let deadline = ISO8601DateFormatter().date(from: "2026-10-01T05:00:00Z")!
+        let summary = DashboardEventSummary(
+            id: "ev1", officialTitle: "Poppin'Party 10th LIVE", primarySourceURL: "https://example.com",
+            groups: ["Poppin'Party"], franchise: .bangdream, status: .scheduled, eventType: .live,
+            isFollowed: false, dayLabels: ["Day 1"], stopCount: 1, venueSummary: "Tokyo Dome",
+            firstLocalDate: "2026-10-01", lastLocalDate: "2026-10-01", firstStartAt: deadline,
+            officialThumbnail: nil, minimumPriceJPY: 8800, currentRoundLabel: "一般",
+            ticketBadges: [], nextDeadline: deadline, hasPendingAction: true, hasImportantUpdate: false,
+            timeZoneIdentifier: "Asia/Tokyo"
+        )
+        let card = LiveEventCard(summary: summary)
+        let text = card.accessibilitySummary
+
+        XCTAssertTrue(text.contains("Poppin'Party 10th LIVE"))
+        // The zone name depends on the test locale ("JST" vs "GMT+9"), so compare against the
+        // same helper the card uses instead of a literal.
+        let zoneLabel = EventFormatting.zoneLabel(TimeZone(identifier: "Asia/Tokyo")!)
+        XCTAssertFalse(zoneLabel.isEmpty)
+        XCTAssertTrue(text.contains(zoneLabel), "should include the zone label EventFormatting.dateTime appends (\(zoneLabel)); got: \(text)")
+    }
+}
+
+/// A minimal `LiveRepository` that counts `refresh()` calls and holds each pass open briefly,
+/// so concurrent callers actually overlap instead of trivially serializing.
+private actor CountingRepository: LiveRepository {
+    private(set) var refreshCallCount = 0
+    private let bundles: [LiveEventBundle]
+
+    init(bundles: [LiveEventBundle]) { self.bundles = bundles }
+
+    func allBundles() async throws -> [LiveEventBundle] { bundles }
+    func bundle(eventID: String) async throws -> LiveEventBundle? { bundles.first { $0.event.id == eventID } }
+    func refresh() async throws -> [LiveEventBundle] {
+        refreshCallCount += 1
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        return bundles
+    }
+    func changes(eventID: String) async throws -> [EventChangeHistory] { [] }
+    func clearPublicCache() async throws {}
 }

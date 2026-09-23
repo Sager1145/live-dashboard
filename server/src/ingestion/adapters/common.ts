@@ -137,6 +137,218 @@ export function uniqueLinks(links: readonly CandidateLink[]): CandidateLink[] {
   return links.filter((link) => !seen.has(link.url) && !!seen.add(link.url));
 }
 
+export interface TicketOfficialLink {
+  label: string;
+  url: string;
+  role: "application" | "overseasApplication" | "support" | "product";
+  productNames?: string[];
+}
+
+/** Extracts actionable ticket links without losing the product names adjacent to an application URL. */
+export function ticketLinksAndProducts(
+  $: cheerio.CheerioAPI,
+  nodes: readonly AnyNode[],
+  baseURL: string,
+): { links: TicketOfficialLink[]; lotteryProducts: string[] } {
+  type Link = TicketOfficialLink & { localProducts: string[] };
+  const products: string[] = [];
+  const links: Link[] = [];
+  const groupProductContext = nodes.some((node) =>
+    /封入|申込券|シリアル|抽選申込券|対象商品/.test(text($(node).text())),
+  );
+  const addProduct = (value: string) => {
+    const name = text(value).replace(/^[/・●○]\s*/, "");
+    if (name && !products.includes(name)) products.push(name);
+    return name;
+  };
+  const anchorsIn = (node: AnyNode) =>
+    [
+      ...($(node).is("a[href]") ? [node] : []),
+      ...$(node).find("a[href]").toArray(),
+    ].flatMap((anchor) => {
+      const resolved = absolute($(anchor).attr("href") ?? "", baseURL);
+      return resolved
+        ? [{ node: anchor, url: resolved, label: text($(anchor).text()) }]
+        : [];
+    });
+  const productsIn = (node: AnyNode, inheritedProductContext = false) => {
+    const raw = text($(node).text());
+    const productContext =
+      inheritedProductContext ||
+      /封入|申込券|シリアル|抽選申込券|対象商品/.test(raw);
+    const linked = anchorsIn(node)
+      .filter(({ url, label }) =>
+        isLotteryProductLink(url, label, productContext),
+      )
+      .map(({ label }) => addProduct(label));
+    const clone = $(node).clone();
+    clone.find("br").replaceWith("\n");
+    clone.find("p,li,tr,div").append("\n");
+    const unlinked = clone
+      .text()
+      .split(/\n+/)
+      .map((line) => lotteryProductFromLine(line, productContext, linked))
+      .filter((name): name is string => !!name)
+      .map(addProduct);
+    return [...linked, ...unlinked].filter(
+      (name, index, all) => !!name && all.indexOf(name) === index,
+    );
+  };
+
+  for (const node of nodes) {
+    const raw = text($(node).text());
+    const productContext = /封入|申込券|シリアル|抽選申込券|対象商品/.test(raw);
+    const anchors = anchorsIn(node);
+    productsIn(node, groupProductContext);
+
+    for (const anchor of anchors) {
+      const role = ticketLinkRole(anchor.url, anchor.label, productContext);
+      if (!role) continue;
+      const label = anchor.label || anchor.url;
+      let pairedProducts: string[] = [];
+      if (role === "application" || role === "overseasApplication") {
+        const bounded = $(anchor.node).closest("p,li,tr").first();
+        const boundedNode = bounded.toArray()[0] ?? node;
+        const boundedApplications = anchorsIn(boundedNode).filter(
+          ({ url, label }) => {
+            const candidateRole = ticketLinkRole(
+              url,
+              label,
+              /封入|申込券|シリアル|抽選申込券|対象商品/.test(
+                text($(boundedNode).text()),
+              ),
+            );
+            return (
+              candidateRole === "application" ||
+              candidateRole === "overseasApplication"
+            );
+          },
+        );
+        const boundedProducts = productsIn(boundedNode);
+        const namedProducts = boundedProducts.filter((name) =>
+          anchor.label.includes(name),
+        );
+        if (namedProducts.length) pairedProducts = namedProducts;
+        else if (boundedApplications.length === 1)
+          pairedProducts = productsIn(boundedNode);
+      }
+      links.push({
+        label,
+        url: anchor.url,
+        role,
+        localProducts: pairedProducts,
+      });
+    }
+  }
+
+  const applicationLinks = links.filter(
+    (link) =>
+      link.role === "application" || link.role === "overseasApplication",
+  );
+  if (
+    applicationLinks.length === 1 &&
+    !applicationLinks[0]!.localProducts.length
+  )
+    applicationLinks[0]!.localProducts = [...products];
+
+  const merged = new Map<string, TicketOfficialLink>();
+  for (const link of links) {
+    const key = `${link.role}:${link.url}`;
+    const previous = merged.get(key);
+    const productNames = [
+      ...(previous?.productNames ?? []),
+      ...link.localProducts,
+    ].filter((name, index, all) => all.indexOf(name) === index);
+    merged.set(key, {
+      label: previous?.label ?? link.label,
+      url: link.url,
+      role: link.role,
+      ...(productNames.length ? { productNames } : {}),
+    });
+  }
+  return { links: [...merged.values()], lotteryProducts: products };
+}
+
+function isLotteryProductLink(
+  url: string,
+  label: string,
+  productContext: boolean,
+): boolean {
+  const parsed = new URL(url);
+  if (ticketVendorRole(parsed.hostname)) return false;
+  return (
+    /\/(?:discographies|music|cd|bd)\//i.test(parsed.pathname) ||
+    (productContext &&
+      /「|『|Single|Album|Blu-?ray|シングル|アルバム|CD/i.test(label))
+  );
+}
+
+function ticketLinkRole(
+  url: string,
+  label: string,
+  productContext: boolean,
+): TicketOfficialLink["role"] | undefined {
+  const parsed = new URL(url);
+  const searchable = `${label} ${url}`;
+  if (
+    /support|\/qa\/|\/guide\/|faceticket_about|update-dokosha/i.test(searchable)
+  )
+    return "support";
+  const vendorRole = ticketVendorRole(parsed.hostname);
+  if (vendorRole) return vendorRole;
+  if (isLotteryProductLink(url, label, productContext)) return "product";
+  if (
+    /受付(?:はこちら|URL)|申込(?:はこちら|URL)|お申し込みはこちら|応募はこちら|\bapply\b/i.test(
+      searchable,
+    )
+  )
+    return "application";
+  return undefined;
+}
+
+function ticketVendorRole(
+  hostname: string,
+): "application" | "overseasApplication" | undefined {
+  if (/^(?:ib\.)eplus\.jp$|kktix|cityline/i.test(hostname))
+    return "overseasApplication";
+  if (
+    /(?:^|\.)eplus\.jp$|(?:^|\.)pia\.jp$|(?:^|\.)l-tike\.com$|(?:^|\.)tixplus\.jp$|^ticket\.bushiroad-music\.com$|^ticket\.rakuten\.co\.jp$|(?:^|\.)ticketport\.jp$/i.test(
+      hostname,
+    )
+  )
+    return "application";
+  return undefined;
+}
+
+function lotteryProductFromLine(
+  value: string,
+  productContext: boolean,
+  linkedProducts: readonly string[],
+): string | undefined {
+  if (!productContext) return undefined;
+  let candidate = linkedProducts
+    .reduce((line, linked) => line.replaceAll(linked, ""), text(value))
+    .replace(/^[※・●○①-⑳\s]+/, "")
+    .replace(/^\d{1,2}月\d{1,2}日[^ ]*リリース\s*/, "")
+    .replace(/^\d{4}年\d{1,2}月\d{1,2}日[^ ]*発売\s*/, "")
+    .replace(/(?:初回生産分(?:限定)?(?:に)?封入|に封入|封入特典|封入の).*$/, "")
+    .trim();
+  if (
+    !candidate ||
+    /^(?:抽選申込券封入商品|最速先行抽選申込券 封入タイトル|商品発売日|申込について)/.test(
+      candidate,
+    ) ||
+    /受付期間|当落発表|入金期間|枚数制限|下記\d+タイトル|ご応募いただけ/.test(
+      candidate,
+    ) ||
+    !/「.+」|『.+』|Single|Album|Blu-?ray|シングル|アルバム|\bCD\b/i.test(
+      candidate,
+    )
+  )
+    return undefined;
+  return candidate;
+}
+
 export interface ParsedSchedule {
   dayLabel?: string;
   localDate: string;

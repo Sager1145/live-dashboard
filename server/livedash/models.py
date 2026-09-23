@@ -128,6 +128,7 @@ class OfficialLink(BaseModel):
     label: str
     url: str
     role: OfficialLinkRole | None = None
+    product_names: list[str] = Field(default_factory=list, alias="productNames")
 
 
 class TicketNote(BaseModel):

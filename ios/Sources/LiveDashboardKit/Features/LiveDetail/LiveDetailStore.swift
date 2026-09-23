@@ -18,7 +18,20 @@ public struct LiveSelection: Equatable, Codable, Sendable {
 @Observable
 @MainActor
 public final class LiveDetailStore {
-    public private(set) var bundle: LiveEventBundle
+    public private(set) var officialBundle: LiveEventBundle
+    public var usesAssistantData = true {
+        didSet { reconcileSelection() }
+    }
+    public var bundle: LiveEventBundle {
+        if usesAssistantData, let organized = assistantSummary?.organizedBundle,
+           organized.event.id == officialBundle.event.id {
+            return organized
+        }
+        return officialBundle
+    }
+    public var hasAssistantData: Bool {
+        assistantSummary?.organizedBundle?.event.id == officialBundle.event.id
+    }
     public var selection: LiveSelection
     public var selectedPerformanceID: String {
         get { selection.performanceID ?? "" }
@@ -30,16 +43,25 @@ public final class LiveDetailStore {
             selection.editionID = bundle.editions.first { edition in
                 performance?.id != nil && performance?.editionIDValue == edition.id
             }?.id
+            replacedPerformanceID = nil
             userDataStore.setSelectedPerformance(newValue, eventID: bundle.event.id)
         }
     }
+    /// Set when `reconcileSelection()` had to fall back away from the
+    /// previously selected performance because it doesn't exist in the
+    /// current data source (e.g. switching to an AI bundle that omits it).
+    /// `LiveDetailView` shows a short notice, and switching back to the
+    /// source that had it restores the original selection and clears this.
+    public private(set) var replacedPerformanceID: String?
     public var selectedTab: DetailTab = .overview
-    public var assistantSummary: AssistantEventSummary?
+    public var assistantSummary: AssistantEventSummary? {
+        didSet { reconcileSelection() }
+    }
 
     private let userDataStore: UserDataStore
 
     public init(bundle: LiveEventBundle, initialPerformanceID: String? = nil, userDataStore: UserDataStore) {
-        self.bundle = bundle
+        self.officialBundle = bundle
         self.userDataStore = userDataStore
         let sorted = bundle.performances.sorted { $0.order < $1.order }
         let candidate = initialPerformanceID
@@ -62,13 +84,23 @@ public final class LiveDetailStore {
     /// view. Keep the selected performance when it still exists; otherwise
     /// choose the same valid fallback used for initial detail presentation.
     public func replaceBundle(_ bundle: LiveEventBundle) {
-        let previousPerformanceID = selection.performanceID
-        self.bundle = bundle
+        self.officialBundle = bundle
+        reconcileSelection()
+    }
 
+    private func reconcileSelection() {
+        let previousPerformanceID = selection.performanceID
+        let previousReplacedPerformanceID = replacedPerformanceID
         let sorted = bundle.performances.sorted { $0.order < $1.order }
-        let selectedID = sorted.contains(where: { $0.id == previousPerformanceID })
-            ? previousPerformanceID
-            : sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() })?.id ?? sorted.last?.id
+
+        let selectedID: String?
+        if let previousReplacedPerformanceID, sorted.contains(where: { $0.id == previousReplacedPerformanceID }) {
+            selectedID = previousReplacedPerformanceID
+        } else if let previousPerformanceID, sorted.contains(where: { $0.id == previousPerformanceID }) {
+            selectedID = previousPerformanceID
+        } else {
+            selectedID = sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() })?.id ?? sorted.last?.id
+        }
         let performance = sorted.first { $0.id == selectedID }
 
         selection.eventID = bundle.event.id
@@ -77,7 +109,24 @@ public final class LiveDetailStore {
         selection.editionID = bundle.editions.first { edition in
             performance?.editionIDValue == edition.id
         }?.id
-        if let selectedID { userDataStore.setSelectedPerformance(selectedID, eventID: bundle.event.id) }
+
+        let newReplacedPerformanceID: String?
+        if selectedID == previousReplacedPerformanceID {
+            newReplacedPerformanceID = nil
+        } else if let previousPerformanceID, selectedID != previousPerformanceID, previousReplacedPerformanceID == nil {
+            newReplacedPerformanceID = previousPerformanceID
+        } else {
+            newReplacedPerformanceID = previousReplacedPerformanceID
+        }
+
+        // A temporary fallback (the AI bundle lacks the previously selected
+        // performance) must never overwrite the user's persisted selection —
+        // switching back to the source that has it should restore the
+        // original, not the fallback.
+        if let selectedID, newReplacedPerformanceID == nil {
+            userDataStore.setSelectedPerformance(selectedID, eventID: bundle.event.id)
+        }
+        replacedPerformanceID = newReplacedPerformanceID
     }
 
     public func stopID(for performanceID: String) -> String? {
@@ -130,6 +179,59 @@ public final class LiveDetailStore {
             selectedPerformanceID: selectedPerformanceID,
             stopID: stopID(for:)
         )
+    }
+
+    /// A critical notice (cancellation/postponement/refund), always sourced
+    /// from the official bundle even when an AI bundle is displayed, so
+    /// switching to AI mode can never hide an official cancellation. AI-only
+    /// critical notices (facts the official page hasn't published a matching
+    /// notice for) are appended, clearly marked.
+    public struct CriticalNoticeItem: Identifiable, Hashable, Sendable {
+        public let notice: Notice
+        public let isScopeUnconfirmed: Bool
+        public let isAssistantOnly: Bool
+        public var id: String { (isAssistantOnly ? "ai|" : "official|") + notice.id }
+    }
+
+    public static let criticalNoticeKinds: Set<NoticeKind> = [.cancellation, .postponement, .refund]
+
+    public func criticalNotices() -> [CriticalNoticeItem] {
+        let officialCritical = officialBundle.notices.filter { Self.criticalNoticeKinds.contains($0.kind) }
+        let officialStopID: (String) -> String? = { [officialBundle] id in officialBundle.performances.first { $0.id == id }?.stopID }
+        let resolution = PerformanceScopeResolver.resolve(
+            records: officialCritical,
+            selectedPerformanceID: selectedPerformanceID,
+            stopID: officialStopID
+        )
+
+        var items = resolution.applicable.map { CriticalNoticeItem(notice: $0, isScopeUnconfirmed: false, isAssistantOnly: false) }
+        items += resolution.unconfirmed.map { CriticalNoticeItem(notice: $0, isScopeUnconfirmed: true, isAssistantOnly: false) }
+
+        // The selected performance doesn't exist in the official bundle
+        // (e.g. selection came from an AI-only performance) — never drop an
+        // official critical fact just because scope can't be resolved.
+        if !officialBundle.performances.contains(where: { $0.id == selectedPerformanceID }) {
+            let includedIDs = Set(items.map(\.notice.id))
+            for notice in officialCritical where !includedIDs.contains(notice.id) {
+                items.append(CriticalNoticeItem(notice: notice, isScopeUnconfirmed: true, isAssistantOnly: false))
+            }
+        }
+
+        if bundle != officialBundle {
+            let aiResolution = applicableNotices()
+            let officialIDs = Set(officialCritical.map(\.id))
+            let officialTitles = Set(officialCritical.map(\.title))
+            for notice in aiResolution.applicable where Self.criticalNoticeKinds.contains(notice.kind) {
+                guard !officialIDs.contains(notice.id), !officialTitles.contains(notice.title) else { continue }
+                items.append(CriticalNoticeItem(notice: notice, isScopeUnconfirmed: false, isAssistantOnly: true))
+            }
+            for notice in aiResolution.unconfirmed where Self.criticalNoticeKinds.contains(notice.kind) {
+                guard !officialIDs.contains(notice.id), !officialTitles.contains(notice.title) else { continue }
+                items.append(CriticalNoticeItem(notice: notice, isScopeUnconfirmed: true, isAssistantOnly: true))
+            }
+        }
+
+        return items
     }
 
     public func offers(for round: TicketRound) -> [TicketOffer] {

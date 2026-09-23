@@ -16,7 +16,8 @@ final class AssistantServiceTests: XCTestCase {
         let url = URL(string: "http://127.0.0.1:\(port)/auth/callback?code=abc&state=xyz")!
         let (data, response) = try await URLSession.shared.data(from: url)
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
-        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("登录成功"))
+        let expectedSuccessMessage = String(localized: "登录成功，请返回 Live Dashboard。", bundle: .kit)
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains(expectedSuccessMessage))
         await fulfillment(of: [received], timeout: 5)
         let callback = try XCTUnwrap(box.get())
         XCTAssertEqual(callback.path, "/auth/callback")
@@ -174,7 +175,7 @@ final class AssistantServiceTests: XCTestCase {
         let day1 = try XCTUnwrap(summary.performances.first { $0.performanceID == "perf-1" })
         XCTAssertEqual(day1.summary.plainText, "第一天")
         let day2 = try XCTUnwrap(summary.performances.first { $0.performanceID == "perf-2" })
-        XCTAssertEqual(day2.summary.plainText, "官网未单独说明本场差异")
+        XCTAssertEqual(day2.summary.plainText, String(localized: "官网未单独说明本场差异", bundle: .kit))
 
         XCTAssertEqual(summary.ticketLinks.count, 1)
         XCTAssertEqual(summary.ticketLinks.first?.url, "https://eplus.jp/round1")
@@ -215,7 +216,8 @@ final class AssistantServiceTests: XCTestCase {
         XCTAssertEqual(segment.style, .bold)
         XCTAssertNil(segment.url)
         XCTAssertEqual(segment.text, "点击购票")
-        XCTAssertTrue(summary.warnings.contains { $0.contains("已忽略摘要正文中 1 个未在官网出现的链接") })
+        let expectedWarning = String(localized: "已忽略摘要正文中 \(1) 个未在官网出现的链接", bundle: .kit)
+        XCTAssertTrue(summary.warnings.contains { $0.contains(expectedWarning) })
     }
 
     func testAllowedURLsTrimsTrailingPunctuation() {
@@ -337,6 +339,179 @@ final class AssistantServiceTests: XCTestCase {
         XCTAssertNil(cleared)
     }
 
+    @MainActor
+    func testRemoveOneSummaryPersistsAndKeepsOtherEvents() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = AssistantSummaryStore(directory: directory)
+        try await store.save(Self.fixtureSummary(eventID: "event-1"))
+        try await store.save(Self.fixtureSummary(eventID: "event-2"))
+        let isolated = Self.isolatedDefaults()
+        defer { isolated.defaults.removePersistentDomain(forName: isolated.suiteName) }
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: AssistantAccountStore(secrets: InMemorySecretStore()), summaryStore: store, defaults: isolated.defaults)
+        await coordinator.load()
+        await coordinator.removeSummary(eventID: "event-1")
+        XCTAssertNil(coordinator.summary(for: "event-1"))
+        XCTAssertNotNil(coordinator.summary(for: "event-2"))
+        let reloaded = try await AssistantSummaryStore(directory: directory).all()
+        XCTAssertNil(reloaded["event-1"])
+        XCTAssertNotNil(reloaded["event-2"])
+        XCTAssertEqual(isolated.defaults.stringArray(forKey: "assistant.deletedEventIDs"), ["event-1"])
+    }
+
+    @MainActor
+    func testDeleteFailureKeepsVisibleSavedSummary() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = AssistantSummaryStore(directory: directory)
+        try await store.save(Self.fixtureSummary(eventID: "event-1"))
+        let isolated = Self.isolatedDefaults()
+        defer { isolated.defaults.removePersistentDomain(forName: isolated.suiteName) }
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: AssistantAccountStore(secrets: InMemorySecretStore()), summaryStore: store, defaults: isolated.defaults)
+        await coordinator.load()
+        try FileManager.default.removeItem(at: directory)
+        try Data("blocks directory creation".utf8).write(to: directory)
+        await coordinator.removeSummary(eventID: "event-1")
+        XCTAssertNotNil(coordinator.summary(for: "event-1"))
+        XCTAssertNotNil(coordinator.error(for: "event-1"))
+        XCTAssertNil(isolated.defaults.stringArray(forKey: "assistant.deletedEventIDs"))
+    }
+
+    @MainActor
+    func testDeletedSummaryIsNotAutomaticallyRegeneratedAfterReload() async throws {
+        let store = Self.temporarySummaryStore()
+        try await store.save(Self.fixtureSummary(eventID: "event-1"))
+        let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
+        try await accountStore.save(.apiKey("sk-test"))
+        let isolated = Self.isolatedDefaults()
+        defer { isolated.defaults.removePersistentDomain(forName: isolated.suiteName) }
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: accountStore, summaryStore: store, defaults: isolated.defaults)
+        await coordinator.load()
+        await coordinator.removeSummary(eventID: "event-1")
+        let reloaded = AssistantCoordinator(officialPageSession: nil, accountStore: accountStore, summaryStore: store, client: OpenAIResponsesClient(session: Self.stubbedSession()), defaults: isolated.defaults)
+        await reloaded.load()
+        reloaded.autoSummarizeAfterRefresh = true
+        let counter = LockedCounter()
+        AssistantStubURLProtocol.handler = { _ in
+            counter.increment()
+            throw URLError(.notConnectedToInternet)
+        }
+        defer { AssistantStubURLProtocol.handler = nil }
+        await reloaded.generateStale(in: [Self.fixtureBundle(sourceText: "updated official page")])
+        XCTAssertEqual(counter.get(), 0)
+        XCTAssertNil(reloaded.summary(for: "event-1"))
+    }
+
+    @MainActor
+    func testSaveFailureDoesNotPublishUnsavedResult() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data("blocks directory creation".utf8).write(to: directory)
+        let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
+        try await accountStore.save(.apiKey("sk-test"))
+        let isolated = Self.isolatedDefaults()
+        defer { isolated.defaults.removePersistentDomain(forName: isolated.suiteName) }
+        AssistantStubURLProtocol.handler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "text/event-stream"])!
+            return (response, Data(Self.sseCompletedEvent(outputText: #"{"overview":{"segments":[]},"keyPoints":[],"performances":[],"ticketLinks":[],"goodsLinks":[],"warnings":[]}"#).utf8))
+        }
+        defer { AssistantStubURLProtocol.handler = nil }
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: accountStore, summaryStore: AssistantSummaryStore(directory: directory), client: OpenAIResponsesClient(session: Self.stubbedSession()), defaults: isolated.defaults)
+        await coordinator.load()
+        let result = await coordinator.generate(for: Self.fixtureBundle(sourceText: "official page"))
+        XCTAssertNil(result)
+        XCTAssertNil(coordinator.summary(for: "event-1"))
+        XCTAssertNotNil(coordinator.error(for: "event-1"))
+    }
+
+    func testCancelledGenerationCleanupDoesNotRemoveNewerSavedResult() async throws {
+        let store = Self.temporarySummaryStore()
+        let old = Self.fixtureSummary(eventID: "event-1")
+        var newer = old
+        newer.generatedAt = old.generatedAt.addingTimeInterval(10)
+        try await store.save(newer)
+        try await store.remove(eventID: "event-1", ifGeneratedAt: old.generatedAt)
+        let saved = try await store.summary(for: "event-1")
+        XCTAssertEqual(saved, newer)
+    }
+
+    @MainActor
+    func testDetailUsesOrganizedDataAndDeletionRestoresOfficialFields() throws {
+        let original = Self.fixtureBundle(sourceText: "official page")
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: LiveEventBundle.encoder.encode(original)) as? [String: Any])
+        var performances = try XCTUnwrap(json["performances"] as? [[String: Any]])
+        performances[0]["venueName"] = "AI corrected hall"
+        performances[0]["performers"] = ["AI parsed performer"]
+        json["performances"] = performances
+        json["ticketRounds"] = []
+        let organized = try LiveEventBundle.decoder.decode(LiveEventBundle.self, from: JSONSerialization.data(withJSONObject: json))
+        let defaults = Self.isolatedDefaults()
+        defer { defaults.defaults.removePersistentDomain(forName: defaults.suiteName) }
+        let store = LiveDetailStore(bundle: original, initialPerformanceID: "perf-1", userDataStore: UserDataStore(container: UserDataStore.makeContainer(inMemory: true)))
+        var summary = Self.fixtureSummary(eventID: original.event.id)
+        summary.organizedBundle = organized
+        store.assistantSummary = summary
+        XCTAssertTrue(store.hasAssistantData)
+        XCTAssertEqual(store.selectedPerformance?.venueName, "AI corrected hall")
+        XCTAssertEqual(store.selectedPerformance?.performers, ["AI parsed performer"])
+        XCTAssertTrue(store.applicableTicketRounds().applicable.isEmpty)
+        XCTAssertEqual(store.officialBundle, original)
+        store.usesAssistantData = false
+        XCTAssertEqual(store.selectedPerformance?.venueName, "Test Hall")
+        XCTAssertEqual(store.applicableTicketRounds().applicable.count, 1)
+        store.usesAssistantData = true
+        store.assistantSummary = nil
+        XCTAssertFalse(store.hasAssistantData)
+        XCTAssertEqual(store.bundle, original)
+        XCTAssertEqual(store.selectedPerformanceID, "perf-1")
+    }
+
+    @MainActor
+    func testRemoveAllBeforeLoadClearsPersistedResults() async throws {
+        let store = Self.temporarySummaryStore()
+        try await store.save(Self.fixtureSummary(eventID: "event-1"))
+        let isolated = Self.isolatedDefaults()
+        defer { isolated.defaults.removePersistentDomain(forName: isolated.suiteName) }
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: AssistantAccountStore(secrets: InMemorySecretStore()), summaryStore: store, defaults: isolated.defaults)
+        await coordinator.removeAllSummaries()
+        let stored = try await store.all()
+        XCTAssertTrue(stored.isEmpty)
+        await coordinator.load()
+        XCTAssertTrue(coordinator.summaries.isEmpty)
+    }
+
+    @MainActor
+    func testSingleDeleteCancelsGenerationWithoutResurrectingResult() async throws {
+        let bundle = Self.fixtureBundle(sourceText: "official page")
+        let account = AssistantAccountStore(secrets: InMemorySecretStore())
+        try await account.save(.apiKey("sk-test"))
+        let summaryStore = Self.temporarySummaryStore()
+        try await summaryStore.save(Self.fixtureSummary(eventID: "event-2"))
+        let isolated = Self.isolatedDefaults()
+        defer { isolated.defaults.removePersistentDomain(forName: isolated.suiteName) }
+        let started = expectation(description: "generation started")
+        let gate = DispatchSemaphore(value: 0)
+        AssistantStubURLProtocol.handler = { request in
+            started.fulfill()
+            _ = gate.wait(timeout: .now() + 5)
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "text/event-stream"])!, Data(Self.sseCompletedEvent(outputText: #"{"overview":{"segments":[]},"keyPoints":[],"performances":[],"ticketLinks":[],"goodsLinks":[],"warnings":[]}"#).utf8))
+        }
+        defer { AssistantStubURLProtocol.handler = nil; gate.signal() }
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: account, summaryStore: summaryStore, client: OpenAIResponsesClient(session: Self.stubbedSession()), defaults: isolated.defaults)
+        await coordinator.load()
+        let generation = Task { await coordinator.generate(for: bundle, force: true) }
+        await fulfillment(of: [started], timeout: 5)
+        let deletion = Task { await coordinator.removeSummary(eventID: bundle.event.id) }
+        await Task.yield()
+        gate.signal()
+        await deletion.value
+        _ = await generation.value
+        XCTAssertNil(coordinator.summary(for: bundle.event.id))
+        let stored = try await summaryStore.all()
+        XCTAssertNil(stored[bundle.event.id])
+        XCTAssertNotNil(stored["event-2"])
+    }
+
     // MARK: - AssistantCoordinator
 
     @MainActor
@@ -369,7 +544,7 @@ final class AssistantServiceTests: XCTestCase {
         let summaryStore = AssistantSummaryStore(directory: directory)
         let client = OpenAIResponsesClient(session: Self.stubbedSession())
 
-        let coordinator = AssistantCoordinator(accountStore: accountStore, summaryStore: summaryStore, client: client)
+        let coordinator = AssistantCoordinator(officialPageSession: nil, accountStore: accountStore, summaryStore: summaryStore, client: client)
         await coordinator.load()
 
         XCTAssertTrue(coordinator.isStale(bundle))
@@ -377,6 +552,110 @@ final class AssistantServiceTests: XCTestCase {
         let summary = await coordinator.generate(for: bundle)
         XCTAssertNotNil(summary)
         XCTAssertFalse(coordinator.isStale(bundle))
+    }
+
+    @MainActor
+    func testCoordinatorIsStaleDetectsBundleContentChangeAfterCachedFalse() async throws {
+        let bundleA = Self.fixtureBundle(sourceText: "官网原文 A")
+        let bundleB = Self.fixtureBundle(sourceText: "官网原文 B")
+
+        let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
+        try await accountStore.save(.apiKey("sk-test"))
+        let summaryStore = Self.temporarySummaryStore()
+        let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
+            accountStore: accountStore,
+            summaryStore: summaryStore,
+            client: OpenAIResponsesClient(session: Self.stubbedSession())
+        )
+        await coordinator.load()
+
+        // Seed a summary whose fingerprint matches bundleA exactly, then
+        // prime the staleCache with a cached `false` for bundleA.
+        let summary = AssistantEventSummary(
+            eventID: bundleA.event.id,
+            generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            model: "gpt-5-mini",
+            sourceFingerprint: AssistantSummarizer.fingerprint(of: bundleA),
+            overview: AssistantRichText("总览"),
+            keyPoints: [],
+            performances: [],
+            ticketLinks: [],
+            goodsLinks: [],
+            warnings: []
+        )
+        try await summaryStore.save(summary)
+        // Reload so `coordinator.summaries` picks up the seeded summary.
+        let reloaded = AssistantCoordinator(
+            officialPageSession: nil,
+            accountStore: accountStore,
+            summaryStore: summaryStore,
+            client: OpenAIResponsesClient(session: Self.stubbedSession())
+        )
+        await reloaded.load()
+
+        XCTAssertFalse(reloaded.isStale(bundleA), "bundleA's fingerprint matches the seeded summary")
+        // Same event, different content (bundleB): must not reuse the cached
+        // `false` decision from bundleA even though the summary is unchanged.
+        XCTAssertTrue(reloaded.isStale(bundleB), "changed bundle content must invalidate the stale cache")
+    }
+
+    @MainActor
+    func testCancelThenRegenerateLeavesNewerTaskRegisteredUntilItFinishes() async throws {
+        let bundle = Self.fixtureBundle(sourceText: "官网原文全文测试 https://eplus.jp/round1")
+        let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
+        try await accountStore.save(.apiKey("sk-test"))
+        let summaryStore = Self.temporarySummaryStore()
+
+        let firstStarted = expectation(description: "first request started")
+        let releaseFirst = DispatchSemaphore(value: 0)
+        let counter = LockedCounter()
+        AssistantStubURLProtocol.handler = { request in
+            if counter.increment() == 1 {
+                firstStarted.fulfill()
+                _ = releaseFirst.wait(timeout: .now() + 5)
+                return (
+                    HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!,
+                    Data("failed".utf8)
+                )
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream"])!
+            return (response, Data(Self.sseCompletedEvent(outputText: #"{"overview":{"segments":[]},"keyPoints":[],"performances":[],"ticketLinks":[],"goodsLinks":[],"warnings":[]}"#).utf8))
+        }
+
+        let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
+            accountStore: accountStore,
+            summaryStore: summaryStore,
+            client: OpenAIResponsesClient(session: Self.stubbedSession())
+        )
+        await coordinator.load()
+
+        let firstGeneration = Task { await coordinator.generate(for: bundle) }
+        await fulfillment(of: [firstStarted], timeout: 5)
+        XCTAssertTrue(coordinator.generatingEventIDs.contains(bundle.event.id))
+
+        coordinator.cancelGeneration(for: bundle.event.id)
+        XCTAssertFalse(coordinator.generatingEventIDs.contains(bundle.event.id))
+
+        // Regenerate immediately — this must register a newer task.
+        let secondGeneration = Task { await coordinator.generate(for: bundle, force: true) }
+        // Give the new task a moment to register before the first (cancelled)
+        // task's completion races it.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertTrue(coordinator.generatingEventIDs.contains(bundle.event.id), "the newer task must still be registered")
+
+        releaseFirst.signal()
+        _ = await firstGeneration.value
+        // The first (cancelled) task finishing must not clear the newer
+        // task's bookkeeping.
+        XCTAssertTrue(coordinator.generatingEventIDs.contains(bundle.event.id), "cancel-then-regenerate must not be cleared by the stale task")
+
+        let secondResult = await secondGeneration.value
+        XCTAssertNotNil(secondResult)
+        XCTAssertFalse(coordinator.generatingEventIDs.contains(bundle.event.id))
+        AssistantStubURLProtocol.handler = nil
     }
 
     @MainActor
@@ -388,6 +667,7 @@ final class AssistantServiceTests: XCTestCase {
         let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
         try await accountStore.save(.chatGPT(Self.chatGPTSession()))
         let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             defaults: defaults
@@ -409,6 +689,7 @@ final class AssistantServiceTests: XCTestCase {
         let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
         try await accountStore.save(.chatGPT(Self.chatGPTSession()))
         let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             defaults: defaults
@@ -430,6 +711,7 @@ final class AssistantServiceTests: XCTestCase {
         let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
         try await accountStore.save(.chatGPT(Self.chatGPTSession(apiKey: "sk-exchanged")))
         let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             defaults: defaults
@@ -451,6 +733,7 @@ final class AssistantServiceTests: XCTestCase {
 
         try await accountStore.save(.apiKey("sk-first"))
         let apiCoordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             defaults: defaults
@@ -460,9 +743,16 @@ final class AssistantServiceTests: XCTestCase {
         apiCoordinator.model = "api-custom-model"
 
         try await accountStore.save(.chatGPT(Self.chatGPTSession()))
+        AssistantStubURLProtocol.handler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream"])!
+            return (response, Data(Self.sseCompletedEvent(outputText: #"{"ok":"ok"}"#).utf8))
+        }
         let chatGPTCoordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
+            client: OpenAIResponsesClient(session: Self.stubbedSession()),
             defaults: defaults
         )
         await chatGPTCoordinator.load()
@@ -473,15 +763,88 @@ final class AssistantServiceTests: XCTestCase {
         try await chatGPTCoordinator.signIn(apiKey: "sk-second")
         XCTAssertFalse(chatGPTCoordinator.usesChatGPTBackend)
         XCTAssertEqual(chatGPTCoordinator.model, "api-custom-model")
+        AssistantStubURLProtocol.handler = nil
 
         try await accountStore.save(.chatGPT(Self.chatGPTSession()))
         let reloadedChatGPTCoordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             defaults: defaults
         )
         await reloadedChatGPTCoordinator.load()
         XCTAssertEqual(reloadedChatGPTCoordinator.model, "chat-custom-model")
+    }
+
+    @MainActor
+    func testSignInWithAPIKeyDoesNotPersistWhenTestConnectionFails() async throws {
+        let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
+        AssistantStubURLProtocol.handler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"])!
+            return (response, Data(#"{"error":{"message":"bad key"}}"#.utf8))
+        }
+        let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
+            accountStore: accountStore,
+            summaryStore: Self.temporarySummaryStore(),
+            client: OpenAIResponsesClient(session: Self.stubbedSession())
+        )
+        await coordinator.load()
+
+        do {
+            try await coordinator.signIn(apiKey: "sk-bad")
+            XCTFail("expected signIn to throw when testConnection fails")
+        } catch {
+            // expected
+        }
+
+        XCTAssertEqual(coordinator.account, .signedOut)
+        let stored = await accountStore.load()
+        XCTAssertNil(stored)
+        AssistantStubURLProtocol.handler = nil
+    }
+
+    @MainActor
+    func testRemoveAllSummariesCancelsInFlightGeneration() async throws {
+        let bundle = Self.fixtureBundle(sourceText: "官网原文全文测试 https://eplus.jp/round1")
+        let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
+        try await accountStore.save(.apiKey("sk-test"))
+        let summaryStore = Self.temporarySummaryStore()
+
+        // The handler blocks until the test signals it, so the request is
+        // guaranteed to still be in flight when `removeAllSummaries` cancels
+        // it, and only resolves (as if the network had been slow) afterwards.
+        let started = expectation(description: "request started")
+        let gate = DispatchSemaphore(value: 0)
+        AssistantStubURLProtocol.handler = { request in
+            started.fulfill()
+            gate.wait()
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream"])!
+            return (response, Data(Self.sseCompletedEvent(outputText: #"{"overview":{"segments":[]},"keyPoints":[],"performances":[],"ticketLinks":[],"goodsLinks":[],"warnings":[]}"#).utf8))
+        }
+
+        let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
+            accountStore: accountStore,
+            summaryStore: summaryStore,
+            client: OpenAIResponsesClient(session: Self.stubbedSession())
+        )
+        await coordinator.load()
+
+        let generation = Task { await coordinator.generate(for: bundle) }
+        await fulfillment(of: [started], timeout: 5)
+        XCTAssertTrue(coordinator.generatingEventIDs.contains(bundle.event.id))
+
+        let deletion = Task { await coordinator.removeAllSummaries() }
+        await Task.yield()
+        gate.signal()
+        await deletion.value
+        XCTAssertFalse(coordinator.generatingEventIDs.contains(bundle.event.id))
+        _ = await generation.value
+        XCTAssertNil(coordinator.summary(for: bundle.event.id))
+        AssistantStubURLProtocol.handler = nil
     }
 
     @MainActor
@@ -504,6 +867,7 @@ final class AssistantServiceTests: XCTestCase {
             return (response, Data(Self.sseCompletedEvent(outputText: #"{"ok":"ok"}"#).utf8))
         }
         let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             client: OpenAIResponsesClient(session: Self.stubbedSession()),
@@ -541,6 +905,7 @@ final class AssistantServiceTests: XCTestCase {
         let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
         try await accountStore.save(.apiKey("sk-test"))
         let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             client: OpenAIResponsesClient(session: Self.stubbedSession()),
@@ -580,6 +945,7 @@ final class AssistantServiceTests: XCTestCase {
         let accountStore = AssistantAccountStore(secrets: InMemorySecretStore())
         try await accountStore.save(.apiKey("sk-test"))
         let coordinator = AssistantCoordinator(
+            officialPageSession: nil,
             accountStore: accountStore,
             summaryStore: Self.temporarySummaryStore(),
             client: OpenAIResponsesClient(session: Self.stubbedSession()),

@@ -67,7 +67,7 @@ public enum TicketPhaseBadgeBuilder {
         var result: [TicketPhaseBadge] = []
         var seenTexts = Set<String>()
         for round in openRounds {
-            let text = "\(phaseName(for: round))\(String(localized: "中", bundle: .kit))"
+            let text = String(localized: "\(phaseName(for: round))中", bundle: .kit)
             if seenTexts.insert(text).inserted {
                 result.append(TicketPhaseBadge(text: text, tone: .open))
             }
@@ -123,8 +123,9 @@ public enum TicketPhaseBadgeBuilder {
             let matched = String(name[range])
             let digits = matched.dropLast() // drop trailing "次"
             if let n = Int(digits) {
-                let suffix = name.contains("先行") ? String(localized: "先行", bundle: .kit) : ""
-                return "\(String(localized: "第", bundle: .kit))\(n)\(String(localized: "次", bundle: .kit))\(suffix)"
+                return name.contains("先行")
+                    ? String(localized: "第\(n)次先行", bundle: .kit)
+                    : String(localized: "第\(n)次", bundle: .kit)
             }
         }
 
@@ -132,8 +133,9 @@ public enum TicketPhaseBadgeBuilder {
         let chars = Array(name)
         for index in chars.indices {
             if let n = kanjiDigits[chars[index]], index + 1 < chars.count, chars[index + 1] == "次" {
-                let suffix = name.contains("先行") ? String(localized: "先行", bundle: .kit) : ""
-                return "\(String(localized: "第", bundle: .kit))\(n)\(String(localized: "次", bundle: .kit))\(suffix)"
+                return name.contains("先行")
+                    ? String(localized: "第\(n)次先行", bundle: .kit)
+                    : String(localized: "第\(n)次", bundle: .kit)
             }
         }
         return nil

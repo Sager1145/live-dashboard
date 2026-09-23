@@ -151,3 +151,47 @@ public struct TicketRound: Codable, Hashable, Identifiable, Sendable {
         try c.encode(notes, forKey: .notes)
     }
 }
+
+/// Presentation retains every entry, including legacy singular URLs and links
+/// whose product association is unknown. Only exact duplicate links are folded.
+extension TicketRound {
+    public var allApplicationLinks: [OfficialLink] {
+        var result = links.filter {
+            let role = $0.role ?? OfficialLink.classify(label: $0.label, url: $0.url)
+            return role == .application || role == .overseasApplication
+        }
+        for (url, label, role) in [
+            (applyURL, "前往官方申请", OfficialLinkRole.application),
+            (overseasURL, "海外申请", OfficialLinkRole.overseasApplication)
+        ] {
+            if let url, !result.contains(where: { $0.url == url }) {
+                result.append(OfficialLink(label: label, url: url, role: role))
+            }
+        }
+        var merged: [OfficialLink] = []
+        for link in result {
+            if let index = merged.firstIndex(where: { $0.id == link.id }) {
+                let previous = merged[index]
+                var names = previous.productNames
+                for name in link.productNames where !names.contains(name) { names.append(name) }
+                merged[index] = OfficialLink(label: previous.label, url: previous.url, role: previous.role, productNames: names)
+            } else {
+                merged.append(link)
+            }
+        }
+        return merged
+    }
+
+    public var allLotteryProducts: [String] {
+        var seen: Set<String> = []
+        return (lotteryProducts + links.flatMap(\.productNames)).filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+
+    public func applicationLinks(forProduct product: String) -> [OfficialLink] {
+        allApplicationLinks.filter { $0.productNames.contains(product) }
+    }
+
+    public var unassignedApplicationLinks: [OfficialLink] {
+        allApplicationLinks.filter { $0.productNames.isEmpty }
+    }
+}

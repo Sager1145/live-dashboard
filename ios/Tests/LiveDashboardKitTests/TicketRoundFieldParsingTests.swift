@@ -371,6 +371,101 @@ final class TicketRoundFieldParsingTests: XCTestCase {
         XCTAssertEqual(decoded, fullRound)
     }
 
+    func testMultipleProductsKeepTheirOwnAndSharedApplicationLinks() async throws {
+        let html = """
+        <article>
+        <div data-target="top"><h3>日程</h3><p>2026年10月1日(木) 開場17:00／開演18:00</p><h3>会場</h3><p>東京・Test Hall</p></div>
+        <div class="ticket" data-target="ticket">
+        ＜最速先行抽選＞<br>
+        テストシングル「A」<br>
+        <a href="https://eplus.jp/serial/a/">受付はこちら</a><br>
+        <a href="https://eplus.jp/serial/a/">受付はこちら</a><br>
+        テストシングル「B」<br>
+        <a href="https://eplus.jp/serial/b/"><img src="button.png" alt="受付はこちら"></a><br>
+        テストシングル「C」<br>
+        テストシングル「D」<br>
+        封入申込券にて受付<br>
+        <a href="https://eplus.jp/serial/shared/">受付はこちら</a><br>
+        ■受付期間：2026年8月1日(土)12:00～8月31日(月)23:59<br>
+        <a href="https://eplus.jp/extra/">追加受付</a><br>
+        <a href="https://ib.eplus.jp/example">Overseas tickets</a>
+        </div></article>
+        """
+        let bundle = try await refresh(html: html, url: "https://www.lovelive-anime.jp/test/live/", title: "Test", franchise: .lovelive)
+        let round = try XCTUnwrap(bundle.ticketRounds.first)
+        XCTAssertEqual(round.allLotteryProducts, ["テストシングル「A」", "テストシングル「B」", "テストシングル「C」", "テストシングル「D」"])
+        XCTAssertEqual(round.allApplicationLinks.count, 5)
+        XCTAssertEqual(round.applicationLinks(forProduct: "テストシングル「A」").map(\.url), ["https://eplus.jp/serial/a/"])
+        XCTAssertEqual(round.applicationLinks(forProduct: "テストシングル「B」").map(\.url), ["https://eplus.jp/serial/b/"])
+        for name in ["テストシングル「C」", "テストシングル「D」"] {
+            XCTAssertEqual(round.applicationLinks(forProduct: name).map(\.url), ["https://eplus.jp/serial/shared/"])
+        }
+        XCTAssertEqual(round.unassignedApplicationLinks.map(\.url), ["https://eplus.jp/extra/", "https://ib.eplus.jp/example"])
+        XCTAssertEqual(try LiveEventBundle.decoder.decode(TicketRound.self, from: LiveEventBundle.encoder.encode(round)), round)
+    }
+
+    func testRepeatedRoundNamesAndMultipleBareURLsAreNotDropped() async throws {
+        let html = """
+        <article><div data-target="top"><h3>日程</h3><p>2026年10月1日(木) 開場17:00／開演18:00</p><h3>会場</h3><p>東京・Test Hall</p></div>
+        <div class="ticket" data-target="ticket">
+        ＜最速先行抽選＞<br>テストシングル「A」<br>封入申込券にて受付<br>
+        ■受付期間：2026年8月1日(土)12:00～8月31日(月)23:59<br>
+        ■受付URL：https://eplus.jp/a/ https://eplus.jp/a2/<br>
+        ＜最速先行抽選＞<br>テストシングル「B」<br>封入申込券にて受付<br>
+        ■受付期間：2026年8月1日(土)12:00～8月31日(月)23:59<br>
+        ■受付URL：https://eplus.jp/b/<br>
+        ＜最速先行抽選＞<br>テストシングル「A」<br>封入申込券にて受付<br>
+        ■受付期間：2026年8月1日(土)12:00～8月31日(月)23:59<br>
+        ■受付URL：https://eplus.jp/another-a/
+        </div></article>
+        """
+        let bundle = try await refresh(html: html, url: "https://www.lovelive-anime.jp/test/live/", title: "Test", franchise: .lovelive)
+        XCTAssertEqual(bundle.ticketRounds.count, 3)
+        XCTAssertEqual(Set(bundle.ticketRounds.map(\.id)).count, 3)
+        XCTAssertEqual(Set(bundle.ticketRounds.flatMap(\.allApplicationLinks).map(\.url)), Set(["https://eplus.jp/a/", "https://eplus.jp/a2/", "https://eplus.jp/b/", "https://eplus.jp/another-a/"]))
+    }
+
+    func testBangDreamReceiptBeforeProductKeepsAllThreePairs() async throws {
+        let html = """
+        <article class="p-live-event-detail">
+        <h1 class="p-live-event-detail__header-title">BanG Dream! Test</h1>
+        <div class="p-live-event-detail__content c-post-content">
+        <h2>日程・会場</h2><p>日程：2026年10月1日(木) 開場16:00／開演17:00<br>会場：東京・Test Hall</p>
+        <h2>会場チケット</h2><h3>各公演チケット</h3>
+        <p>○DAY1 : Band A<br>受付期間：2026年5月3日(日)21:00～7月13日(月)23:59<br>
+        受付URL：<a href="https://eplus.jp/serial/a/">受付はこちら</a><br>
+        ※<a href="https://bang-dream.com/discographies/a/">Band A Single「A」</a>初回生産分に封入の申込券でご応募いただけます。</p>
+        <p>○DAY2 : Band B<br>受付期間：2026年5月3日(日)21:00～7月13日(月)23:59<br>
+        受付URL：<a href="https://eplus.jp/serial/b/">受付はこちら</a><br>
+        ※<a href="https://bang-dream.com/discographies/b/">Band B Single「B」</a>初回生産分に封入の申込券でご応募いただけます。</p>
+        <p>○DAY3 : Band C<br>受付期間：2026年5月3日(日)21:00～7月13日(月)23:59<br>
+        受付URL：<a href="https://eplus.jp/serial/c/">受付はこちら</a><br>
+        ※<a href="https://bang-dream.com/discographies/c/">Band C Single「C」</a>初回生産分に封入の申込券でご応募いただけます。</p>
+        </div></article>
+        """
+        let bundle = try await refresh(html: html, url: "https://bang-dream.com/events/test/", title: "Test")
+        let round = try XCTUnwrap(bundle.ticketRounds.first)
+        XCTAssertEqual(round.allLotteryProducts.count, 3)
+        XCTAssertEqual(round.allApplicationLinks.count, 3)
+        for letter in ["A", "B", "C"] {
+            XCTAssertEqual(round.applicationLinks(forProduct: "Band \(letter) Single「\(letter)」").map(\.url), ["https://eplus.jp/serial/\(letter.lowercased())/"])
+        }
+    }
+
+    func testLegacySingularURLsRemainVisibleAlongsideAllAdditionalLinks() throws {
+        let json = """
+        {"id":"r","eventID":"e","officialName":"抽選","kind":"lottery","scope":{"kind":"unconfirmed"},"status":"confirmed","officialStatus":"受付終了",
+        "applyURL":"https://eplus.jp/a/","overseasURL":"https://ib.eplus.jp/a/",
+        "lotteryProducts":["A","B","A"],"links":[{"label":"Shared application","url":"https://eplus.jp/b/","productNames":["B"]},{"label":"Shared application","url":"https://eplus.jp/b/","productNames":["C"]}]}
+        """
+        let round = try LiveEventBundle.decoder.decode(TicketRound.self, from: Data(json.utf8))
+        XCTAssertEqual(round.allLotteryProducts, ["A", "B", "C"])
+        XCTAssertEqual(round.allApplicationLinks.count, 3)
+        XCTAssertEqual(round.applicationLinks(forProduct: "B").count, 1)
+        XCTAssertEqual(round.applicationLinks(forProduct: "C").count, 1)
+        XCTAssertEqual(round.unassignedApplicationLinks.count, 2)
+    }
+
     // MARK: - Helpers
 
     private func refresh(html: String, url: String, title: String, franchise: Franchise = .bangdream) async throws -> LiveEventBundle {

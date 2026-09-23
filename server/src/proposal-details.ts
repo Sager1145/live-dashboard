@@ -38,8 +38,6 @@ export async function mergeSnapshotDetails(
     ).rows[0].entity_id as string;
   };
   const scopeFor = (c: FactCandidate): Scope => {
-    if (explicitPerformanceID)
-      return { kind: "performances", performanceIDs: [explicitPerformanceID] };
     if (
       c.applicability.kind === "performances" &&
       c.applicability.performanceIds?.length
@@ -52,9 +50,13 @@ export async function mergeSnapshotDetails(
     const matched = label
       ? b.performances.find((p) => p.dayLabel === label)
       : undefined;
-    return matched
-      ? { kind: "performances", performanceIDs: [matched.id] }
-      : { kind: "unconfirmed" };
+    if (matched) return { kind: "performances", performanceIDs: [matched.id] };
+    if (
+      explicitPerformanceID &&
+      !/3DAYS|multiple performances|unspecified/i.test(label ?? "")
+    )
+      return { kind: "performances", performanceIDs: [explicitPerformanceID] };
+    return { kind: "unconfirmed" };
   };
   const evidence = (
     id: string,
@@ -167,7 +169,7 @@ export async function mergeSnapshotDetails(
           value.kind ??
           "other",
         scope,
-        status: "needsReview",
+        status: value.status ?? "needsReview",
         ...Object.fromEntries(
           [
             "applyStartAt",
@@ -179,6 +181,15 @@ export async function mergeSnapshotDetails(
             "announcementURL",
             "overseasURL",
             "officialStatus",
+            "links",
+            "applyWindowText",
+            "resultText",
+            "paymentStartAt",
+            "paymentWindowText",
+            "quantityLimit",
+            "lotteryProducts",
+            "applicationTarget",
+            "notes",
           ]
             .filter((k) => value[k] !== undefined)
             .map((k) => [k, value[k]]),

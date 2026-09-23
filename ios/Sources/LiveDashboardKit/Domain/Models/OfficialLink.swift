@@ -19,11 +19,14 @@ public struct OfficialLink: Codable, Hashable, Identifiable, Sendable {
     public let label: String
     public let url: String
     public let role: OfficialLinkRole?
+    /// Product titles explicitly associated with this link on the source page.
+    public let productNames: [String]
 
-    public init(label: String, url: String, role: OfficialLinkRole? = nil) {
+    public init(label: String, url: String, role: OfficialLinkRole? = nil, productNames: [String] = []) {
         self.label = label
         self.url = url
         self.role = role
+        self.productNames = productNames
     }
 
     public var id: String { "\(url)::\(label)" }
@@ -33,7 +36,7 @@ public struct OfficialLink: Codable, Hashable, Identifiable, Sendable {
     public var host: String? { URL(string: url)?.host?.lowercased() }
 
     private enum CodingKeys: String, CodingKey {
-        case label, url, role
+        case label, url, role, productNames
     }
 
     public init(from decoder: Decoder) throws {
@@ -41,6 +44,7 @@ public struct OfficialLink: Codable, Hashable, Identifiable, Sendable {
         label = try c.decode(String.self, forKey: .label)
         url = try c.decode(String.self, forKey: .url)
         role = try c.decodeIfPresent(OfficialLinkRole.self, forKey: .role)
+        productNames = try c.decodeIfPresent([String].self, forKey: .productNames) ?? []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -48,6 +52,7 @@ public struct OfficialLink: Codable, Hashable, Identifiable, Sendable {
         try c.encode(label, forKey: .label)
         try c.encode(url, forKey: .url)
         try c.encodeIfPresent(role, forKey: .role)
+        if !productNames.isEmpty { try c.encode(productNames, forKey: .productNames) }
     }
 
     /// Vendor hosts that host the real application flow (受付 button).

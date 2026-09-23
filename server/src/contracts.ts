@@ -20,6 +20,7 @@ export const officialLinkSchema = z.object({
   label: z.string().min(1),
   url: z.url(),
   role: officialLinkRoleSchema.nullable().optional(),
+  productNames: z.array(z.string().min(1)).optional(),
 });
 export const ticketNoteSchema = z.object({
   kind: z.enum([

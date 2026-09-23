@@ -17,7 +17,7 @@ public enum KeychainStoreError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .unexpectedStatus(let status):
-            return "Keychain 操作失败（状态码 \(status)）。"
+            return String(localized: "Keychain 操作失败（状态码 \(status)）。", bundle: .kit)
         }
     }
 }

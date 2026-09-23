@@ -100,17 +100,25 @@ struct AppShell: View {
     var body: some View {
         @Bindable var router = dependencies.router
         TabView(selection: $router.selectedRootTab) {
-            Tab("演出", systemImage: "calendar", value: RootTab.dashboard) {
+            Tab(value: RootTab.dashboard) {
                 DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant)
+            } label: {
+                Label { Text("演出", bundle: .kit) } icon: { Image(systemName: "calendar") }
             }
-            Tab("往期", systemImage: "clock.arrow.circlepath", value: RootTab.pastLives) {
+            Tab(value: RootTab.pastLives) {
                 DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant, scope: .past)
+            } label: {
+                Label { Text("往期", bundle: .kit) } icon: { Image(systemName: "clock.arrow.circlepath") }
             }
-            Tab("我的", systemImage: "star", value: RootTab.myLives) {
-                MyLivesView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, installationService: dependencies.installationService, assistant: dependencies.assistant)
+            Tab(value: RootTab.myLives) {
+                MyLivesView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, installationService: dependencies.installationService, assistant: dependencies.assistant, router: dependencies.router)
+            } label: {
+                Label { Text("我的", bundle: .kit) } icon: { Image(systemName: "star") }
             }
-            Tab("设置", systemImage: "gearshape", value: RootTab.settings) {
+            Tab(value: RootTab.settings) {
                 SettingsView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, assistant: dependencies.assistant)
+            } label: {
+                Label { Text("设置", bundle: .kit) } icon: { Image(systemName: "gearshape") }
             }
         }
         .task { await dependencies.assistant.load() }

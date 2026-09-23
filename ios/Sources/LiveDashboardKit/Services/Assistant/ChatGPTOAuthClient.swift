@@ -17,13 +17,13 @@ public enum ChatGPTOAuthError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .stateMismatch: return "登录状态校验失败，请重试。"
-        case .missingCode: return "未收到登录授权码，请重试。"
-        case .providerError(let message): return "登录失败：\(message)"
-        case .callbackServerUnavailable: return "本地回调服务器无法启动，请检查端口占用。"
-        case .cancelled: return "已取消登录。"
-        case .invalidResponse: return "登录服务返回了无法解析的响应。"
-        case .invalidGrant: return "ChatGPT 登录已失效，请重新登录"
+        case .stateMismatch: return String(localized: "登录状态校验失败，请重试。", bundle: .kit)
+        case .missingCode: return String(localized: "未收到登录授权码，请重试。", bundle: .kit)
+        case .providerError(let message): return String(localized: "登录失败：\(message)", bundle: .kit)
+        case .callbackServerUnavailable: return String(localized: "本地回调服务器无法启动，请检查端口占用。", bundle: .kit)
+        case .cancelled: return String(localized: "已取消登录。", bundle: .kit)
+        case .invalidResponse: return String(localized: "登录服务返回了无法解析的响应。", bundle: .kit)
+        case .invalidGrant: return String(localized: "ChatGPT 登录已失效，请重新登录", bundle: .kit)
         }
     }
 }

@@ -8,6 +8,10 @@ struct OfficialLinksView: View {
     let title: String
     var prominentFirst: Bool = false
     var excluding: [String] = []
+    /// When supplied, link labels are rendered via `OfficialText` so a
+    /// card-level translation toggle also swaps in translated labels.
+    var cardKey: String?
+    var eventID: String?
 
     private var filtered: [OfficialLink] {
         let excludedSet = Set(excluding)
@@ -17,25 +21,50 @@ struct OfficialLinksView: View {
     var body: some View {
         let items = filtered
         if !items.isEmpty {
+            let promotes = prominentFirst && items.count == 1
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.caption).foregroundStyle(.secondary)
-                ForEach(Array(items.enumerated()), id: \.element.id) { (index: Int, link: OfficialLink) in
-                    if let url = URL(string: link.url) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            if prominentFirst && index == 0 {
-                                Link(destination: url) { Label(link.label, systemImage: "link") }
-                                    .buttonStyle(.borderedProminent)
-                            } else {
-                                Link(destination: url) { Label(link.label, systemImage: "link") }
-                                    .buttonStyle(.bordered)
-                            }
-                            if let host = link.host {
-                                Text(host).font(.caption2).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+                Text(LocalizedStringKey(title), bundle: .kit)
+                    .font(prominentFirst ? .subheadline.weight(.semibold) : .caption)
+                    .foregroundStyle(prominentFirst ? .primary : .secondary)
+                ForEach(items) { link in
+                    linkRow(link, isProminent: promotes && link == items.first)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func linkRow(_ link: OfficialLink, isProminent: Bool) -> some View {
+        if let url = URL(string: link.url) {
+            VStack(alignment: .leading, spacing: 2) {
+                Group {
+                    if isProminent {
+                        Link(destination: url) {
+                            Label { linkLabelText(link) } icon: { Image(systemName: "arrow.up.right.square") }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else {
+                        Link(destination: url) {
+                            Label { linkLabelText(link) } icon: { Image(systemName: "arrow.up.right.square") }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .accessibilityHint(Text("在浏览器中打开", bundle: .kit))
+                .accessibilityValue(Text(verbatim: link.host ?? ""))
+                if let host = link.host {
+                    Text(host).font(.caption2).foregroundStyle(.secondary).accessibilityHidden(true)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func linkLabelText(_ link: OfficialLink) -> some View {
+        if let cardKey, let eventID {
+            OfficialText(link.label, cardKey: cardKey, eventID: eventID)
+        } else {
+            Text(verbatim: link.label)
         }
     }
 }

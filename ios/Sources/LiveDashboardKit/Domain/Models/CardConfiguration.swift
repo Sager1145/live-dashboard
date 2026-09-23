@@ -19,6 +19,31 @@ public enum CardType: String, Codable, Hashable, Sendable {
     case venueGenericSeatingMap
     // Goods (one card per campaign, keyed by campaign entity ID)
     case goodsCampaign
+
+    /// Fields the card's view actually reads via `CardConfiguration.shows(_:)`,
+    /// ordered as `CardField.allCases`. This must mirror the `shows(_:)` calls
+    /// in the corresponding card view exactly — update it whenever a view adds
+    /// or drops a field check, or the settings UI will offer dead toggles.
+    public var supportedFields: [CardField] {
+        switch self {
+        case .assistantSummary, .performers, .eventSeatingMap, .venueGenericSeatingMap:
+            return []
+        case .timeAndVenue:
+            return [.time, .place]
+        case .pricing:
+            return [.price]
+        case .admission:
+            return [.eligibility]
+        case .ticketRound:
+            return [.time, .price, .eligibility, .source]
+        case .streamOffer:
+            return [.time, .place, .price, .eligibility, .source]
+        case .ticketBenefit:
+            return [.time, .place, .price, .source]
+        case .goodsCampaign:
+            return [.time, .place, .price, .eligibility, .source]
+        }
+    }
 }
 
 public enum CardDensity: String, Codable, Hashable, Sendable {

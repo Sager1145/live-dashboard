@@ -1,113 +1,180 @@
 import SwiftUI
 import UIKit
-import ImageIO
 
 public struct LiveEventCard: View {
     public let summary: DashboardEventSummary
     public let showsPrice: Bool
+    public let isRefreshing: Bool
+    /// Past-tab cards render a neutral "已结束" badge instead of the upcoming-tab chrome.
+    public let scope: DashboardScope
 
-    public init(summary: DashboardEventSummary, showsPrice: Bool = true) {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    public init(summary: DashboardEventSummary, showsPrice: Bool = true, isRefreshing: Bool = false, scope: DashboardScope = .upcoming) {
         self.summary = summary
         self.showsPrice = showsPrice
+        self.isRefreshing = isRefreshing
+        self.scope = scope
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            DashboardThumbnail(summary: summary)
+            DashboardThumbnail(summary: summary, isRefreshing: isRefreshing)
                 .padding(.bottom, 6)
-            HStack {
-                Text(franchiseLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if summary.isFollowed {
-                    Text("已关注")
-                        .font(.caption)
-                        .foregroundStyle(.tint)
-                }
+
+            if let badgeText = statusBadgeText {
+                statusBadge(text: badgeText)
             }
 
-            Text(summary.officialTitle)
+            Text(verbatim: summary.officialTitle)
                 .font(.headline)
                 .multilineTextAlignment(.leading)
 
-            if !summary.ticketBadges.isEmpty {
-                TicketBadgeRow(badges: summary.ticketBadges)
-                    .accessibilityIdentifier("ticketBadges-\(summary.id)")
-            }
-
-            if !summary.groups.isEmpty {
-                Text(summary.groups.joined(separator: " × "))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if summary.status == .cancelled || summary.status == .postponed {
-                Label(summary.status == .cancelled ? "已取消" : "已延期", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption.bold())
-                    .foregroundStyle(.orange)
-            }
-
-            HStack {
-                if let first = summary.firstLocalDate {
-                    Text(dateRangeText(first: first, last: summary.lastLocalDate))
-                } else {
-                    Text("日期待公布")
-                }
-                Text("· 共 \(summary.dayLabels.count) 场")
-                if summary.stopCount > 1 {
-                    Text("· \(summary.stopCount) 站")
-                }
-            }
-            .font(.subheadline)
+            Text(verbatim: metadataLine)
+                .font(.subheadline)
 
             if !summary.venueSummary.isEmpty {
-                Text(summary.venueSummary)
+                Text(verbatim: summary.venueSummary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            HStack {
-                if let deadline = summary.nextDeadline {
-                    Text("下一事项：\(deadlineText(deadline))截止")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if showsPrice, let price = summary.minimumPriceJPY {
-                    Text("¥\(price)起")
-                        .font(.footnote)
+            if !summary.ticketBadges.isEmpty {
+                TicketBadgeRow(badges: summary.ticketBadges)
+                    .accessibilityHidden(true)
+            }
+
+            if summary.nextDeadline != nil || (showsPrice && priceText != nil) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 2) {
+                        deadlineLabel
+                        priceLabel
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline) {
+                        deadlineLabel
+                        Spacer(minLength: 8)
+                        priceLabel
+                    }
                 }
             }
 
-            HStack {
-                ForEach(uniqueDayLabels, id: \.self) { label in
-                    Text(label)
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.quaternary, in: Capsule())
-                }
-                Spacer()
-                if summary.hasImportantUpdate {
-                    Text("有重要更新")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.red)
-                }
+            footerRow
+
+            if summary.hasImportantUpdate {
+                importantUpdateBadge
             }
         }
         .padding()
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(.rect(cornerRadius: 16))
+        .accessibilityElement(children: .ignore)
+        // `.accessibilityElement(children: .ignore)` above removes the thumbnail's own
+        // accessibility node from the tree, so its identifier has to live on this combined
+        // element instead to stay reachable from UI tests.
+        .accessibilityIdentifier("liveEventCard-\(summary.id)")
+        .accessibilityLabel(accessibilitySummary)
+        .accessibilityValue(isRefreshing ? Text("正在更新", bundle: .kit) : Text(verbatim: ""))
     }
 
-    private var uniqueDayLabels: [String] {
-        var seen = Set<String>()
-        return summary.dayLabels.filter { seen.insert($0).inserted }
+    /// Renders nothing when there's no next deadline, so the horizontal branch's `HStack` and
+    /// vertical branch's `VStack` both collapse cleanly instead of leaving a stray gap.
+    @ViewBuilder
+    private var deadlineLabel: some View {
+        if let deadline = summary.nextDeadline {
+            Text(verbatim: nextActionText(deadline))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var priceLabel: some View {
+        if showsPrice, let priceText {
+            Text("\(priceText)起", bundle: .kit)
+                .font(.footnote)
+        }
+    }
+
+    /// Franchise + groups, refresh state and follow state — supplementary info that trails
+    /// the ticket/deadline/price content rather than competing with it up top.
+    private var footerRow: some View {
+        HStack(alignment: .top) {
+            Text(verbatim: footerText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if isRefreshing {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityHidden(true)
+            }
+            if summary.isFollowed {
+                Text("已关注", bundle: .kit)
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+            }
+        }
+    }
+
+    private var footerText: String {
+        guard !summary.groups.isEmpty else { return franchiseLabel }
+        return "\(franchiseLabel) · \(summary.groups.joined(separator: " × "))"
+    }
+
+    private var importantUpdateBadge: some View {
+        Label {
+            Text("有重要更新", bundle: .kit)
+        } icon: {
+            Image(systemName: "bell.badge")
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Color.statusCritical.opacity(0.18), in: Capsule())
+    }
+
+    /// "下一事项：ラウンド名称締切" — factored so the visual label and `accessibilitySummary`
+    /// (VoiceOver) render exactly the same text, round label included.
+    private func nextActionText(_ deadline: Date) -> String {
+        // Official round label is verbatim scraped text, not a localizable string, so it is
+        // joined in directly rather than interpolated into a `String(localized:)` key.
+        let label = summary.currentRoundLabel.map { $0 + "：" } ?? ""
+        return String(localized: "下一事项：\(label)\(deadlineText(deadline))截止", bundle: .kit)
+    }
+
+    /// Date range · 共 N 场 · N 站, concatenated into one Text so it wraps as a single
+    /// line-breaking unit at accessibility text sizes instead of three separate Texts
+    /// fighting for space in an HStack.
+    private var metadataLine: String {
+        var parts: [String] = []
+        if let first = summary.firstLocalDate {
+            parts.append(dateRangeText(first: first, last: summary.lastLocalDate))
+        } else {
+            parts.append(String(localized: "日期待公布", bundle: .kit))
+        }
+        parts.append(String(localized: "共 \(summary.dayLabels.count) 场", bundle: .kit))
+        if summary.stopCount > 1 {
+            parts.append(String(localized: "\(summary.stopCount) 站", bundle: .kit))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func dateRangeText(first: String, last: String?) -> String {
-        guard let last, last != first else { return first }
-        return "\(first) ~ \(last)"
+        let zone = EventFormatting.timeZone(identifier: summary.timeZoneIdentifier, fallback: .current)
+        guard let firstDate = EventFormatting.parseISODate(first, in: zone) else {
+            guard let last, last != first else { return first }
+            return "\(first) ~ \(last)"
+        }
+        guard let last, last != first, let lastDate = EventFormatting.parseISODate(last, in: zone) else {
+            var zonedCalendar = Calendar(identifier: .gregorian)
+            zonedCalendar.timeZone = zone
+            let includesYear = scope == .past
+                || zonedCalendar.component(.year, from: firstDate) != zonedCalendar.component(.year, from: Date())
+            return EventFormatting.date(firstDate, in: zone, includesYear: includesYear)
+        }
+        return EventFormatting.dateRange(firstDate, lastDate, in: zone)
     }
 
     private var franchiseLabel: String {
@@ -118,12 +185,60 @@ public struct LiveEventCard: View {
         }
     }
 
+    private var priceText: String? {
+        guard let price = summary.minimumPriceJPY else { return nil }
+        return EventFormatting.price(price, currencyCode: "JPY")
+    }
+
     private func deadlineText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.timeZone = TimeZone(identifier: summary.timeZoneIdentifier)
-        return formatter.string(from: date)
+        let zone = EventFormatting.timeZone(identifier: summary.timeZoneIdentifier, fallback: .current)
+        return EventFormatting.dateTime(date, in: zone)
+    }
+
+    private var statusBadgeText: String? {
+        switch summary.status {
+        case .cancelled: String(localized: "已取消", bundle: .kit)
+        case .postponed: String(localized: "已延期", bundle: .kit)
+        case .finished: scope == .past ? String(localized: "已结束", bundle: .kit) : nil
+        case .scheduled, .unknown: nil
+        }
+    }
+
+    private func statusBadge(text: String) -> some View {
+        let isNeutral = summary.status == .finished
+        return Label {
+            Text(verbatim: text)
+        } icon: {
+            Image(systemName: isNeutral ? "checkmark.circle" : "exclamationmark.triangle.fill")
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background((isNeutral ? Color.secondary : Color.statusWarning).opacity(isNeutral ? 0.12 : 0.18), in: Capsule())
+    }
+
+    /// Everything a VoiceOver user needs from one swipe: title, series/group, status,
+    /// ticket-phase badges, date range, venue, next action and its deadline (with time zone),
+    /// price, and follow state.
+    var accessibilitySummary: String {
+        var parts: [String] = [summary.officialTitle]
+        if !summary.groups.isEmpty { parts.append(summary.groups.joined(separator: "、")) }
+        if let statusBadgeText { parts.append(statusBadgeText) }
+        if !summary.ticketBadges.isEmpty { parts.append(summary.ticketBadges.map(\.text).joined(separator: "、")) }
+        if let first = summary.firstLocalDate {
+            parts.append(dateRangeText(first: first, last: summary.lastLocalDate))
+        } else {
+            parts.append(String(localized: "日期待公布", bundle: .kit))
+        }
+        if !summary.venueSummary.isEmpty { parts.append(summary.venueSummary) }
+        if let deadline = summary.nextDeadline {
+            parts.append(nextActionText(deadline))
+        }
+        if showsPrice, let priceText { parts.append(String(localized: "\(priceText)起", bundle: .kit)) }
+        if summary.hasImportantUpdate { parts.append(String(localized: "有重要更新", bundle: .kit)) }
+        if summary.isFollowed { parts.append(String(localized: "已关注", bundle: .kit)) }
+        return parts.joined(separator: "，")
     }
 }
 
@@ -132,124 +247,137 @@ private struct TicketBadgeRow: View {
     let badges: [TicketPhaseBadge]
 
     var body: some View {
-        HStack(spacing: 6) {
+        FlowLayout {
             ForEach(badges) { badge in
-                Text(badge.text)
+                Text(verbatim: badge.text)
                     .font(.caption2.bold())
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .foregroundStyle(color(for: badge.tone))
-                    .background(color(for: badge.tone).opacity(0.15), in: Capsule())
-                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+                    .background(color(for: badge.tone).opacity(0.18), in: Capsule())
             }
         }
     }
 
     private func color(for tone: TicketPhaseBadge.Tone) -> Color {
         switch tone {
-        case .open: .green
-        case .upcoming: .blue
+        case .open: .statusPositive
+        case .upcoming: .statusInfo
         case .closed: .secondary
-        case .soldOut: .red
+        case .soldOut: .statusCritical
         }
     }
 }
 
-/// Uses the same official request headers as the detail gallery (including
-/// Love Live's image.php compatibility), rather than an unconfigured AsyncImage.
+/// Loads through `OfficialImagePipeline` (same request headers and cache as the detail
+/// gallery) instead of an unconfigured AsyncImage.
 private struct DashboardThumbnail: View {
     let summary: DashboardEventSummary
-    private var asset: MediaAsset? { summary.officialThumbnail }
+    let isRefreshing: Bool
+    // Tuples aren't Equatable so `.task(id:)`/state can't key on `(url, image)` directly; these
+    // three states play that role instead, keeping the displayed image tied to its own URL so a
+    // stale image from a previous `summary` never flashes before the new one loads.
     @State private var image: UIImage?
-    private let loader = URLSessionOfficialMediaLoader()
+    @State private var imageURL: URL?
+    @State private var failedURL: URL?
+    /// Bumped when a per-card refresh finishes after a failed load, so `.task(id:)` reruns and
+    /// retries even though the candidate URLs themselves haven't changed.
+    @State private var retryToken = 0
 
-    /// The event's official page; the share button shares this link, not the image.
-    private var officialURL: URL? {
-        guard let url = URL(string: summary.primarySourceURL), url.scheme != nil else { return nil }
-        return url
+    private struct TaskID: Hashable {
+        let urls: [URL]
+        let retryToken: Int
+    }
+
+    /// Thumbnail URL first, then the original asset URL as a fallback (mirrors
+    /// `OfficialMediaView.loadPreview`'s candidate order).
+    private var candidateURLs: [URL] {
+        guard let asset = summary.officialThumbnail else { return [] }
+        var urls: [URL] = []
+        if let thumbnail = asset.thumbnailURL.flatMap(URL.init(string:)) { urls.append(thumbnail) }
+        if let original = URL(string: asset.originalURL), !urls.contains(original) { urls.append(original) }
+        return urls
+    }
+
+    private var displayedImage: UIImage? {
+        guard let imageURL, candidateURLs.contains(imageURL) else { return nil }
+        return image
+    }
+
+    private var isFailed: Bool {
+        guard let failedURL else { return false }
+        return candidateURLs.contains(failedURL)
     }
 
     var body: some View {
-        ZStack {
-            Rectangle().fill(.quaternary)
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                coverPlaceholder
-            }
-        }
+        LinearGradient(colors: [Color(uiColor: .tertiarySystemFill), Color(uiColor: .quaternarySystemFill)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        .aspectRatio(16 / 9, contentMode: .fit)
         .frame(maxWidth: .infinity)
-        .frame(height: 160)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .accessibilityLabel(image == nil ? "\(summary.officialTitle)，默认封面" : "\(summary.officialTitle)，官方公演封面")
-        .accessibilityIdentifier("officialThumbnail-\(summary.id)")
-        .overlay(alignment: .topTrailing) {
-            if let officialURL {
-                ShareLink(item: officialURL, subject: Text(summary.officialTitle), message: Text(summary.officialTitle)) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.footnote)
-                        .frame(width: 28, height: 28)
+        // The cover fills the reserved bounds without contributing to card sizing.
+        .overlay {
+            GeometryReader { geometry in
+                if let displayedImage {
+                    // `.scaledToFit()` keeps the whole poster visible (including any text near
+                    // its edges) instead of cropping it to fill the 16:9 frame.
+                    Image(uiImage: displayedImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .transition(.opacity)
+                } else {
+                    placeholder
+                        .frame(width: geometry.size.width, height: geometry.size.height)
                 }
-                .buttonStyle(.borderless)
-                .background(.thinMaterial, in: Circle())
-                .padding(6)
-                .accessibilityIdentifier("thumbnailShare-\(summary.id)")
-                .accessibilityLabel("分享官方链接")
             }
         }
-        .task(id: asset) {
-            image = nil
-            guard let asset else { return }
-            let candidates = [asset.thumbnailURL, asset.originalURL].compactMap { $0 }.compactMap(URL.init(string:))
-            for url in candidates {
+        .clipShape(.rect(cornerRadius: 12))
+        .motionAnimation(displayedImage != nil)
+        // Label and identifier are dead here: the card's `.accessibilityElement(children:
+        // .ignore)` drops this subview from the accessibility tree entirely, so both now live
+        // on the card's own combined element instead.
+        .task(id: TaskID(urls: candidateURLs, retryToken: retryToken)) {
+            let urls = candidateURLs
+            guard !urls.isEmpty else { image = nil; imageURL = nil; return }
+            if let imageURL, urls.contains(imageURL) { return } // already loaded, avoid a flash on re-appear
+            for url in urls {
+                guard let loaded = try? await OfficialImagePipeline.shared.image(for: url, maxPixelSize: 1200) else { continue }
                 guard !Task.isCancelled else { return }
-                if let response = try? await loader.load(url), let decoded = Self.thumbnail(from: response.data) {
-                    guard !Task.isCancelled else { return }
-                    image = decoded
-                    return
-                }
+                image = loaded
+                imageURL = url
+                failedURL = nil
+                return
             }
+            if !Task.isCancelled { failedURL = urls.last }
+        }
+        // A per-card refresh that just finished retries a previously failed image even though
+        // its candidate URLs haven't changed.
+        .onChange(of: isRefreshing) { wasRefreshing, nowRefreshing in
+            if wasRefreshing, !nowRefreshing, isFailed { retryToken += 1 }
         }
     }
 
-    private var coverPlaceholder: some View {
-        ZStack(alignment: .bottomLeading) {
-            LinearGradient(
-                colors: summary.franchise == .bangdream
-                    ? [Color(red: 0.38, green: 0.08, blue: 0.22), Color(red: 0.13, green: 0.12, blue: 0.30)]
-                    : [Color(red: 0.10, green: 0.23, blue: 0.48), Color(red: 0.31, green: 0.14, blue: 0.43)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            Image(systemName: "music.note")
-                .font(.system(size: 100, weight: .light))
-                .foregroundStyle(.white.opacity(0.12))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                .padding(.trailing, 24)
-            VStack(alignment: .leading, spacing: 8) {
-                Label("LIVE", systemImage: "waveform")
-                    .font(.caption.bold())
-                    .tracking(2)
-                Text(summary.officialTitle)
-                    .font(.headline)
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
+    private var placeholder: some View {
+        VStack(spacing: 6) {
+            // The `.task(id:)` above reruns whenever this view reappears with the same
+            // failed URLs, which doubles as the retry — no separate retry action needed.
+            Image(systemName: isFailed ? "photo.badge.exclamationmark" : "music.note")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            if let series = summary.groups.first {
+                Text(verbatim: series)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            .foregroundStyle(.white)
-            .padding(18)
         }
         .accessibilityHidden(true)
     }
+}
 
-    private static func thumbnail(from data: Data) -> UIImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
-              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceThumbnailMaxPixelSize: 960,
-            ] as CFDictionary) else { return nil }
-        return UIImage(cgImage: image)
+/// The cover image URL a card can share, when the event has an official thumbnail.
+extension DashboardEventSummary {
+    public var coverURL: URL? {
+        guard let asset = officialThumbnail else { return nil }
+        return URL(string: asset.originalURL) ?? asset.thumbnailURL.flatMap(URL.init(string:))
     }
 }

@@ -26,8 +26,9 @@ public actor AssistantSummaryStore {
         try persist(current)
     }
 
-    public func remove(eventID: String) throws {
+    public func remove(eventID: String, ifGeneratedAt generation: Date? = nil) throws {
         var current = try load()
+        if let generation, current[eventID]?.generatedAt != generation { return }
         current.removeValue(forKey: eventID)
         try persist(current)
     }

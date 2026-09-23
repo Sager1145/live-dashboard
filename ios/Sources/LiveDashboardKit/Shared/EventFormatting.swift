@@ -8,9 +8,11 @@ public enum EventFormatting {
         return date.formatted(style)
     }
 
-    /// Date only, abbreviated, in the given zone (no zone suffix): "9月11日"
-    public static func date(_ date: Date, in timeZone: TimeZone) -> String {
+    /// Date only, abbreviated, in the given zone (no zone suffix): "9月11日", or "2025年9月11日"
+    /// with `includesYear: true` — for a date whose year isn't otherwise obvious from context.
+    public static func date(_ date: Date, in timeZone: TimeZone, includesYear: Bool = false) -> String {
         var style = Date.FormatStyle.dateTime.month().day()
+        if includesYear { style = style.year() }
         style.timeZone = timeZone
         return date.formatted(style)
     }

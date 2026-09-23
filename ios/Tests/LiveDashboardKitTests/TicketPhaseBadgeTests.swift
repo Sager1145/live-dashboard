@@ -16,10 +16,13 @@ final class TicketPhaseBadgeTests: XCTestCase {
     }
 
 
-    // Expectations are composed from the same localized fragments the builder
-    // uses, so they hold under the English test-host locale as well as zh-Hans.
+    // Expectations are built from the same localized keys the builder uses, so they
+    // hold under the English test-host locale as well as zh-Hans.
     private func l(_ key: String) -> String { String(localized: String.LocalizationValue(key), bundle: .kit) }
-    private func ordinal(_ n: Int, presale: Bool = false) -> String { l("第") + "\(n)" + l("次") + (presale ? l("先行") : "") }
+    private func ordinal(_ n: Int, presale: Bool = false) -> String {
+        presale ? String(localized: "第\(n)次先行", bundle: .kit) : String(localized: "第\(n)次", bundle: .kit)
+    }
+    private func open(_ phase: String) -> String { String(localized: "\(phase)中", bundle: .kit) }
 
     // MARK: phaseName
 
@@ -65,7 +68,7 @@ final class TicketPhaseBadgeTests: XCTestCase {
         let openRound = round("2次先行", kind: .lottery, start: now.addingTimeInterval(-3600), end: now.addingTimeInterval(86_400))
         let upcomingRound = round("一般発売", kind: .firstComeFirstServed, start: now.addingTimeInterval(2 * 86_400))
         let badges = TicketPhaseBadgeBuilder.badges(rounds: [openRound, upcomingRound], now: now)
-        XCTAssertEqual(badges.map(\.text), [ordinal(2, presale: true) + l("抽选") + l("中"), l("即将：") + l("一般贩售")])
+        XCTAssertEqual(badges.map(\.text), [open(ordinal(2, presale: true) + l("抽选")), l("即将：") + l("一般贩售")])
         XCTAssertEqual(badges.map(\.tone), [.open, .upcoming])
     }
 
@@ -110,7 +113,7 @@ final class TicketPhaseBadgeTests: XCTestCase {
     func testUnconfirmedScopeOpenRoundStillProducesBadge() {
         let openRound = round("1次抽選", kind: .lottery, start: now.addingTimeInterval(-3600), end: now.addingTimeInterval(86_400), scope: .unconfirmed)
         let badges = TicketPhaseBadgeBuilder.badges(rounds: [openRound], now: now)
-        XCTAssertEqual(badges.map(\.text), [ordinal(1) + l("抽选") + l("中")])
+        XCTAssertEqual(badges.map(\.text), [open(ordinal(1) + l("抽选"))])
     }
 
     func testCapsAtThreeBadges() {

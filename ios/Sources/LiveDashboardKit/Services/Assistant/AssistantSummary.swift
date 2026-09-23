@@ -98,6 +98,37 @@ public struct AssistantPerformanceSummary: Codable, Hashable, Identifiable, Send
     }
 }
 
+/// One independently extracted value from the current official event page.
+/// `section` and `label` are stable, user-facing Chinese names defined by the
+/// summarizer's field inventory. A value of `官网未说明` is intentional: it
+/// distinguishes an official-page omission from an extraction failure.
+public struct AssistantOrganizedField: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var section: String
+    public var label: String
+    public var value: String
+    /// Performance IDs this value applies to. Empty means the whole event.
+    public var performanceIDs: [String]
+
+    public init(
+        id: String,
+        section: String,
+        label: String,
+        value: String,
+        performanceIDs: [String] = []
+    ) {
+        self.id = id
+        self.section = section
+        self.label = label
+        self.value = value
+        self.performanceIDs = performanceIDs
+    }
+
+    public func applies(to performanceID: String) -> Bool {
+        performanceIDs.isEmpty || performanceIDs.contains(performanceID)
+    }
+}
+
 /// A link the assistant classified from the official page. `url` must be one
 /// of the URLs present in the scraped source; the summarizer drops anything else.
 public struct AssistantLink: Codable, Hashable, Identifiable, Sendable {
@@ -153,6 +184,13 @@ public struct AssistantEventSummary: Codable, Hashable, Sendable {
     public var performances: [AssistantPerformanceSummary]
     public var ticketLinks: [AssistantLink]
     public var goodsLinks: [AssistantLink]
+    /// A complete, independently extracted domain bundle built from the live
+    /// official page. It is stored beside the scraper bundle so the UI can
+    /// switch data sources without overwriting official refresh data.
+    public var organizedBundle: LiveEventBundle?
+    /// Complete field-by-field reading of the live official page. Optional so
+    /// summaries persisted by older app versions continue to decode.
+    public var organizedFields: [AssistantOrganizedField]?
     /// Things the model could not map confidently (kept visible so the reader
     /// checks the official page).
     public var warnings: [String]
@@ -167,7 +205,9 @@ public struct AssistantEventSummary: Codable, Hashable, Sendable {
         performances: [AssistantPerformanceSummary],
         ticketLinks: [AssistantLink],
         goodsLinks: [AssistantLink],
-        warnings: [String]
+        warnings: [String],
+        organizedFields: [AssistantOrganizedField]? = nil,
+        organizedBundle: LiveEventBundle? = nil
     ) {
         self.eventID = eventID
         self.generatedAt = generatedAt
@@ -179,6 +219,8 @@ public struct AssistantEventSummary: Codable, Hashable, Sendable {
         self.ticketLinks = ticketLinks
         self.goodsLinks = goodsLinks
         self.warnings = warnings
+        self.organizedFields = organizedFields
+        self.organizedBundle = organizedBundle
     }
 
     public func performanceSummary(for performanceID: String) -> AssistantPerformanceSummary? {

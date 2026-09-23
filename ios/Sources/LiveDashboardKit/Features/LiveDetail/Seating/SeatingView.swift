@@ -3,6 +3,7 @@ import SwiftUI
 public struct SeatingView: View {
     @Bindable var store: LiveDetailStore
     let userDataStore: UserDataStore
+    @State private var recentlyHidden: (cardType: CardType, entityID: String, title: String)?
 
     public init(store: LiveDetailStore, userDataStore: UserDataStore) {
         self.store = store
@@ -20,13 +21,17 @@ public struct SeatingView: View {
             resolved.unconfirmed.filter(isSeatingAsset),
             configurations: configurations
         )
+        let hiddenCount = userDataStore.hiddenCardCount(cardTypes: [.eventSeatingMap, .venueGenericSeatingMap], eventID: store.bundle.event.id)
 
         LazyVStack(spacing: 12) {
             ForEach(applicable) { asset in assetCard(asset, readOnly: false) }
 
             if !unconfirmed.isEmpty {
-                Text("适用场次待确认的座位资料").font(.subheadline).foregroundStyle(.secondary)
+                Label { Text("适用场次待确认的座位资料", bundle: .kit) } icon: { Image(systemName: "questionmark.circle") }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
                 ForEach(unconfirmed) { asset in assetCard(asset, readOnly: true) }
             }
 
@@ -34,20 +39,63 @@ public struct SeatingView: View {
                 // Cards the user hid are filtered out before this point, so an empty
                 // tab must not claim the data was never retrieved.
                 if resolved.applicable.filter(isSeatingAsset).isEmpty && resolved.unconfirmed.filter(isSeatingAsset).isEmpty {
-                    ContentUnavailableView("尚未获取座位资料", systemImage: "chair.lounge")
+                    if store.bundle.mediaAssets.contains(where: isSeatingAsset) {
+                        ContentUnavailableView {
+                            Label { Text("所选场次暂无座位资料", bundle: .kit) } icon: { Image(systemName: "chair.lounge") }
+                        } description: {
+                            Text("其他场次有资料，请切换场次查看。", bundle: .kit)
+                        } actions: {
+                            if let url = URL(string: store.bundle.event.primarySourceURL) {
+                                Link(destination: url) { Text("查看官方公演页面", bundle: .kit) }
+                            }
+                        }
+                    } else {
+                        ContentUnavailableView {
+                            Label { Text("尚未获取座位资料", bundle: .kit) } icon: { Image(systemName: "chair.lounge") }
+                        } actions: {
+                            if let url = URL(string: store.bundle.event.primarySourceURL) {
+                                Link(destination: url) { Text("查看官方公演页面", bundle: .kit) }
+                            }
+                        }
+                    }
                 } else {
                     ContentUnavailableView {
-                        Label("座位卡片已全部隐藏", systemImage: "eye.slash")
+                        Label { Text("座位卡片已全部隐藏", bundle: .kit) } icon: { Image(systemName: "eye.slash") }
                     } description: {
-                        Text("资料已获取，只是这些卡片被你隐藏了。")
+                        Text("资料已获取，只是这些卡片被你隐藏了。", bundle: .kit)
                     } actions: {
-                        Button("恢复显示") {
+                        Button {
                             userDataStore.unhideCards(cardTypes: [.eventSeatingMap, .venueGenericSeatingMap], eventID: store.bundle.event.id)
+                            recentlyHidden = nil
+                        } label: {
+                            Text("恢复显示", bundle: .kit)
                         }
                     }
                 }
             }
+
+            if let recentlyHidden {
+                UndoHiddenCardRow(id: "\(recentlyHidden.cardType.rawValue)|\(recentlyHidden.entityID)", title: recentlyHidden.title) {
+                    var updated = userDataStore.effectiveConfiguration(cardType: recentlyHidden.cardType, entityID: recentlyHidden.entityID, eventID: store.bundle.event.id)
+                    updated.entityID = recentlyHidden.entityID
+                    updated.eventID = store.bundle.event.id
+                    updated.isHidden = false
+                    userDataStore.setConfiguration(updated)
+                    self.recentlyHidden = nil
+                } onExpire: {
+                    self.recentlyHidden = nil
+                }
+            }
+            if !applicable.isEmpty || !unconfirmed.isEmpty {
+                HiddenCardsFooter(count: hiddenCount) {
+                    userDataStore.unhideCards(cardTypes: [.eventSeatingMap, .venueGenericSeatingMap], eventID: store.bundle.event.id)
+                    recentlyHidden = nil
+                }
+            }
         }
+        .environment(\.detailCardHideNotification, DetailCardHideNotification { cardType, entityID, title in
+            recentlyHidden = (cardType, entityID, title)
+        })
     }
 
     @ViewBuilder
@@ -57,10 +105,14 @@ public struct SeatingView: View {
         DetailCard(title: title(asset), cardType: cardType, entityID: asset.id, userDataStore: userDataStore, eventID: asset.eventID) {
             VStack(alignment: .leading, spacing: config.density == .compact ? 3 : 8) {
                 if asset.kind == .venueGenericSeatingMap {
-                    Text("场馆通用图，不代表本次舞台布局").font(.caption).foregroundStyle(.orange)
+                    Label { Text("场馆通用图，不代表本次舞台布局", bundle: .kit) } icon: { Image(systemName: "exclamationmark.triangle") }
+                        .font(.caption)
+                        .foregroundStyle(.statusWarning)
                 }
                 if readOnly {
-                    Text("适用场次待确认").font(.caption).foregroundStyle(.orange)
+                    Label { Text("适用场次待确认", bundle: .kit) } icon: { Image(systemName: "questionmark.circle") }
+                        .font(.caption)
+                        .foregroundStyle(.statusWarning)
                 }
                 OfficialMediaView(asset: asset, compact: config.density == .compact)
             }

@@ -83,7 +83,7 @@ final class LocalOAuthCallbackServer: @unchecked Sendable {
 
     private func respondAndClose(connection: NWConnection, data: Data) {
         defer {
-            let html = "<html><body>登录成功，请返回 Live Dashboard。</body></html>"
+            let html = "<html><body>\(String(localized: "登录成功，请返回 Live Dashboard。", bundle: .kit))</body></html>"
             let body = Data(html.utf8)
             let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
             var responseData = Data(response.utf8)

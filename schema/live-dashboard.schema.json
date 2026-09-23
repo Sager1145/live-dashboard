@@ -668,6 +668,13 @@
                       "type": "null"
                     }
                   ]
+                },
+                "productNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
                 }
               },
               "required": [
@@ -809,6 +816,13 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "productNames": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
                       }
                     },
                     "required": [
@@ -1035,6 +1049,13 @@
                       "type": "null"
                     }
                   ]
+                },
+                "productNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
                 }
               },
               "required": [
@@ -1558,6 +1579,13 @@
                       "type": "null"
                     }
                   ]
+                },
+                "productNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
                 }
               },
               "required": [
