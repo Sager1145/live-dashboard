@@ -758,8 +758,8 @@ final class OfficialAuditRegressionTests: XCTestCase {
         XCTAssertEqual(refreshed.performances.map(\.venueName), [
             "大阪城ホール", "大阪城ホール", "京王アリーナ TOKYO", "京王アリーナ TOKYO",
         ])
-        // These venue lines carry no "都道府県・" prefix, so no city is derived.
-        XCTAssertEqual(refreshed.performances.map(\.venueCity), ["", "", "", ""])
+        // These venue lines carry no "都道府県・" prefix; the city comes from the venue name itself.
+        XCTAssertEqual(refreshed.performances.map(\.venueCity), ["大阪", "大阪", "東京", "東京"])
     }
 
     func testHasunosora6thLiveDreamMapsEachStageToItsVenue() async throws {

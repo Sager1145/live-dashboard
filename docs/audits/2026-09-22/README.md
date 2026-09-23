@@ -126,3 +126,19 @@ node docs/audits/2026-09-22/bangdream/compare-normalized.mjs \
 - **后端契约**：`server/src/contracts.ts`、`schema/live-dashboard.schema.json`、`fixtures/contracts/bundle-v1.json` 与 API 文档已补充 `links` 与 `sourceText`；服务端 typecheck／80 项测试通过。
 
 仍未覆盖：`current-event-facts.json` 保存的是简化场馆名，比对需做前缀与括号归一化。iOS 单元测试 117 项、UI 测试 1 项通过。
+
+## 字段整理复查（2026-09-23）
+
+再次用同一回放工具（BanG Dream! 40 场、Love Live! 20 场已保存官网页面）逐字段检查 app 输出，重点是"字段是否填上"以及"是否把整段官网原文原样塞进单个字段"。回放输出与 `unique40-expected.json` 的 40/40 断言保持一致；iOS 新增 `OfficialFieldOrganizationTests` 11 项回归测试（含独立审查补充的 ID 稳定性、配信票种、特典正文、否定句案例）；Kit 单元测试 165 项通过。
+
+| 字段 | 修正前 | 修正后 |
+|---|---|---|
+| `TicketRound.eligibility` | 命中"封入／申込券／ムビチケ"的轮次直接写入整个区块（BD 17 轮最长 1,145 字，LL 27 轮最长 2,826 字，含受付期间、当落发表等其它字段的原文） | 只保留说明申请条件的句子（LL 最长 173 字、BD 最长 198 字），不再混入受付期间／当落发表等其它字段原文 |
+| `TicketRound.lotteryProducts` | BD 前缀截取产生"下記2タイトル""受付URL等は商品"等非商品；LL 单独成行的商品名（LL16／LL18／LL20）漏抓 | 商品名需含书名号或 CD／Blu-ray／シングル等词；"下記…タイトル"取后续列出的标题，商品名在"封入"行前一行时取前一行；去掉"11/19(水)リリース"前缀；"A・B いずれか"拆成多项，"「A」/「B」【X盤】" 保持一项 |
+| `TicketBenefit.detail` | LL 特典正文越过分隔线，混入「公演に関するお問い合わせ先」与「▼スマチケ…」（最长 2,015 字） | 正文止于分隔线、【…】标题、▼／▶ 链接行或裸 URL（最长 191 字） |
+| `GoodsCampaign`（BD 会场物贩） | `pickupWindow`／`purchaseLimit`／`paymentMethods` 为整段原文含 ※ 注意事项 | `pickupWindow` 只留日期／时段行；`purchaseLimit` 只留限购句与商品例外行；`paymentMethods` 整理为"現金、クレジットカード（VISA/…）、QRコード決済（PayPay/…）　※一括払いのみ"；新增 `requiresTicket`（"チケットをお持ちでない方も" → 否）；`location` 只取"販売場所："标签行（LuckyFes 原来取到句中） |
+| `GoodsCampaign`（LL） | 53 条记录中含「個数制限について」「ご注意」「クイックオーダー案内」等非贩售区块；「事前通販受付」无日期无链接；分享按钮（twitter intent／LINE）混入官方链接 | 27 条（目录记录＋按受付拆分的通販轮次）：個数制限文字并入会场贩售的 `purchaseLimit`，クイックオーダー链接并入会场贩售 `links`；「■事前／事後通販受付」按受付拆成独立记录并填 `salesStartAt`／`salesEndAt`／`shippingNote`／`purchaseLimit`；同名重复记录按"有日期／有商店链接"保留一条；分享链接与站点导航链接一律剔除 |
+| `StreamOffer`（LL） | 0 条（配信页签 `data-target="streaming"/"str"/"spwn"` 未解析） | 20 条：按票种×DAY 生成，含票价、贩售期间、回看截止、平台（Streaming+／PIA LIVE STREAM／SPWN）、购买链接，DAY 场次直接关联到对应 `Performance` |
+| `Performance.venueCity`（首页卡片会场行） | LL 32／77 场为空，BD 71／71 场为空（官网无"都道府県・"前缀时不推断） | 按场馆名关键词与巡演站点标题推断，剩余 1 场（官网该场无场馆名） |
+
+未改动：`TicketRound.notes` 的文本长度由另一次修正处理；BD「入場について」区块仍以整段证据文字显示在"入场条件"卡片。

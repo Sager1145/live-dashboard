@@ -60,6 +60,7 @@
 		83EB150057D2245F1EFC73F1 /* ScopedRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B882084E95CB756F1A1958 /* ScopedRecord.swift */; };
 		849CAFA36CE2770061AA6780 /* LiveEventCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C09E038DF51011012EB7187C /* LiveEventCard.swift */; };
 		86D1B95996C5AD673A5834C0 /* PKCE.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2DE96571CE0FD37BF2E4737 /* PKCE.swift */; };
+		8FC0BCE3890AE3503BEB3A90 /* OfficialFieldOrganizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40DBF6EBA730D6946A1DD7C6 /* OfficialFieldOrganizationTests.swift */; };
 		916BFAB49997F420C3D4F180 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E66479E0FEEF9EE07B11D6F /* KeychainStore.swift */; };
 		93FC35AF172765C4E5B56934 /* OfficialLinksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5770D5B6C2D3DE3C678C4970 /* OfficialLinksView.swift */; };
 		94A4E437320A83185CF7D778 /* TicketOffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC458DF8781C6FA24C1FB79E /* TicketOffer.swift */; };
@@ -178,6 +179,7 @@
 		3544E240216699C6B4F0EBD5 /* ExtendedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtendedModels.swift; sourceTree = "<group>"; };
 		37FC547C0FFFAFCC86F6BB71 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		3944F5DD8E6967125B85E394 /* CardConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardConfiguration.swift; sourceTree = "<group>"; };
+		40DBF6EBA730D6946A1DD7C6 /* OfficialFieldOrganizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialFieldOrganizationTests.swift; sourceTree = "<group>"; };
 		4B2135935999F123AD3C3F2D /* TicketRoundFieldParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketRoundFieldParsingTests.swift; sourceTree = "<group>"; };
 		4BDF6922421C74CD93A7EA03 /* LiveDashboard.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiveDashboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4DD1F71C359784950ED7E52C /* OfficialAuditRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialAuditRegressionTests.swift; sourceTree = "<group>"; };
@@ -330,6 +332,7 @@
 				F3C72D95DA7C033B26828C87 /* MediaPresentationTests.swift */,
 				4DD1F71C359784950ED7E52C /* OfficialAuditRegressionTests.swift */,
 				EB9BC9B7E04DCA46F0BD1ABE /* OfficialEventScraperTests.swift */,
+				40DBF6EBA730D6946A1DD7C6 /* OfficialFieldOrganizationTests.swift */,
 				082CE25DD56CAE23F6EAB5D2 /* OfficialKeyVisualParserTests.swift */,
 				0756506A102EE44003DE034B /* OfficialNetworkIntegrationTests.swift */,
 				8311EA68D0825CDBA1637AB3 /* TicketPhaseBadgeTests.swift */,
@@ -821,6 +824,7 @@
 				047EA8B923A74B0F0D7059D7 /* MediaPresentationTests.swift in Sources */,
 				CB111BB800AB1F43C694BE95 /* OfficialAuditRegressionTests.swift in Sources */,
 				5351E4207851A85C8BD4376A /* OfficialEventScraperTests.swift in Sources */,
+				8FC0BCE3890AE3503BEB3A90 /* OfficialFieldOrganizationTests.swift in Sources */,
 				5B0C9E60AB6F471F054F8E37 /* OfficialKeyVisualParserTests.swift in Sources */,
 				AF2AF4B6CE7F8951BA6D71E7 /* OfficialNetworkIntegrationTests.swift in Sources */,
 				64DF83F859C292678241A1C4 /* TicketPhaseBadgeTests.swift in Sources */,

@@ -392,6 +392,7 @@ private extension OfficialEventScraper {
         var loveLiveTaggedTickets: String?
         var loveLiveInlineTickets: String?
         var bangDreamTicketHeadingHTML: String?
+        var loveLiveStreamBlocks: [String] = []
         if isBangDream {
             guard html.contains("p-live-event-detail") || html.contains("p-page-detail") else {
                 throw OfficialScrapeFailure(url: finalURL, kind: .unsupportedTemplate, message: "Missing BanG Dream detail article")
@@ -460,6 +461,10 @@ private extension OfficialEventScraper {
             ticketHTML = overview + "\n" + inlineTickets + "\n" + taggedTickets
             loveLiveTaggedTickets = taggedTickets
             loveLiveInlineTickets = inlineTickets
+            // Paid-stream tabs live outside the structured detail article.
+            loveLiveStreamBlocks = ["streaming", "stream", "str", "spwn", "haishin", "onlinelive"]
+                .compactMap { HTML.blocksWithAttribute(html, attribute: "data-target", value: $0).max { $0.count < $1.count } }
+                + HTML.headingSections(completeDetail).filter { $0.heading.contains("配信") && !$0.heading.contains("チケット") }.map(\.html)
         }
 
         let canonical = canonicalURL(finalURL.absoluteString)
@@ -529,7 +534,10 @@ private extension OfficialEventScraper {
                 dayLabel: label, subtitle: item.subtitle ?? prior?.subtitle, localDate: item.localDate,
                 doorsAt: reinterpretJapanWallTime(item.doorsAt, in: eventTimeZone) ?? prior?.doorsAt, startAt: reinterpretJapanWallTime(item.startsAt, in: eventTimeZone) ?? prior?.startAt,
                 venueName: resolvedVenue,
-                venueCity: resolvedVenue.isEmpty ? (prior?.venueCity ?? "") : venueCity(resolvedVenue),
+                venueCity: resolvedVenue.isEmpty ? (prior?.venueCity ?? "") : {
+                    let city = venueCity(resolvedVenue)
+                    return city.isEmpty ? stopCity(loveLiveStopByDate[item.localDate]) : city
+                }(),
                 performers: item.performers ?? (loveLiveCast.isEmpty ? nil : loveLiveCast) ?? (performers.isEmpty ? (associatedPerformers.isEmpty ? (prior?.performers ?? []) : associatedPerformers) : performersForDay(performersRaw ?? "", dayLabel: label)), order: index,
                 editionID: prior?.editionID, rawDate: item.raw, precision: (item.startsAt != nil || item.doorsAt != nil) ? .minute : .date,
                 timeZone: eventTimeZone
@@ -601,7 +609,12 @@ private extension OfficialEventScraper {
             let rendered = HTML.linkedText(includedBlocks.joined(separator: "\n\n"), relativeTo: finalURL)
             sourceText = rendered.isEmpty ? cached?.sourceText : cappedSourceText("# \(title)\n" + rendered)
         }
-        let parsedStreams = parseStreams(richContentHTML, sourceURL: finalURL, eventID: eventID).map { $0.replacingScope(ticketScope) }
+        let loveLiveStreams = parseLoveLiveStreams(loveLiveStreamBlocks, sourceURL: finalURL, eventID: eventID, performances: performances, timeZone: eventTimeZone, referenceDate: schedules.first?.localDate)
+            .map { offer -> StreamOffer in
+                if case .unconfirmed = offer.scope { return offer.replacingScope(ticketScope) }
+                return offer
+            }
+        let parsedStreams = parseStreams(richContentHTML, sourceURL: finalURL, eventID: eventID).map { $0.replacingScope(ticketScope) } + loveLiveStreams
         let parsedGoodsResult = parseGoods(
             richContentHTML, sourceURL: finalURL, eventID: eventID,
             cachedCampaigns: cached?.goodsCampaigns ?? [], cachedMedia: cached?.mediaAssets ?? []
@@ -1017,29 +1030,123 @@ private extension OfficialEventScraper {
         return nil
     }
 
+    /// A line reads as a product title (CD / Blu-ray / film ticket) rather than
+    /// a sentence about the application itself.
+    static func isProductTitle(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.count <= 160 else { return false }
+        if trimmed.range(of: #"^(?:受付|各商品|下記|上記|申込券|シリアル|封入|本受付|※)"#, options: .regularExpression) != nil { return false }
+        if trimmed.range(of: #"^(?:\d{4}年)?\d{1,2}[月/]\d{1,2}日?(?:（[^）]*）|\([^)]*\))?\s*(?:発売|リリース)$"#, options: .regularExpression) != nil { return false }
+        if trimmed.hasSuffix("。") || trimmed.contains("にて受付") || trimmed.contains("ください") || trimmed.contains("いただけます") { return false }
+        if trimmed.range(of: #"^【[^】]*(?:期間|発表|方法|制限|URL|注意|対象|お問い?合わ?せ)"#, options: .regularExpression) != nil { return false }
+        if trimmed.range(of: #"[「『【]"#, options: .regularExpression) != nil { return true }
+        // A bare format word ("Blu-ray", "CD") is not a title.
+        guard trimmed.count > 8 else { return false }
+        return trimmed.range(of: #"Album|Single|シングル|アルバム|Blu-ray|BD|DVD|CD|ムビチケ|前売券|サウンドトラック|ファンディスク|盤$"#, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    /// Product titles whose bundled application ticket (封入申込券 / シリアル)
+    /// grants entry to the round. The title is read from the same line as the
+    /// 封入 clause when the page prints it there; otherwise from the product
+    /// lines listed just before that clause ("2025年8月6日発売 / <title> /
+    /// 封入特典・申込券にて受付") or, for "下記2タイトル"-style wording, just after it.
     static func lotteryProducts(in lines: [String], html: String?) -> [String] {
         var products: [String] = []
         var seen: Set<String> = []
         func add(_ value: String) {
-            let cleaned = clean(value)
+            // "11月5日（水）発売「…」" prints the release date before the title.
+            let cleaned = clean(value.replacingOccurrences(of: #"^(?:\d{4}年)?\d{1,2}[月/]\d{1,2}日?(?:（[^）]*）|\([^)]*\))?\s*(?:発売|リリース)\s*"#, with: "", options: .regularExpression))
             guard !cleaned.isEmpty, seen.insert(cleaned).inserted else { return }
             products.append(cleaned)
         }
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+        func titlesBefore(_ index: Int) -> [String] {
+            var found: [String] = []
+            var cursor = index - 1
+            while cursor >= 0 {
+                let candidate = lines[cursor].trimmingCharacters(in: .whitespaces)
+                if candidate.range(of: #"^\d{4}年\d{1,2}月\d{1,2}日.*発売$"#, options: .regularExpression) != nil || candidate.hasPrefix("★") { break }
+                guard isProductTitle(candidate) else { break }
+                found.insert(candidate, at: 0)
+                cursor -= 1
+            }
+            return found
+        }
+        func titlesAfter(_ index: Int) -> [String] {
+            var found: [String] = []
+            var cursor = index + 1
+            while cursor < lines.count {
+                let candidate = lines[cursor].trimmingCharacters(in: .whitespaces)
+                    .replacingOccurrences(of: #"^[・①②③④⑤⑥⑦⑧⑨⑩]+"#, with: "", options: .regularExpression)
+                guard isProductTitle(candidate) else { break }
+                found.append(candidate)
+                cursor += 1
+            }
+            return found
+        }
+        let trimmedLines = lines.map { $0.trimmingCharacters(in: .whitespaces) }
+        for (index, trimmed) in trimmedLines.enumerated() {
             guard trimmed.contains("封入"), trimmed.contains("申込券") || trimmed.contains("シリアル") else { continue }
             var value = trimmed
             if value.hasPrefix("※") { value.removeFirst() }
-            for marker in ["初回生産分に封入", "に封入", "封入の"] {
+            var prefix: String?
+            for marker in ["初回生産分に封入", "初回生産分限定封入", "初回生産分に", "に封入", "封入特典", "封入の", "封入申込券"] {
                 if let range = value.range(of: marker) {
-                    let prefix = String(value[..<range.lowerBound])
-                        .trimmingCharacters(in: CharacterSet(charactersIn: "、の "))
-                    if !prefix.isEmpty, !prefix.hasPrefix("封入") { add(prefix) }
+                    prefix = String(value[..<range.lowerBound]).trimmingCharacters(in: CharacterSet(charactersIn: "、の 　・"))
                     break
                 }
             }
+            if let prefix, isProductTitle(prefix) {
+                // "A・B・C いずれか" lists alternatives on one line; without that
+                // word, "「A」/「B」【X盤】・【Y盤】" is one title with its editions.
+                if prefix.hasSuffix("いずれか") {
+                    let alternatives = prefix.replacingOccurrences(of: #"\s*いずれか$"#, with: "", options: .regularExpression)
+                    let parts = alternatives.components(separatedBy: CharacterSet(charactersIn: "・／/")).map { $0.trimmingCharacters(in: .whitespaces) }.filter(isProductTitle)
+                    if parts.count > 1 { parts.forEach(add) } else { add(alternatives) }
+                } else {
+                    add(prefix)
+                }
+                continue
+            }
+            let before = titlesBefore(index)
+            if !before.isEmpty { before.forEach(add); continue }
+            titlesAfter(index).forEach(add)
         }
         return products
+    }
+
+    /// The official sentence(s) that say what a round requires (a bundled
+    /// application ticket, a film ticket serial, membership). Only the
+    /// keyword-bearing clauses are kept so the card shows the condition, not
+    /// the whole announcement block.
+    static func eligibilitySummary(in lines: [String]) -> String? {
+        var clauses: [String] = []
+        var seen: Set<String> = []
+        for line in lines {
+            var trimmed = line.trimmingCharacters(in: .whitespaces)
+            while let first = trimmed.first, "※▼■●★・".contains(first) { trimmed.removeFirst() }
+            trimmed = trimmed.trimmingCharacters(in: .whitespaces)
+            guard trimmed.range(of: "封入|申込券|ムビチケ|シリアル", options: .regularExpression) != nil else { continue }
+            // Field lines (受付期間 / 枚数制限) and the ★target line have their own columns.
+            if trimmed.range(of: #"^(?:受付期間|申込期間|当落発表|入金期間|枚数制限|受付URL|お?申し?込み?対象)"#, options: .regularExpression) != nil { continue }
+            if trimmed.hasPrefix(HTML.headingLineMarker) { continue }
+            for rawClause in trimmed.components(separatedBy: "。") {
+                let clause = rawClause.trimmingCharacters(in: .whitespaces)
+                guard !clause.isEmpty, clause.range(of: "封入|申込券|ムビチケ|シリアル", options: .regularExpression) != nil,
+                      clause.count <= 160, seen.insert(clause).inserted else { continue }
+                // A list heading ("抽選申込券封入商品") or a numbered product line is
+                // not a condition sentence; the products have their own column.
+                if clause.range(of: #"封入商品[：:]?$|^商品[：:]?$"#, options: .regularExpression) != nil { continue }
+                // An erratum about earlier wording is not a condition either.
+                if clause.range(of: "誤り|訂正|お詫び", options: .regularExpression) != nil { continue }
+                // "シリアルの入力は不要です" says the round has no such condition.
+                if clause.range(of: "不要|必要ありません|必要ございません|必要はございません|必要はありません", options: .regularExpression) != nil { continue }
+                if clause.range(of: #"^[①②③④⑤⑥⑦⑧⑨⑩・]"#, options: .regularExpression) != nil,
+                   isProductTitle(clause.replacingOccurrences(of: #"^[①②③④⑤⑥⑦⑧⑨⑩・]+"#, with: "", options: .regularExpression)) { continue }
+                clauses.append(clause.hasSuffix("受付") || clause.hasSuffix("可能") ? clause : clause + "。")
+            }
+            if clauses.count >= 3 { break }
+        }
+        return clauses.isEmpty ? nil : clauses.joined(separator: "\n")
     }
 
     static func parseTicketRounds(_ html: String, eventID: String, cached: [TicketRound], timeZone: String = "Asia/Tokyo", referenceDate: String? = nil, sourceURL: URL? = nil, sharedLinks: [OfficialLink] = []) -> [TicketRound] {
@@ -1125,7 +1232,7 @@ private extension OfficialEventScraper {
                 applyStartAt: dates.first, applyEndAt: dates.dropFirst().first,
                 resultAt: reinterpretJapanWallTime(markerDate(raw, marker: "当落発表") ?? markerDate(raw, marker: "当選発表"), in: timeZone),
                 paymentDeadlineAt: reinterpretJapanWallTime(paymentDates.last, in: timeZone),
-                eligibility: raw.range(of: "封入|申込券|ムビチケ", options: .regularExpression) != nil ? raw : nil,
+                eligibility: eligibilitySummary(in: lines),
                 announcementURL: nil,
                 applyURL: applicationURL(in: ownLinks),
                 overseasURL: overseasApplicationURL(in: ownLinks),
@@ -1187,7 +1294,16 @@ private extension OfficialEventScraper {
                 ownHTML += "\n<p>" + sections[next].heading + "</p>\n" + sections[next].html
                 next += 1
             }
-            let lines = HTML.text(ownHTML).components(separatedBy: "\n").map(clean).filter { !$0.isEmpty }
+            // The benefit body ends at the first separator rule, 【…】 heading,
+            // ▼/▶ guide-link line or bare URL: what follows (contact desk,
+            // smart-ticket guide) belongs to the page, not to the bonus.
+            let allLines = HTML.text(ownHTML).components(separatedBy: "\n").map(clean).filter { !$0.isEmpty }
+            var bodyStart = 0
+            while bodyStart < allLines.count, allLines[bodyStart].range(of: #"^【[^】]+】$|^[▼▶]"#, options: .regularExpression) != nil { bodyStart += 1 }
+            let bodyEnd = allLines[bodyStart...].firstIndex { line in
+                line.range(of: #"^[-ー─＿_]{5,}$|^【[^】]+】$|^[▼▶]|^https?://"#, options: .regularExpression) != nil
+            } ?? allLines.count
+            let lines = Array(allLines[bodyStart..<bodyEnd])
             let remarks = lines.filter { $0.hasPrefix("※") }
             let body = lines.filter { !$0.hasPrefix("※") }
             let bodyText = body.joined(separator: "\n")
@@ -1527,7 +1643,7 @@ private extension OfficialEventScraper {
                 applyStartAt: applyDates.first, applyEndAt: applyDates.dropFirst().first,
                 resultAt: resultDate,
                 paymentDeadlineAt: paymentDates.last,
-                eligibility: allText.range(of: "封入|申込券|ムビチケ", options: .regularExpression) != nil ? allText : nil,
+                eligibility: eligibilitySummary(in: block.allLines.map(\.text) + block.productLines.map(\.text)),
                 announcementURL: nil,
                 applyURL: applicationURL(in: ownLinks),
                 overseasURL: overseasApplicationURL(in: ownLinks),
@@ -1582,6 +1698,134 @@ private extension OfficialEventScraper {
                     platform: url?.contains("eplus") == true ? "Streaming+" : "公式配信", officialName: label,
                     scope: .unconfirmed, amount: amount, salesStartAt: dates.first, salesEndAt: dates.dropFirst().first,
                     archiveAvailableUntil: archive, regionNote: nil, url: url, status: .confirmed))
+            }
+        }
+        return offers
+    }
+
+    /// Love Live pages publish paid streams in a tab (`data-target="streaming"`,
+    /// `str`, `spwn`) as labelled line groups: 【生配信日程】, 【アーカイブ期間】,
+    /// チケット料金 (・1公演視聴券：6,000円), 販売期間 (common or "Day.1　…"
+    /// lines) and ＜イープラス＞ / ＜チケットぴあ＞ / ＜SPWN＞ vendor links.
+    /// One offer per price tier, split per DAY when the archive deadline
+    /// differs by day; a DAY offer is scoped to the performances of that day.
+    static func parseLoveLiveStreams(
+        _ blocks: [String],
+        sourceURL: URL,
+        eventID: String,
+        performances: [Performance],
+        timeZone: String,
+        referenceDate: String?
+    ) -> [StreamOffer] {
+        enum Mode { case none, schedule, archive, price, sales }
+        struct Tier { let name: String; let amount: MoneyAmount; var sales: [Date] = [] }
+        var offers: [StreamOffer] = []
+        var seenNames: Set<String> = []
+        func dayKey(_ text: String) -> String? {
+            regex(#"(?:^|[◆■●\s　])DAY\.?\s*(\d+)"#, text, options: [.caseInsensitive]).first
+                .flatMap { group($0, 1, in: text) }.map { "DAY\($0)" }
+        }
+        for block in blocks {
+            let lines = HTML.annotatedLines(block, relativeTo: sourceURL)
+            var mode: Mode = .none
+            var currentDay: String?
+            var tiers: [Tier] = []
+            /// Set right after a price line so "price / window" pairs (SPWN style)
+            /// attach their window to that tier; cleared by a 販売期間 header.
+            var pendingTier: Int?
+            var commonSales: [Date] = []
+            var perDaySales: [String: [Date]] = [:]
+            var archiveEnds: [String: Date] = [:]
+            var links: [OfficialLink] = []
+            for line in lines {
+                var text = line.text
+                if text.hasPrefix(HTML.headingLineMarker) { text = String(text.dropFirst(HTML.headingLineMarker.count)) }
+                text = text.trimmingCharacters(in: .whitespaces)
+                links += line.links
+                let hasDate = text.range(of: #"\d{1,2}月\d{1,2}日"#, options: .regularExpression) != nil
+                if !hasDate, let day = dayKey(text), text.range(of: #"^[◆■●]?\s*DAY\.?\s*\d+"#, options: [.regularExpression, .caseInsensitive]) != nil {
+                    currentDay = day
+                    continue
+                }
+                if text.contains("注意事項") || text.contains("お問合せ") || text.contains("お問い合わせ") || text.contains("特典") {
+                    if text.hasPrefix("【") || text.hasPrefix("＜") { mode = .none; continue }
+                }
+                if text.contains("アーカイブ") || text.contains("配信期間") || text.contains("見逃し") {
+                    mode = .archive
+                } else if text.contains("販売期間") || text.contains("受付期間") {
+                    mode = text.contains("料金") ? .price : .sales
+                    pendingTier = nil
+                } else if text.contains("料金") {
+                    mode = .price
+                } else if text.contains("生配信日程") || text.contains("配信日時") || text.contains("配信日程") {
+                    mode = .schedule
+                }
+                if let match = regex(#"^[・■]?\s*(.+?(?:視聴券|視聴チケット|配信チケット|配信視聴))\s*[：:]?\s*(?:各公演)?\s*[¥￥]?([\d,]+)円"#, text).first,
+                   let name = group(match, 1, in: text).map({ clean($0.replacingOccurrences(of: #"^[・･■●◆]+"#, with: "", options: .regularExpression)) }),
+                   let digits = group(match, 2, in: text)?.replacingOccurrences(of: ",", with: ""), let yen = Int64(digits) {
+                    tiers.append(Tier(name: name, amount: MoneyAmount(minorUnits: yen, currency: "JPY")))
+                    mode = .sales
+                    pendingTier = tiers.count - 1
+                    continue
+                }
+                guard hasDate else { continue }
+                let dates = parseExplicitDateTimes(injectYearIfNeeded(text, referenceDate: referenceDate))
+                    .compactMap { reinterpretJapanWallTime($0, in: timeZone) }
+                guard !dates.isEmpty else { continue }
+                let lineDay = dayKey(text) ?? currentDay
+                switch mode {
+                case .archive:
+                    if let end = dates.last { archiveEnds[lineDay ?? "*"] = max(archiveEnds[lineDay ?? "*"] ?? end, end) }
+                case .sales:
+                    if let lineDay = dayKey(text) {
+                        perDaySales[lineDay] = dates
+                    } else if let index = pendingTier, text.range(of: #"^[◆■●※]"#, options: .regularExpression) == nil {
+                        if tiers[index].sales.isEmpty { tiers[index].sales = dates } else if let last = dates.last, last > (tiers[index].sales.last ?? .distantPast) { tiers[index].sales[tiers[index].sales.count - 1] = last }
+                    } else if commonSales.isEmpty { commonSales = dates }
+                case .price, .schedule, .none:
+                    continue
+                }
+            }
+            let vendorLinks = classifiedLinks(links).filter { $0.role != .support && !isShareLink(URL(string: $0.url) ?? sourceURL) }
+            let url = vendorLinks.first { $0.host?.contains("eplus") == true }?.url
+                ?? vendorLinks.first { $0.host?.contains("pia.jp") == true }?.url
+                ?? vendorLinks.first { $0.host?.contains("spwn") == true }?.url
+                ?? vendorLinks.first { $0.host?.contains("bilibili") == false }?.url
+            let platform: String = {
+                guard let url else { return "公式配信" }
+                if url.contains("eplus") { return "Streaming+" }
+                if url.contains("pia.jp") { return "PIA LIVE STREAM" }
+                if url.contains("spwn") { return "SPWN" }
+                return "公式配信"
+            }()
+            guard !tiers.isEmpty, url != nil || !archiveEnds.isEmpty || !commonSales.isEmpty else { continue }
+            let dayKeys = archiveEnds.keys.filter { $0 != "*" }.sorted()
+            for tier in tiers {
+                let tierSales = tier.sales.isEmpty ? commonSales : tier.sales
+                func append(name: String, sales: [Date], archive: Date?, scope: Scope) {
+                    guard seenNames.insert(platform + "|" + name).inserted else { return }
+                    offers.append(StreamOffer(id: stableID(prefix: "\(eventID)-stream", seed: platform + "|" + name), eventID: eventID,
+                        platform: platform, officialName: name, scope: scope, amount: tier.amount,
+                        salesStartAt: sales.first, salesEndAt: sales.count > 1 ? sales.last : nil,
+                        archiveAvailableUntil: archive, regionNote: nil, url: url, status: .confirmed))
+                }
+                // A through pass (通し) covers every day; only per-day tickets split.
+                let isThroughPass = tier.name.contains("通し") || tier.name.range(of: #"\d+DAYS?"#, options: [.regularExpression, .caseInsensitive]) != nil
+                if !isThroughPass, dayKeys.count > 1 || (dayKeys.count == 1 && perDaySales.count > 1) {
+                    for day in Set(dayKeys + perDaySales.keys).sorted() {
+                        let number = day.dropFirst(3)
+                        let ids = performances.filter { $0.dayLabel.uppercased().replacingOccurrences(of: #"[\s\.]"#, with: "", options: .regularExpression) == day }.map(\.id)
+                        append(name: "\(tier.name) Day.\(number)", sales: perDaySales[day] ?? tierSales,
+                               archive: archiveEnds[day] ?? archiveEnds["*"], scope: ids.isEmpty ? .unconfirmed : .performances(performanceIDs: ids))
+                    }
+                } else {
+                    // A through pass covers the performances of every listed day.
+                    let ids = performances.filter { performance in
+                        dayKeys.contains(performance.dayLabel.uppercased().replacingOccurrences(of: #"[\s\.]"#, with: "", options: .regularExpression))
+                    }.map(\.id)
+                    append(name: tier.name, sales: tierSales, archive: archiveEnds.values.max(),
+                           scope: isThroughPass && !ids.isEmpty ? .performances(performanceIDs: ids) : .unconfirmed)
+                }
             }
         }
         return offers
@@ -1692,7 +1936,8 @@ private extension OfficialEventScraper {
         cachedCampaigns: [GoodsCampaign],
         cachedMedia: [MediaAsset]
     ) -> ParsedGoods {
-        var sections = HTML.headingSections(html)
+        let allSections = HTML.headingSections(html)
+        var sections = allSections
             .filter { isGoodsHeading($0.heading) }
             .map { heading in
                 (heading: heading.heading, html: HTML.sectionHTML(html, heading: heading.heading) ?? heading.html)
@@ -1700,9 +1945,31 @@ private extension OfficialEventScraper {
         if sections.isEmpty, let goods = HTML.blockWithAttribute(html, attribute: "data-target", value: "goods") {
             sections = [(heading: "グッズ", html: goods)]
         }
+        // Page-level notices about venue sales (個数制限 / クイックオーダー案内)
+        // are not campaigns: their limit text and links extend the venue campaign.
+        let sharedLimit = goodsPurchaseLimitText(
+            allSections.filter { isGoodsLimitHeading($0.heading) }.map { HTML.text($0.html) }.joined(separator: "\n")
+        )
+        let sharedVenueLinks = allSections
+            .filter { isGoodsVenueGuideHeading($0.heading) }
+            .flatMap { HTML.links($0.html, relativeTo: sourceURL) }
         var media: [MediaAsset] = []
-        let campaigns = sections.compactMap { section -> GoodsCampaign? in
+        var campaigns: [GoodsCampaign] = []
+        var usedIDs: Set<String> = []
+        /// Several sections of one page often share their first link (the goods
+        /// X account); a second record on the same link gets a name-qualified ID.
+        func uniqueID(_ candidate: String, name: String) -> String {
+            let resolved = usedIDs.contains(candidate) ? stableID(prefix: "\(eventID)-goods", seed: candidate + "|" + clean(name)) : candidate
+            usedIDs.insert(resolved)
+            return resolved
+        }
+        for section in sections {
+            // A container heading (グッズ情報 above 会場グッズ販売について / グッズ通販)
+            // is not a campaign; its child sections are.
+            let childHeadings = HTML.headingSections(section.html).map(\.heading)
+            if childHeadings.contains(where: isGoodsHeading) { continue }
             let text = HTML.text(section.html)
+            let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             let imageSources = extractImages(section.html, relativeTo: sourceURL)
             let assets = imageSources.map { image -> MediaAsset in
                 let prior = cachedMedia.first { canonicalURL($0.originalURL) == canonicalURL(image.original.absoluteString) }
@@ -1716,48 +1983,256 @@ private extension OfficialEventScraper {
                 )
             }
             media.append(contentsOf: assets)
-            let link = HTML.allAttributes(section.html, tag: "a", name: "href")
-                .compactMap { URL(string: HTML.decode($0), relativeTo: sourceURL)?.absoluteURL }
-                .first { ($0.scheme == "https" || $0.scheme == "http") && !isDirectImageURL($0) }
-            guard link != nil || !text.isEmpty || !assets.isEmpty else { return nil }
-            let channel: GoodsChannel = section.heading.contains("会場") ? .venue
+            let sectionLinks = HTML.links(section.html, relativeTo: sourceURL).filter { !isSiteNavigationLink($0) }
+            let link = sectionLinks.compactMap { URL(string: $0.url) }.first
+            guard link != nil || !text.isEmpty || !assets.isEmpty else { continue }
+            // Refresh stability: the same heading on the same link is the same
+            // record; failing that the same heading; a link alone only when one
+            // cached record carries it (several sections share the goods X account).
+            func prior(name: String, url: URL?) -> GoodsCampaign? {
+                let sameName = cachedCampaigns.filter { clean($0.officialName) == clean(name) }
+                if let url {
+                    let canonical = canonicalURL(url.absoluteString)
+                    if let both = sameName.first(where: { $0.url.map(canonicalURL) == canonical }) { return both }
+                    if let byName = sameName.first { return byName }
+                    let sameURL = cachedCampaigns.filter { $0.url.map(canonicalURL) == canonical }
+                    return sameURL.count == 1 ? sameURL.first : nil
+                }
+                return sameName.first
+            }
+
+            // "■事前通販受付 / <window> / ※発送…" sub-blocks inside one goods
+            // section are separate sales rounds with their own window. The
+            // section itself stays as the catalog record (store link, gallery)
+            // and the rounds carry the dates, shipping and limits.
+            let subCampaigns = childHeadings.isEmpty ? goodsSubCampaigns(in: lines) : []
+            if subCampaigns.count >= 1, !subCampaigns.contains(where: { clean($0.name) == clean(section.heading) }) {
+                let subLineSet = Set(subCampaigns.flatMap { [$0.name] + $0.lines })
+                let catalogLines = lines.filter { !subLineSet.contains($0) && $0.range(of: #"^[■●◆□]?\s*(?:第\d+回)?(?:事前|事後|先行|会場)?(?:グッズ)?(?:通販|物販)(?:受付)?\s*[：:]?$"#, options: .regularExpression) == nil }
+                if link != nil || !assets.isEmpty {
+                    let key = link.map { canonicalURL($0.absoluteString) } ?? clean(section.heading)
+                    let cached = prior(name: section.heading, url: link)
+                    let catalogText = catalogLines.joined(separator: "\n")
+                    campaigns.append(GoodsCampaign(
+                        id: uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), name: section.heading), eventID: eventID,
+                        officialName: section.heading, channel: .online, fulfillment: .shipping, phase: .unknown,
+                        scope: .unconfirmed, salesStartAt: nil, salesEndAt: nil, pickupWindow: nil,
+                        shippingNote: nil, location: nil, requiresTicket: nil,
+                        purchaseLimit: goodsPurchaseLimitText(catalogText), paymentMethods: nil, url: link?.absoluteString,
+                        mediaAssetIDs: assets.map(\.id), status: .confirmed, links: sectionLinks
+                    ))
+                }
+                for sub in subCampaigns {
+                    let channel: GoodsChannel = sub.name.contains("会場") ? .venue : .online
+                    let phase: GoodsPhase = sub.name.contains("事後") ? .post : sub.name.contains("事前") || sub.name.contains("先行") ? .pre : channel == .venue ? .during : .unknown
+                    let salesDates = parseExplicitDateTimes(firstDateRangeLine(sub.lines) ?? "")
+                    let shipping = sub.lines.filter { $0.contains("発送") || $0.contains("お届け") }
+                        .map { $0.replacingOccurrences(of: #"^※"#, with: "", options: .regularExpression) }.joined(separator: "\n")
+                    let name = clean(sub.name)
+                    let cached = prior(name: name, url: link)
+                    campaigns.append(GoodsCampaign(
+                        id: uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: (link.map { canonicalURL($0.absoluteString) } ?? "") + "|" + name), name: name),
+                        eventID: eventID, officialName: name, channel: channel,
+                        fulfillment: channel == .online ? .shipping : .venuePickup, phase: phase,
+                        scope: .unconfirmed, salesStartAt: salesDates.first, salesEndAt: salesDates.dropFirst().first,
+                        pickupWindow: channel == .venue ? goodsSalesWindowText(sub.lines) : nil,
+                        shippingNote: shipping.isEmpty ? nil : shipping, location: nil,
+                        requiresTicket: goodsRequiresTicket(sub.lines.joined(separator: "\n")),
+                        purchaseLimit: goodsPurchaseLimitText(sub.lines.joined(separator: "\n")),
+                        paymentMethods: nil, url: link?.absoluteString,
+                        mediaAssetIDs: [], status: .confirmed, links: sectionLinks
+                    ))
+                }
+                continue
+            }
+
+            let location = HTML.sectionText(section.html, heading: "販売場所")
+                ?? labeledLineValue(lines, labels: ["販売場所", "販売会場"])
+            let salesText = ["先行通販開始", "通販期間", "販売期間", "受付期間", "販売日時", "販売時間"]
+                .compactMap { HTML.sectionText(section.html, heading: $0) }.first
+                ?? labeledLineValue(lines, labels: ["通販期間", "販売期間", "受付期間", "販売日時"])
+                ?? firstDateRangeLine(lines)
+            var channel: GoodsChannel = section.heading.contains("会場") ? .venue
                 : section.heading.contains("通販") ? .online
                 : text.contains("会場販売") ? .venue : text.contains("通販") ? .online : .unknown
+            if channel == .unknown, location != nil || text.contains("先行物販") || text.contains("開場中物販") { channel = .venue }
             let fulfillment: GoodsFulfillment = channel == .online ? .shipping : channel == .venue ? .venuePickup : .unknown
             let phase: GoodsPhase = section.heading.contains("事後") || text.contains("事後通販") ? .post
                 : section.heading.contains("事前") || section.heading.contains("先行") || text.contains("事前通販") || text.contains("先行通販") ? .pre
                 : channel == .venue ? .during : .unknown
-            let salesText = ["先行通販開始", "通販期間", "販売期間", "受付期間", "販売日時"]
-                .compactMap { HTML.sectionText(section.html, heading: $0) }.first
             let salesDates = parseExplicitDateTimes(salesText ?? "")
-            let location = HTML.sectionText(section.html, heading: "販売場所")
-            let purchaseLimit = HTML.sectionText(section.html, heading: "購入制限について")
-                ?? HTML.sectionText(section.html, heading: "購入制限")
-            let payment = text.split(separator: "\n").filter {
-                $0.contains("現金") || $0.contains("クレジット") || $0.contains("QR決済") || $0.contains("PayPay")
-            }.joined(separator: "\n")
-            let key = link.map { canonicalURL($0.absoluteString) } ?? clean(section.heading)
-            let prior = cachedCampaigns.first { campaign in
-                if let lhs = campaign.url, let link { return canonicalURL(lhs) == canonicalURL(link.absoluteString) }
-                return clean(campaign.officialName) == clean(section.heading)
-            }
-            return GoodsCampaign(
-                id: prior?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), eventID: eventID,
-                officialName: section.heading, channel: channel, fulfillment: fulfillment, phase: phase,
-                scope: .unconfirmed, salesStartAt: salesDates.first, salesEndAt: salesDates.dropFirst().first, pickupWindow: channel == .venue ? salesText : nil,
-                shippingNote: nil, location: location, requiresTicket: nil, purchaseLimit: purchaseLimit,
-                paymentMethods: payment.isEmpty ? nil : payment, url: link?.absoluteString,
-                mediaAssetIDs: assets.map(\.id), status: .confirmed,
-                links: HTML.links(section.html, relativeTo: sourceURL)
+            let purchaseLimit = goodsPurchaseLimitText(
+                HTML.sectionText(section.html, heading: "購入制限について") ?? HTML.sectionText(section.html, heading: "購入制限")
+                    ?? lines.filter { $0.contains("購入制限") || $0.contains("個数制限") || $0.contains("注文点数") || $0.range(of: #"[個点枚]まで"#, options: .regularExpression) != nil }.joined(separator: "\n")
             )
+            let shipping = channel == .online ? lines.filter { $0.contains("発送") || $0.contains("お届け") }
+                .map { $0.replacingOccurrences(of: #"^※"#, with: "", options: .regularExpression) }.joined(separator: "\n") : ""
+            let key = link.map { canonicalURL($0.absoluteString) } ?? clean(section.heading)
+            let cached = prior(name: section.heading, url: link)
+            campaigns.append(GoodsCampaign(
+                id: uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), name: section.heading), eventID: eventID,
+                officialName: section.heading, channel: channel, fulfillment: fulfillment, phase: phase,
+                scope: .unconfirmed, salesStartAt: salesDates.first, salesEndAt: salesDates.dropFirst().first,
+                pickupWindow: channel == .venue ? goodsSalesWindowText(salesText.map { $0.components(separatedBy: "\n") } ?? lines) : nil,
+                shippingNote: shipping.isEmpty ? nil : shipping, location: location.map(clean),
+                requiresTicket: goodsRequiresTicket(text), purchaseLimit: purchaseLimit,
+                paymentMethods: goodsPaymentMethods(text), url: link?.absoluteString,
+                mediaAssetIDs: assets.map(\.id), status: .confirmed,
+                links: sectionLinks
+            ))
+        }
+        if sharedLimit != nil || !sharedVenueLinks.isEmpty {
+            let venueIndices = campaigns.indices.filter { campaigns[$0].channel == .venue }
+            for index in venueIndices {
+                let campaign = campaigns[index]
+                var links = campaign.links
+                let known = Set(links.map { canonicalURL($0.url) })
+                links += sharedVenueLinks.filter { !known.contains(canonicalURL($0.url)) }
+                campaigns[index] = GoodsCampaign(
+                    id: campaign.id, eventID: campaign.eventID, officialName: campaign.officialName, channel: campaign.channel,
+                    fulfillment: campaign.fulfillment, phase: campaign.phase, scope: campaign.scope,
+                    salesStartAt: campaign.salesStartAt, salesEndAt: campaign.salesEndAt, pickupWindow: campaign.pickupWindow,
+                    shippingNote: campaign.shippingNote, location: campaign.location, requiresTicket: campaign.requiresTicket,
+                    purchaseLimit: campaign.purchaseLimit ?? sharedLimit, paymentMethods: campaign.paymentMethods, url: campaign.url,
+                    mediaAssetIDs: campaign.mediaAssetIDs, status: campaign.status, links: links
+                )
+            }
+        }
+        // The same round can appear twice (a page heading whose section runs
+        // into the site navigation, and the dated "■…受付" block inside グッズ情報);
+        // keep the record that carries the sales window and the store link.
+        var byName: [String: GoodsCampaign] = [:]
+        var order: [String] = []
+        func score(_ campaign: GoodsCampaign) -> Int {
+            (campaign.salesStartAt != nil ? 4 : 0) + (campaign.url != nil ? 2 : 0) + (campaign.mediaAssetIDs.isEmpty ? 0 : 1)
+        }
+        for campaign in campaigns {
+            let key = clean(campaign.officialName)
+            if let existing = byName[key] {
+                if score(campaign) > score(existing) { byName[key] = campaign }
+            } else {
+                byName[key] = campaign
+                order.append(key)
+            }
         }
         let uniqueMedia = Dictionary(media.map { (canonicalURL($0.originalURL), $0) }, uniquingKeysWith: { first, _ in first })
             .values.sorted { $0.id < $1.id }
-        return ParsedGoods(campaigns: campaigns, mediaAssets: uniqueMedia)
+        return ParsedGoods(campaigns: uniqueByID(order.compactMap { byName[$0] }), mediaAssets: uniqueMedia)
     }
 
     static func isGoodsHeading(_ heading: String) -> Bool {
-        heading.contains("グッズ通販") || heading.contains("グッズ販売") || heading.contains("事前通販") || heading == "グッズ情報" || (heading.hasPrefix("グッズ") && heading.contains("販売"))
+        guard !isGoodsLimitHeading(heading), !isGoodsVenueGuideHeading(heading),
+              heading.range(of: "ご注意|注意事項|お問い?合わ?せ", options: .regularExpression) == nil else { return false }
+        return heading.contains("グッズ通販") || heading.contains("グッズ販売") || heading.contains("事前通販") || heading == "グッズ情報" || (heading.hasPrefix("グッズ") && heading.contains("販売"))
+    }
+
+    /// Global navigation anchors (LIVE&EVENT LIST / OFFICIAL X / TOP) that a
+    /// trailing page section picks up; never a goods link.
+    static func isSiteNavigationLink(_ link: OfficialLink) -> Bool {
+        link.label.range(of: #"^(?:OFFICIAL\s+(?:X|TWITTER|YOUTUBE|NOTE|INSTAGRAM|TIKTOK|SITE|WEBSITE|HP)\b|LIVE&EVENT|TOP$|HOME$|ホーム$|サイトマップ|プライバシー|お問い?合わ?せ$)"#, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    static func isGoodsLimitHeading(_ heading: String) -> Bool {
+        heading.contains("グッズ") && (heading.contains("個数制限") || heading.contains("購入制限"))
+    }
+
+    static func isGoodsVenueGuideHeading(_ heading: String) -> Bool {
+        heading.contains("グッズ") && heading.contains("クイックオーダー")
+    }
+
+    /// "■事前通販受付" / "■事後通販受付" / "第2回事前通販受付" marker lines inside a
+    /// goods section, each with the lines that follow it up to the next marker.
+    static func goodsSubCampaigns(in lines: [String]) -> [(name: String, lines: [String])] {
+        let markerPattern = #"^[■●◆□]?\s*((?:第\d+回)?(?:事前|事後|先行|会場)?(?:グッズ)?(?:通販|物販)(?:受付)?)\s*[：:]?$"#
+        var result: [(name: String, lines: [String])] = []
+        for line in lines {
+            if let match = regex(markerPattern, line).first, let name = group(match, 1, in: line) {
+                result.append((name: name, lines: []))
+            } else if !result.isEmpty {
+                result[result.count - 1].lines.append(line)
+            }
+        }
+        return result.filter { !$0.lines.isEmpty }
+    }
+
+    /// "■販売場所：Zepp Shinjuku" / "販売場所\nZepp Shinjuku": the value of a line
+    /// that starts with one of `labels` (inline after the colon, or on the next line).
+    static func labeledLineValue(_ lines: [String], labels: [String]) -> String? {
+        for (index, line) in lines.enumerated() {
+            let stripped = line.replacingOccurrences(of: #"^[■▼●◆【\s]+"#, with: "", options: .regularExpression)
+            guard let label = labels.first(where: { stripped.hasPrefix($0) }) else { continue }
+            let rest = stripped.dropFirst(label.count).replacingOccurrences(of: #"^[】：:\s　]+"#, with: "", options: .regularExpression)
+            if !rest.isEmpty { return String(rest) }
+            if index + 1 < lines.count, !lines[index + 1].hasPrefix("※") { return lines[index + 1] }
+        }
+        return nil
+    }
+
+    /// The first line that reads as a date range or a dated time slot.
+    static func firstDateRangeLine(_ lines: [String]) -> String? {
+        lines.first { line in
+            !line.hasPrefix("※") && line.range(of: #"\d{1,2}月\d{1,2}日"#, options: .regularExpression) != nil
+                && line.range(of: #"[～〜~\-]|\d{1,2}:\d{2}"#, options: .regularExpression) != nil
+        }
+    }
+
+    /// Only the dated / timed lines of a venue sales notice ("9月25日(金)",
+    /// "先行物販：15:00-18:00"), without the ※ caveats around them.
+    static func goodsSalesWindowText(_ lines: [String]) -> String? {
+        let kept = lines.map { $0.trimmingCharacters(in: .whitespaces) }.filter { line in
+            !line.hasPrefix("※") && line.range(of: #"\d{1,2}:\d{2}|\d{1,2}月\d{1,2}日"#, options: .regularExpression) != nil
+        }.map { $0.replacingOccurrences(of: #"\s*※.*$"#, with: "", options: .regularExpression) }
+        return kept.isEmpty ? nil : kept.joined(separator: "\n")
+    }
+
+    static func goodsRequiresTicket(_ text: String) -> Bool? {
+        if text.range(of: "チケットをお持ちでない(?:お客様|方)も", options: .regularExpression) != nil { return false }
+        if text.range(of: "チケットをお持ちの(?:お客様|方)のみ|チケットをお持ちの(?:お客様|方)に限り", options: .regularExpression) != nil { return true }
+        return nil
+    }
+
+    /// The lines that state a limit (individual counts, BOX caps, item
+    /// exceptions), without the "may change on the day" boilerplate.
+    static func goodsPurchaseLimitText(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let lines = raw.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        var kept: [String] = []
+        for line in lines {
+            if line.range(of: "急遽|変更する場合|変更となる場合|ご理解|ご協力|参照ください|ご確認ください|予めご了承|あらかじめご了承", options: .regularExpression) != nil { continue }
+            let isLimit = line.range(of: #"[個点枚回]まで|BOX|制限はございません|ご購入とさせて|注文点数|購入制限|個数制限|上限|1回のみ"#, options: .regularExpression) != nil
+            let isItem = line.hasPrefix("・") && !kept.isEmpty
+            guard isLimit || isItem else { continue }
+            var value = line
+            if value.hasPrefix("※") { value.removeFirst() }
+            kept.append(value.trimmingCharacters(in: .whitespaces))
+        }
+        return kept.isEmpty ? nil : kept.joined(separator: "\n")
+    }
+
+    /// "現金、クレジットカード（VISA/…）、QRコード決済（PayPay/…）※一括払いのみ"
+    /// from a payment paragraph, or nil when the section says nothing about payment.
+    static func goodsPaymentMethods(_ text: String) -> String? {
+        let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        let relevant = lines.filter { $0.contains("現金") || $0.contains("クレジット") || $0.contains("QR") || $0.contains("PayPay") || $0.contains("電子マネー") || $0.contains("決済") }
+        guard !relevant.isEmpty else { return nil }
+        var methods: [String] = []
+        func detail(after keyword: String, in line: String) -> String? {
+            guard let range = line.range(of: keyword) else { return nil }
+            let tail = String(line[range.upperBound...])
+            guard let match = regex(#"[【（(\[]([^】）)\]]+)[】）)\]]"#, tail).first, let inner = group(match, 1, in: tail) else { return nil }
+            return clean(inner)
+        }
+        let joined = relevant.joined(separator: "\n")
+        if joined.contains("現金") && joined.range(of: "現金(?:は|のお取り扱い|でのお支払い|での支払い)?は?(?:ご利用いただけません|ご利用できません|不可|使用できません|お取り扱いしておりません)", options: .regularExpression) == nil { methods.append("現金") }
+        for (keyword, label) in [("クレジットカード", "クレジットカード"), ("QRコード決済", "QRコード決済"), ("QR決済", "QRコード決済"), ("電子マネー", "電子マネー"), ("交通系", "交通系IC")] {
+            guard let line = relevant.first(where: { $0.contains(keyword) }) else { continue }
+            if methods.contains(where: { $0.hasPrefix(label) }) { continue }
+            if let detail = detail(after: keyword, in: line) { methods.append("\(label)（\(detail)）") } else { methods.append(label) }
+        }
+        guard !methods.isEmpty else { return relevant.joined(separator: "\n") }
+        var summary = methods.joined(separator: "、")
+        if joined.contains("一括払い") { summary += "　※クレジットカードは一括払いのみ" }
+        return summary
     }
 
     static func extractImages(_ html: String, relativeTo baseURL: URL) -> [(original: URL, thumbnail: URL?)] {
@@ -1814,6 +2289,18 @@ private extension OfficialEventScraper {
             .contains(where: value.contains)
     }
 
+    /// Social "share this page" intents printed next to official content.
+    /// They point back at the page itself and are never an official link.
+    static func isShareLink(_ url: URL) -> Bool {
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path.lowercased()
+        if (host.hasSuffix("twitter.com") || host == "x.com" || host.hasSuffix(".x.com")) && (path.contains("/intent/") || path.hasPrefix("/share")) { return true }
+        if host == "line.me" || host.hasSuffix(".line.me") { return path.contains("/msg/") || path.contains("/share") || host.hasPrefix("social-plugins") }
+        if host.hasSuffix("facebook.com") && (path.contains("/sharer") || path.contains("/share")) { return true }
+        if host.hasSuffix("hatena.ne.jp") && path.contains("/entry") { return true }
+        return false
+    }
+
     static func isDirectImageURL(_ url: URL) -> Bool {
         let value = url.absoluteString.lowercased().removingPercentEncoding ?? url.absoluteString.lowercased()
         return value.range(of: #"\.(?:jpe?g|png|webp|gif|avif)(?:[?#&]|$)"#, options: .regularExpression) != nil
@@ -1831,9 +2318,12 @@ private extension OfficialEventScraper {
             .values.sorted { $0.id < $1.id }
     }
 
+    /// Parsed campaigns already reuse the cached ID of the record they refresh
+    /// (same store link or same heading), so the merge is keyed by ID. Several
+    /// records legitimately share one link (catalog + dated receptions, or
+    /// venue sales + online store pointing at the same goods account).
     static func mergeGoods(_ cached: [GoodsCampaign], _ parsed: [GoodsCampaign]) -> [GoodsCampaign] {
-        func key(_ value: GoodsCampaign) -> String { value.url.map(canonicalURL) ?? clean(value.officialName) }
-        return Dictionary((cached + parsed).map { (key($0), $0) }, uniquingKeysWith: { _, fresh in fresh })
+        Dictionary((cached + parsed).map { ($0.id, $0) }, uniquingKeysWith: { _, fresh in fresh })
             .values.sorted { $0.id < $1.id }
     }
 
@@ -2235,9 +2725,52 @@ private extension OfficialEventScraper {
         }
     }
 
+    static let knownPrefectures = ["東京", "神奈川", "大阪", "愛知", "福岡", "石川", "兵庫", "埼玉", "千葉", "北海道", "宮城", "静岡", "京都", "広島", "沖縄", "新潟", "長野", "岡山", "熊本", "香川", "宮崎", "鹿児島", "群馬", "栃木", "茨城", "岐阜", "三重", "奈良", "滋賀", "山梨", "富山", "福井", "青森", "岩手", "秋田", "山形", "福島", "愛媛", "高知", "徳島", "山口", "鳥取", "島根", "佐賀", "長崎", "大分", "和歌山"]
+
+    /// Venue-name fragments that identify the prefecture (or overseas city)
+    /// when the official page prints no "都道府県・" prefix.
+    static let venueCityHints: [(city: String, fragments: [String])] = [
+        ("東京", ["東京", "TOKYO", "Tokyo", "渋谷", "Shibuya", "新宿", "Shinjuku", "有明", "Ariake", "ARIAKE", "武道館", "立川", "TACHIKAWA", "豊洲", "羽田", "Haneda", "代々木", "Yoyogi", "両国", "国立競技場", "お台場", "池袋", "中野", "品川", "DiverCity", "日比谷", "六本木", "秋葉原", "Zepp Shinjuku", "LOVEZ", "大手町", "代官山", "duo MUSIC EXCHANGE", "O-WEST", "O-EAST", "O-Crest", "O-nest", "WWW", "LIQUIDROOM", "恵比寿", "吉祥寺", "下北沢", "赤坂", "汐留", "神田", "上野"]),
+        ("神奈川", ["神奈川", "横浜", "Yokohama", "YOKOHAMA", "ぴあアリーナMM", "Kアリーナ", "パシフィコ", "川崎", "Kawasaki", "相模", "藤沢", "横須賀"]),
+        ("大阪", ["大阪", "Osaka", "OSAKA", "京セラドーム", "インテックス", "なんば", "Namba", "Kanadevia", "万博記念公園", "梅田", "心斎橋"]),
+        ("愛知", ["愛知", "名古屋", "Nagoya", "NAGOYA", "日本ガイシ", "ポートメッセ", "豊田", "Aichi"]),
+        ("福岡", ["福岡", "Fukuoka", "FUKUOKA", "マリンメッセ", "PayPayドーム", "BEAT STATION", "北九州"]),
+        ("兵庫", ["兵庫", "神戸", "Kobe", "KOBE", "ワールド記念ホール", "GLION", "西宮"]),
+        ("埼玉", ["埼玉", "さいたま", "Saitama", "SAITAMA", "大宮", "ベルーナドーム", "所沢", "メットライフ"]),
+        ("千葉", ["千葉", "幕張", "Makuhari", "MAKUHARI", "舞浜", "松戸", "船橋"]),
+        ("北海道", ["北海道", "札幌", "Sapporo", "SAPPORO"]),
+        ("宮城", ["宮城", "仙台", "Sendai", "SENDAI"]),
+        ("静岡", ["静岡", "沼津", "Numazu", "NUMAZU", "キラメッセぬまづ", "浜松", "Hamamatsu"]),
+        ("石川", ["石川", "金沢", "Kanazawa"]),
+        ("京都", ["京都", "Kyoto"]), ("広島", ["広島", "Hiroshima"]), ("沖縄", ["沖縄", "那覇", "Okinawa"]),
+        ("新潟", ["新潟", "Niigata"]), ("長野", ["長野", "Nagano"]), ("岡山", ["岡山", "Okayama"]),
+        ("熊本", ["熊本", "Kumamoto"]), ("香川", ["香川", "高松"]), ("群馬", ["群馬", "高崎"]), ("栃木", ["栃木", "宇都宮"]),
+        ("台北", ["台北", "Taipei", "TAIPEI"]), ("香港", ["香港", "Hong Kong", "AsiaWorld"]),
+        ("ソウル", ["ソウル", "Seoul", "SEOUL"]), ("韓国", ["韓国", "KINTEX", "Korea"]), ("上海", ["上海", "Shanghai"]),
+        ("ロサンゼルス", ["Los Angeles", "ロサンゼルス", "Anaheim", "Crypto.com Arena"]),
+    ]
+
     static func venueCity(_ venue: String) -> String {
         let prefix = venue.split(separator: "・", maxSplits: 1).first.map(String.init) ?? ""
-        return ["東京", "神奈川", "大阪", "愛知", "福岡", "石川", "兵庫", "埼玉", "千葉", "北海道", "宮城"].contains(prefix) ? prefix : ""
+        if knownPrefectures.contains(prefix) { return prefix }
+        // "滋賀県草津市 …" / "国営ひたち海浜公園（茨城県ひたちなか市）"
+        if let match = regex(#"(\S{2,3}?)[都道府県](?![立営])"#, venue).first, let name = group(match, 1, in: venue),
+           let prefecture = knownPrefectures.first(where: { name.hasSuffix($0) }) { return prefecture }
+        var best: (city: String, position: Int)?
+        for hint in venueCityHints {
+            for fragment in hint.fragments {
+                guard let range = venue.range(of: fragment, options: [.caseInsensitive]) else { continue }
+                let position = venue.distance(from: venue.startIndex, to: range.lowerBound)
+                if best == nil || position > best!.position { best = (hint.city, position) }
+            }
+        }
+        return best?.city ?? ""
+    }
+
+    /// City from a Love Live tour stop header such as "東京公演" / "神奈川Day.1公演".
+    static func stopCity(_ stop: String?) -> String {
+        guard let stop else { return "" }
+        return knownPrefectures.first { stop.hasPrefix($0) } ?? ""
     }
 
     static func officialTimeZone(_ context: String) -> String {
@@ -2540,7 +3073,7 @@ private enum HTML {
             guard !decodedHref.isEmpty, !decodedHref.lowercased().hasPrefix("javascript:"), !decodedHref.hasPrefix("#") else { continue }
             guard let url = URL(string: decodedHref, relativeTo: base)?.absoluteURL,
                   url.scheme == "http" || url.scheme == "https" else { continue }
-            if OfficialEventScraper.isDirectImageURL(url) { continue }
+            if OfficialEventScraper.isDirectImageURL(url) || OfficialEventScraper.isShareLink(url) { continue }
             let body = OfficialEventScraper.group(match, 1, in: html) ?? ""
             var label = text(body)
             if label.isEmpty {

@@ -8,6 +8,7 @@ compiler_cache=${TMPDIR:-/tmp}/live-dashboard-audit-module-cache
 executable=${TMPDIR:-/tmp}/live-dashboard-official-audit
 swiftc -parse-as-library -swift-version 6 -module-cache-path "$compiler_cache" \
   ios/Sources/LiveDashboardKit/Domain/Models/*.swift \
+  ios/Sources/LiveDashboardKit/Shared/Bundle+Kit.swift \
   ios/Sources/LiveDashboardKit/Data/LiveRepository.swift \
   ios/Sources/LiveDashboardKit/Data/LocalLiveRepository.swift \
   ios/Sources/LiveDashboardKit/Data/CardRefreshMerge.swift \
