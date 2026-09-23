@@ -1,0 +1,54 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "ll04-hasunosora-link-live-dream-106",
+    "officialName": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～106期新入生入部記念公演～",
+    "shortName": "蓮ノ空 106期新入生入部記念公演",
+    "franchise": "lovelive",
+    "groups": ["蓮ノ空女学院スクールアイドルクラブ"],
+    "eventType": "live",
+    "structure": "single",
+    "lifecycle": "announced",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream106", "role": "event", "identityParams": { "p": "LLDream106" }, "adapter": "lovelive_detail" }
+    ],
+    "relatedEntities": [
+      { "relation": "related_event", "kind": "event", "name": "Link Live Dream ～103期卒業公演～", "entityId": "ll05-hasunosora-link-live-dream-103", "note": "相邻日期、同场馆，独立公演" }
+    ]
+  },
+  "performances": [
+    { "id": "ll04-main", "eventId": "ll04-hasunosora-link-live-dream-106", "date": "2027-01-22", "session": "single",
+      "doorsAt": "16:00", "startsAt": "17:00", "timeZone": "Asia/Tokyo", "venue": "日本武道館", "city": "東京",
+      "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": { "state": "not_confirmed", "note": "从本场公告提取，不从团体成员总表生成" } } }
+  ],
+  "ticketTypes": [
+    { "id": "ll04-tt-standard", "eventId": "ll04-hasunosora-link-live-dream-106", "name": "一般", "kind": "reserved",
+      "price": { "amount": 13000, "currency": "JPY", "taxIncluded": true },
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll04-main"] } },
+    { "id": "ll04-tt-u20", "eventId": "ll04-hasunosora-link-live-dream-106", "name": "U20", "kind": "u20",
+      "price": { "amount": 6500, "currency": "JPY", "taxIncluded": true },
+      "eligibility": "20歳以下限定。入場時に年齢確認あり（条件原文未読取）",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll04-main"] } }
+  ],
+  "evidence": [
+    { "id": "ll04-ev-schedule", "field": "performances[ll04-main].date,doorsAt,startsAt,venue", "sourceUrl": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream106",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "2027年1月22日(金) 日本武道館 開場16:00 / 開演17:00",
+      "scope": { "scope": "explicit", "performanceIds": ["ll04-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "ll04-ev-prices", "field": "ticketTypes[*].price", "sourceUrl": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream106",
+      "sourceSection": "チケット", "sectionKind": "search_index_snippet",
+      "rawEvidence": "一般 ¥13,000 / U20 ¥6,500",
+      "scope": { "scope": "explicit", "performanceIds": ["ll04-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "pending" }
+  ],
+  "acceptance": [
+    { "id": "ll04-a17", "scenario": "优惠票不作最低价",
+      "mustHold": ["票价摘要显示 “普通票 ¥13,000 / U20 ¥6,500，需满足条件”", "identityParams.p = LLDream106 与 ll05 的 LLDream103 为不同 eventId"],
+      "mustNotHold": ["首页显示“¥6,500 起”", "与 ll05 合并", "从团体成员总表自动填充 performers.onStage", "106 被解释为日期或人数"] }
+  ]
+}

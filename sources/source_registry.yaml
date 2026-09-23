@@ -1,0 +1,60 @@
+schemaVersion: 1
+defaults:
+  enabled: false
+  reviewStatus: pending_review
+  robotsCheckedAt: null
+  termsReviewedAt: null
+  methods: [GET, HEAD]
+  allowedPorts: [443]
+  timeoutMs: 20000
+  maxDecompressedBytes: 5242880
+  maxRedirects: 5
+  contentTypes: [text/html, application/xhtml+xml]
+
+# Paths are explicit prefixes. A trailing * means a reviewed prefix, not URL enumeration.
+origins:
+  - id: bangdream-official
+    host: bang-dream.com
+    allowedPaths: [/events/*, /13th-live/, /avemujica_livetour_final/, /avemujica_livetour_taipei/, /avemujica_livetour_taipei_ticketlink/, /ras_2026_tokyo/, /ras_2026_hyogo/, /yumemita_superposition/, /yumemita_superposition_spinup_tokyo/, /yumemita_superposition_spinup_niigata/]
+  - id: bangdream-special
+    host: sp.bang-dream.com
+    allowedPaths: [/roselia-10th-anniv/]
+  - id: bushiroad-store
+    host: bushiroad-store.com
+    allowedPaths: [/blogs/live*, /pages/morfonica_live_2026]
+  - id: lovelive-official
+    host: www.lovelive-anime.jp
+    allowedPaths: [/news/*, /special/live/*, /uranohoshi/live.php, /nijigasaki/live.php, /nijigasaki/live/*, /yuigaoka/live/*, /hasunosora/live-event/*, /hasunosora/music/cd/, /lovehigh/live/*]
+  - id: lovelive-store-portal
+    host: lovelive-store.bnfw.jp
+    allowedPaths: [/]
+  - id: lovelive-school-idol-store
+    host: lovelive.fannect.jp
+    allowedPaths: [/, /products/*, /collections/*]
+  - id: lovelive-legacy-goods
+    host: official-goods-store.jp
+    allowedPaths: [/lovelive/]
+  - id: eplus
+    host: eplus.jp
+    allowedPaths: [/sf/detail/*]
+  - id: eplus-international
+    host: ib.eplus.jp
+    allowedPaths: [/mygo-9th_st, /ras-2026_st, /nijigasaki8th_te_ol]
+  - id: tokyo-garden-theater
+    host: www.t-sg.jp
+    allowedPaths: [/events/2026/09/00001502.php]
+  - id: goodsmile
+    host: www.goodsmile.com
+    allowedPaths: [/en/product/1146053]
+  - id: nearly-equal-joy
+    host: nearly-equal-joy.jp
+    allowedPaths: [/news/detail/3511]
+  - id: sayuri-date
+    host: sayuridate.jp
+    allowedPaths: [/live/gs0o3o78l9m3]
+  - id: jp-room
+    host: www.jp-r.co.jp
+    allowedPaths: [/event/2389b024c63853e65c4719febb4174d188dea5a2b4e8e2788a35f7e81d847899/]
+  - id: a-on-store
+    host: a-onstore.jp
+    allowedPaths: [/item/item-1000242384]

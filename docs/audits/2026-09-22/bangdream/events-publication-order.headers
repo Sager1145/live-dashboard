@@ -1,0 +1,26 @@
+HTTP/2 200 
+content-type: application/json; charset=UTF-8
+content-length: 2971
+date: Wed, 23 Sep 2026 00:46:45 GMT
+referrer-policy: strict-origin-when-cross-origin
+server: Apache
+x-robots-tag: noindex
+x-content-type-options: nosniff
+access-control-expose-headers: X-WP-Total, X-WP-TotalPages, Link
+access-control-allow-headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type
+x-wp-total: 223
+x-wp-totalpages: 6
+link: <https://bang-dream.com/wp-json/wp/v2/events?tax_events%5B0%5D=51&per_page=40&orderby=date&order=desc&_fields=id%2Cdate%2Cmodified%2Cslug%2Clink%2Ctitle%2Ctax_events&page=2>; rel="next"
+allow: GET
+vary: Origin,Accept-Encoding
+accept-ranges: none
+content-encoding: gzip
+x-frame-options: SAMEORIGIN
+content-security-policy: frame-ancestors 'self';
+strict-transport-security: max-age=31536000
+x-cache: Miss from cloudfront
+via: 1.1 fc70ff4635400537ef97c6748d1e0244.cloudfront.net (CloudFront)
+x-amz-cf-pop: YTO53-P3
+x-amz-cf-id: xOAlozQo_gnDHlgGQ4tAWqvuUpW0okPzsNZB-1KiKBAvGTBiWD4O2g==
+x-xss-protection: 1; mode=block
+

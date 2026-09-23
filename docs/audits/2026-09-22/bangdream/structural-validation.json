@@ -1,0 +1,8 @@
+{
+  "records": 40,
+  "checks": [
+    "unique IDs per collection",
+    "application end not earlier than start"
+  ],
+  "issues": []
+}

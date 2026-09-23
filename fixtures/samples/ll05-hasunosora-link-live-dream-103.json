@@ -1,0 +1,59 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "ll05-hasunosora-link-live-dream-103",
+    "officialName": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～103期卒業公演～",
+    "shortName": "蓮ノ空 103期卒業公演",
+    "franchise": "lovelive",
+    "groups": ["蓮ノ空女学院スクールアイドルクラブ"],
+    "eventType": "live",
+    "structure": "multi_day",
+    "lifecycle": "announced",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream103", "role": "event", "identityParams": { "p": "LLDream103" }, "adapter": "lovelive_detail" },
+      { "url": "https://www.lovelive-anime.jp/hasunosora/music/cd/?p=01_6397", "role": "ticket_eligibility_release", "identityParams": { "p": "01_6397" }, "adapter": "official_news" }
+    ],
+    "relatedEntities": [
+      { "relation": "related_event", "kind": "event", "name": "Link Live Dream ～106期新入生入部記念公演～", "entityId": "ll04-hasunosora-link-live-dream-106", "note": "前一天、同场馆，独立公演" },
+      { "relation": "related_release", "kind": "single", "name": "封入先行対象 CD（p=01_6397）", "url": "https://www.lovelive-anime.jp/hasunosora/music/cd/?p=01_6397" }
+    ]
+  },
+  "performances": [
+    { "id": "ll05-day1", "eventId": "ll05-hasunosora-link-live-dream-103", "date": "2027-01-23", "dayLabel": "Day1", "session": "single",
+      "doorsAt": "16:00", "startsAt": "17:00", "timeZone": "Asia/Tokyo", "venue": "日本武道館", "city": "東京",
+      "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": { "state": "not_confirmed" }, "guests": { "state": "not_fetched" } } },
+    { "id": "ll05-day2", "eventId": "ll05-hasunosora-link-live-dream-103", "date": { "state": "not_confirmed", "note": "Day2 存在但日期与时刻尚未核验" }, "dayLabel": "Day2", "session": "single",
+      "doorsAt": { "state": "not_confirmed" }, "startsAt": { "state": "not_confirmed" }, "timeZone": "Asia/Tokyo", "venue": "日本武道館", "city": "東京",
+      "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": { "state": "not_confirmed" }, "guests": { "state": "not_fetched" } } }
+  ],
+  "salesRounds": [
+    { "id": "ll05-round-cd-serial-day1", "eventId": "ll05-hasunosora-link-live-dream-103",
+      "name": "CD封入先行（Day1 限定）", "method": "lottery", "channel": "ticket_platform",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll05-day1"] },
+      "applicationWindow": { "state": "not_fetched" },
+      "eligibility": { "kind": "release_serial", "releaseName": "CD（p=01_6397）", "releaseUrl": "https://www.lovelive-anime.jp/hasunosora/music/cd/?p=01_6397" },
+      "platformStatus": { "state": "not_fetched" }, "entryUrl": { "state": "not_fetched" } }
+  ],
+  "evidence": [
+    { "id": "ll05-ev-day1", "field": "performances[ll05-day1].date,doorsAt,startsAt", "sourceUrl": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream103",
+      "sourceSection": "公演概要", "sectionKind": "search_index_snippet",
+      "rawEvidence": "Day1 2027年1月23日 開場16:00 / 開演17:00",
+      "scope": { "scope": "explicit", "performanceIds": ["ll05-day1"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "ll05-ev-serial", "field": "salesRounds[ll05-round-cd-serial-day1].appliesTo", "sourceUrl": "https://www.lovelive-anime.jp/hasunosora/music/cd/?p=01_6397",
+      "sourceSection": "封入特典", "sectionKind": "event_specific",
+      "rawEvidence": "Link Live Dream ～103期卒業公演～ Day1 先行抽選申込券 封入",
+      "scope": { "scope": "explicit", "performanceIds": ["ll05-day1"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "ll05-a18", "scenario": "相邻日期不同公演",
+      "mustHold": ["首页显示 “2027.01.23 起｜已确认 Day1”", "与 ll04 建立 related_event 关系但独立 eventId、票务、出演", "Day1 封入先行只绑定 ll05-day1"],
+      "mustNotHold": ["Day1 封入先行复制到 ll05-day2 或 ll04", "自行补齐 Day2 时刻与嘉宾", "同企划＋相邻日期被合并为同一公演"] }
+  ]
+}

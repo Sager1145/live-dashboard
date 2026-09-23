@@ -1,0 +1,77 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "ll03-hasunosora-link-live-dream-ishikawa-2",
+    "officialName": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～おいでよ！石川大観光Ⅱ～",
+    "shortName": "蓮ノ空 Link Live Dream 石川大観光Ⅱ",
+    "franchise": "lovelive",
+    "groups": ["蓮ノ空女学院スクールアイドルクラブ"],
+    "eventType": "live",
+    "structure": "multi_day",
+    "lifecycle": "upcoming",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream", "role": "event", "identityParams": { "p": "LLDream" }, "adapter": "lovelive_detail" },
+      { "url": "https://lovelive.fannect.jp/collections/ll-48-01", "role": "goods", "adapter": "store_media" }
+    ],
+    "relatedEntities": [
+      { "relation": "related_release", "kind": "single", "name": "同名 CD（Day2 最速先行申込券封入）", "note": "同名 CD 页面与公演页分别识别" },
+      { "relation": "related_campaign", "kind": "campaign", "name": "石川県 地域連動企画", "note": "联动活动时间不是公演时间" }
+    ]
+  },
+  "performances": [
+    { "id": "ll03-day1", "eventId": "ll03-hasunosora-link-live-dream-ishikawa-2", "date": "2026-11-28", "dayLabel": "Day1", "session": "single",
+      "doorsAt": "15:30", "startsAt": "16:30", "timeZone": "Asia/Tokyo", "venue": "石川県産業展示館 4号館", "city": "金沢",
+      "performanceType": "live", "lifecycle": "upcoming", "performers": { "onStage": ["蓮ノ空女学院スクールアイドルクラブ"] } },
+    { "id": "ll03-day2", "eventId": "ll03-hasunosora-link-live-dream-ishikawa-2", "date": "2026-11-29", "dayLabel": "Day2", "session": "single",
+      "doorsAt": "14:30", "startsAt": "15:30", "timeZone": "Asia/Tokyo", "venue": "石川県産業展示館 4号館", "city": "金沢",
+      "performanceType": "live", "lifecycle": "upcoming", "performers": { "onStage": ["蓮ノ空女学院スクールアイドルクラブ"] } }
+  ],
+  "ticketTypes": [
+    { "id": "ll03-tt-reserved", "eventId": "ll03-hasunosora-link-live-dream-ishikawa-2", "name": "指定席", "kind": "reserved",
+      "price": { "amount": 13000, "currency": "JPY", "taxIncluded": true },
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll03-day1", "ll03-day2"] } }
+  ],
+  "salesRounds": [
+    { "id": "ll03-round-cd-serial-day2", "eventId": "ll03-hasunosora-link-live-dream-ishikawa-2",
+      "name": "CD封入 最速先行（Day2）", "method": "lottery", "channel": "ticket_platform",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll03-day2"] },
+      "applicationWindow": { "state": "not_fetched" },
+      "eligibility": { "kind": "release_serial", "releaseName": "同名 CD", "note": "申込券仅适用 Day2" },
+      "platformStatus": { "state": "not_fetched" }, "entryUrl": { "state": "not_fetched" } }
+  ],
+  "merchBatches": [
+    { "id": "ll03-merch-pre-1", "eventId": "ll03-hasunosora-link-live-dream-ishikawa-2", "officialName": "事前通販（第1回）", "channel": "online_pre",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll03-day1", "ll03-day2"] },
+      "salesWindow": { "closesAt": { "state": "not_confirmed", "note": "已核到该回受付结束，具体时刻未读取" }, "timeZone": "Asia/Tokyo" },
+      "status": "closed", "storeUrl": "https://lovelive.fannect.jp/collections/ll-48-01" }
+  ],
+  "images": [
+    { "id": "ll03-img-merch-lineup", "eventId": "ll03-hasunosora-link-live-dream-ishikawa-2", "purpose": "merch_lineup",
+      "url": { "state": "not_fetched" }, "sourceUrl": "https://lovelive.fannect.jp/collections/ll-48-01",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll03-day1", "ll03-day2"] } }
+  ],
+  "evidence": [
+    { "id": "ll03-ev-schedule", "field": "performances[*].date,doorsAt,startsAt,venue;ticketTypes[ll03-tt-reserved].price", "sourceUrl": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream",
+      "sourceSection": "公演概要 / チケット", "sectionKind": "event_specific",
+      "rawEvidence": "2026年11月28日(土) 開場15:30/開演16:30、11月29日(日) 開場14:30/開演15:30 石川県産業展示館4号館 / ¥13,000",
+      "scope": { "scope": "explicit", "performanceIds": ["ll03-day1", "ll03-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "ll03-ev-day2-serial", "field": "salesRounds[ll03-round-cd-serial-day2].eligibility", "sourceUrl": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream",
+      "sourceSection": "チケット 先行", "sectionKind": "event_specific",
+      "rawEvidence": "Day2 最速先行抽選申込券 封入",
+      "scope": { "scope": "explicit", "performanceIds": ["ll03-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "ll03-ev-merch-closed", "field": "merchBatches[ll03-merch-pre-1].status", "sourceUrl": "https://lovelive.fannect.jp/collections/ll-48-01",
+      "sourceSection": "コレクション", "sectionKind": "batch_specific", "rawEvidence": "事前通販 受付終了",
+      "scope": { "scope": "explicit", "performanceIds": ["ll03-day1", "ll03-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "ll03-a-day2-serial", "scenario": "Day2 封入先行不适用 Day1",
+      "mustHold": ["切到 Day1 时不显示 ll03-round-cd-serial-day2", "第 1 回通贩结束后仍允许新增批次"],
+      "mustNotHold": ["标题中的 Ⅱ 被解释为 Day2", "地方联动活动时间写入 performance", "一个批次结束被摘要为“物贩已全部结束”"] }
+  ]
+}

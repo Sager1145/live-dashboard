@@ -1,0 +1,628 @@
+--- a/OfficialEventScraper.swift
++++ b/OfficialEventScraper.swift
+@@ -220,6 +220,8 @@
+         let doorsAt: Date?
+         let startsAt: Date?
+         let raw: String
++        var venue: String? = nil
++        var performers: [String]? = nil
+     }
+ 
+     struct ParsedGoods: Sendable {
+@@ -293,16 +295,28 @@
+         let venueRaw: String?
+         let performersRaw: String?
+         let ticketHTML: String
++        var combinedScheduleHTML: String?
+         if isBangDream {
+             guard html.contains("p-live-event-detail") || html.contains("p-page-detail") else {
+                 throw OfficialScrapeFailure(url: finalURL, kind: .unsupportedTemplate, message: "Missing BanG Dream detail article")
+             }
++            let content = HTML.blocks(html, tag: "div", className: "p-live-event-detail__content").max { $0.count < $1.count }
++                ?? HTML.blocks(html, tag: "div", className: "p-page-detail__content").max { $0.count < $1.count } ?? ""
+             title = HTML.textForClass(html, "p-live-event-detail__header-title")
+                 ?? HTML.textForClass(html, "p-page-detail__header-title") ?? candidate.title
+-            scheduleRaw = HTML.sectionText(html, heading: "日程") ?? candidate.scheduleRaw
+-            venueRaw = HTML.sectionText(html, heading: "会場") ?? candidate.venueRaw
+-            performersRaw = HTML.sectionText(html, heading: "出演")
+-            ticketHTML = HTML.sectionHTML(html, heading: "チケット") ?? ""
++            combinedScheduleHTML = HTML.sectionHTML(content, heading: "日程・会場")
++                ?? HTML.sectionHTML(content, heading: "日時・会場")
++                ?? HTML.sectionHTML(content, heading: "開催概要")
++            scheduleRaw = HTML.sectionText(content, heading: "日程")
++                ?? combinedScheduleHTML.map(HTML.text) ?? HTML.tableValue(html, label: "開催日") ?? candidate.scheduleRaw
++            venueRaw = HTML.sectionText(content, heading: "会場")
++                ?? combinedScheduleHTML.flatMap { venueFromOverview(HTML.text($0)) } ?? HTML.tableValue(html, label: "場所") ?? candidate.venueRaw
++            performersRaw = HTML.sectionText(content, heading: "出演")
++                ?? HTML.headingSections(content).first(where: { $0.heading.hasPrefix("出演（") }).flatMap { HTML.sectionText(content, heading: $0.heading) }
++            let ticketHeading = HTML.headingSections(content).first {
++                $0.heading == "会場チケット" || $0.heading == "チケット" || $0.heading.range(of: #"^チケット[\s　]*※"#, options: .regularExpression) != nil
++            }?.heading
++            ticketHTML = ticketHeading.flatMap { HTML.sectionHTML(content, heading: $0) } ?? ""
+         } else {
+             guard html.range(of: "data-target", options: .caseInsensitive) != nil else {
+                 throw OfficialScrapeFailure(url: finalURL, kind: .unsupportedTemplate, message: "Missing Love Live data-target detail sections")
+@@ -319,30 +333,36 @@
+ 
+         let canonical = canonicalURL(finalURL.absoluteString)
+         let eventID = cached?.event.id ?? stableID(prefix: candidate.franchise.rawValue, seed: canonical)
+-        var schedules = parseSchedules(scheduleRaw)
++        var schedules = combinedScheduleHTML.map(parseCombinedSchedules) ?? parseSchedules(scheduleRaw)
+         if schedules.isEmpty { schedules = parseSchedules(candidate.scheduleRaw) }
+-        let venue = clean(venueRaw ?? "")
++        let venue = cleanedVenue(venueRaw ?? "", summary: HTML.tableValue(html, label: "場所"))
++        let eventTimeZone = officialTimeZone(title + " " + venue)
+         let performers = splitNames(performersRaw)
++        let officialGroups = HTML.blocks(html, tag: "a", className: "p-news-detail__related-artist-link").map(HTML.text)
++        let overviewNote = HTML.tableValue(html, label: "概要") ?? scheduleRaw ?? ""
+         let oldPerformances = cached?.performances ?? []
+         let parsedPerformances = schedules.enumerated().map { index, item in
+             let label = item.dayLabel ?? (schedules.count == 1 ? "公演" : "Day \(index + 1)")
+             let prior = oldPerformances.first { $0.dayLabel.caseInsensitiveCompare(label) == .orderedSame } ?? (index < oldPerformances.count ? oldPerformances[index] : nil)
++            let associatedVenue = scopedVenue(venueRaw ?? "", note: overviewNote, date: item.localDate)
++            let associatedPerformers = notedPerformers(overviewNote, groups: officialGroups, date: item.localDate, singleDate: Set(schedules.map(\.localDate)).count == 1)
+             return Performance(
+                 id: prior?.id ?? "\(eventID)-performance-\(index + 1)", eventID: eventID, stopID: prior?.stopID,
+                 dayLabel: label, subtitle: prior?.subtitle, localDate: item.localDate,
+-                doorsAt: item.doorsAt ?? prior?.doorsAt, startAt: item.startsAt ?? prior?.startAt,
+-                venueName: venue.isEmpty ? (prior?.venueName ?? "") : venue,
+-                venueCity: venue.isEmpty ? (prior?.venueCity ?? "") : venueCity(venue),
+-                performers: performers.isEmpty ? (prior?.performers ?? []) : performers, order: index,
+-                editionID: prior?.editionID, rawDate: item.raw, precision: .minute,
+-                timeZone: "Asia/Tokyo"
++                doorsAt: reinterpretJapanWallTime(item.doorsAt, in: eventTimeZone) ?? prior?.doorsAt, startAt: reinterpretJapanWallTime(item.startsAt, in: eventTimeZone) ?? prior?.startAt,
++                venueName: associatedVenue ?? item.venue ?? (venue.isEmpty ? (prior?.venueName ?? "") : venue),
++                venueCity: (item.venue ?? venue).isEmpty ? (prior?.venueCity ?? "") : venueCity(item.venue ?? venue),
++                performers: item.performers ?? (performers.isEmpty ? (associatedPerformers.isEmpty ? (prior?.performers ?? []) : associatedPerformers) : performersForDay(performersRaw ?? "", dayLabel: label)), order: index,
++                editionID: prior?.editionID, rawDate: item.raw, precision: (item.startsAt != nil || item.doorsAt != nil) ? .minute : .date,
++                timeZone: eventTimeZone
+             )
+         }
+ 
+         let performances = parsedPerformances.isEmpty ? oldPerformances : parsedPerformances
+         let parsedTiers = parseTicketTiers(ticketHTML, eventID: eventID, cached: cached?.ticketTiers ?? [])
+         let tiers = parsedTiers.isEmpty ? (cached?.ticketTiers ?? []) : parsedTiers
+-        let parsedRounds = parseTicketRounds(ticketHTML, eventID: eventID, cached: cached?.ticketRounds ?? [])
++        let tradeHTML = HTML.sectionHTML(html, heading: "チケットトレード") ?? ""
++        let parsedRounds = parseTicketRounds(ticketHTML + "\n" + tradeHTML, eventID: eventID, cached: cached?.ticketRounds ?? [], timeZone: eventTimeZone, referenceDate: schedules.first?.localDate)
+         let rounds = parsedRounds.isEmpty ? (cached?.ticketRounds ?? []) : parsedRounds
+         let richContentHTML: String
+         if isBangDream {
+@@ -354,6 +374,7 @@
+                 .filter { $0.range(of: "data-target", options: .caseInsensitive) != nil }
+                 .max(by: { $0.count < $1.count }) ?? ""
+         }
++        let parsedStreams = parseStreams(richContentHTML, sourceURL: finalURL, eventID: eventID)
+         let parsedGoodsResult = parseGoods(
+             richContentHTML, sourceURL: finalURL, eventID: eventID,
+             cachedCampaigns: cached?.goodsCampaigns ?? [], cachedMedia: cached?.mediaAssets ?? []
+@@ -372,8 +393,8 @@
+             : lastDate == nil ? .unknown : .scheduled
+         let event = LiveEvent(
+             id: eventID, franchise: candidate.franchise, officialTitle: title,
+-            groups: candidate.groups, eventType: candidate.eventType, status: status,
+-            primarySourceURL: finalURL.absoluteString, timeZone: "Asia/Tokyo"
++            groups: officialGroups.isEmpty ? candidate.groups : officialGroups, eventType: candidate.eventType, status: status,
++            primarySourceURL: finalURL.absoluteString, timeZone: eventTimeZone
+         )
+ 
+         var evidence: [SourceEvidence] = []
+@@ -387,8 +408,11 @@
+         if let performersRaw, !performers.isEmpty {
+             evidence.append(makeEvidence(recordID: eventID, field: "performance.performers", sourceURL: finalURL, quote: clean(performersRaw), now: now))
+         }
++        for performance in performances where !performance.performers.isEmpty {
++            evidence.append(makeEvidence(recordID: performance.id, field: "performance.performers", sourceURL: finalURL, quote: performance.performers.joined(separator: "、"), now: now))
++        }
+         for tier in parsedTiers {
+-            evidence.append(makeEvidence(recordID: tier.id, field: "ticket.price", sourceURL: finalURL, quote: "\(tier.name): \(tier.priceJPY ?? 0)円", now: now))
++            evidence.append(makeEvidence(recordID: tier.id, field: "ticket.price", sourceURL: finalURL, quote: "\(tier.name): \(tier.amount?.formatted ?? String(tier.priceJPY ?? 0))", now: now))
+         }
+         for round in parsedRounds {
+             evidence.append(makeEvidence(recordID: round.id, field: "ticket.round", sourceURL: finalURL, quote: round.officialName, now: now))
+@@ -398,6 +422,9 @@
+         }
+         for asset in parsedMedia {
+             evidence.append(makeEvidence(recordID: asset.id, field: "media.asset", sourceURL: finalURL, quote: asset.caption ?? asset.originalURL, now: now))
++        }
++        for stream in parsedStreams {
++            evidence.append(makeEvidence(recordID: stream.id, field: "stream.offer", sourceURL: finalURL, quote: stream.officialName, now: now))
+         }
+         for campaign in parsedGoods {
+             evidence.append(makeEvidence(recordID: campaign.id, field: "goods.campaign", sourceURL: finalURL, quote: campaign.officialName, now: now))
+@@ -409,28 +436,91 @@
+             ticketTiers: tiers, ticketRounds: rounds, ticketOffers: cached?.ticketOffers ?? [],
+             goodsCampaigns: goodsCampaigns, mediaAssets: mediaAssets,
+             notices: cached?.notices ?? [], evidence: mergeEvidence(cached?.evidence ?? [], evidence),
+-            editions: cached?.editions ?? [], streamOffers: cached?.streamOffers ?? [],
++            editions: cached?.editions ?? [], streamOffers: parsedStreams.isEmpty ? (cached?.streamOffers ?? []) : parsedStreams,
+             products: cached?.products ?? [], goodsSessions: cached?.goodsSessions ?? [], sourceHealth: .healthy
+         )
++    }
++
++    /// Combined overview blocks repeat a venue per stop; never assign the final
++    /// tour venue to every date merely because it was the last venue in the text.
++    static func parseCombinedSchedules(_ html: String) -> [ParsedSchedule] {
++        let sections = HTML.headingSections(html)
++        let stops = sections.filter { !parseSchedules(HTML.text($0.html)).isEmpty }
++        if !stops.isEmpty {
++            return stops.flatMap { stop in
++                let raw = HTML.text(stop.html)
++                return parseSchedules(raw).map { schedule in
++                    var result = schedule
++                    result.venue = venueFromOverview(raw)
++                    result.performers = inlinePerformers(raw)
++                    if result.dayLabel == nil, stop.heading.hasSuffix("公演") {
++                        result = ParsedSchedule(localDate: result.localDate, dayLabel: stop.heading, doorsAt: result.doorsAt, startsAt: result.startsAt, raw: result.raw, venue: result.venue, performers: result.performers)
++                    }
++                    return result
++                }
++            }
++        }
++        let paragraphs = HTML.blocks(html, tag: "p", className: nil)
++            .map(HTML.text).filter { !parseSchedules($0).isEmpty && venueFromOverview($0) != nil }
++        if paragraphs.count > 1 {
++            return paragraphs.flatMap { raw in parseSchedules(raw).map { schedule in
++                var result = schedule
++                result.venue = venueFromOverview(raw)
++                result.performers = inlinePerformers(raw)
++                return result
++            } }
++        }
++        let raw = HTML.text(html)
++        return parseSchedules(raw).map { schedule in
++            var result = schedule
++            result.venue = venueFromOverview(raw)
++            return result
++        }
+     }
+ 
+     static func parseSchedules(_ raw: String?) -> [ParsedSchedule] {
+         guard let raw, !raw.isEmpty else { return [] }
+         let source = clean(raw).precomposedStringWithCompatibilityMapping
+-        let pattern = #"(?:(Day\.?\s*\d+|DAY\s*\d+|昼公演|夜公演)[：:\s　]*)?(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日(?:\([^)]*\))?(?:[^\d]{0,14}(?:(?:開場\s*)?(\d{1,2}):(\d{2})\s*(?:開場)?\s*[／/]\s*(?:開演\s*)?(\d{1,2}):(\d{2})\s*(?:開演)?)?)?"#
+-        let matches = regex(pattern, source)
++        let matches = regex(#"(?:(\d{4})年\s*)?(?:(\d{1,2})月\s*)?(\d{1,2})日(?:\([^)]*\))?"#, source)
++        let ns = source as NSString
+         var year: Int?
+         var month: Int?
+         var results: [ParsedSchedule] = []
+-        for match in matches {
+-            if let value = group(match, 2, in: source).flatMap(Int.init) { year = value }
+-            if let value = group(match, 3, in: source).flatMap(Int.init) { month = value }
+-            guard let year, let month, let day = group(match, 4, in: source).flatMap(Int.init),
++        for (index, match) in matches.enumerated() {
++            if let value = group(match, 1, in: source).flatMap(Int.init) { year = value }
++            if let value = group(match, 2, in: source).flatMap(Int.init) { month = value }
++            guard let year, let month, let day = group(match, 3, in: source).flatMap(Int.init),
+                   validDate(year: year, month: month, day: day) != nil else { continue }
+             let local = String(format: "%04d-%02d-%02d", year, month, day)
+-            let doors = timeDate(local, hour: group(match, 5, in: source), minute: group(match, 6, in: source))
+-            let starts = timeDate(local, hour: group(match, 7, in: source), minute: group(match, 8, in: source))
+-            results.append(.init(localDate: local, dayLabel: group(match, 1, in: source)?.replacingOccurrences(of: ".", with: ""), doorsAt: doors, startsAt: starts, raw: group(match, 0, in: source) ?? local))
++            let end = index + 1 < matches.count ? matches[index + 1].range.location : ns.length
++            var tail = ns.substring(with: NSRange(location: NSMaxRange(match.range), length: end - NSMaxRange(match.range)))
++            // A shared time after a list of dates applies to every date in that list.
++            var sharedIndex = index
++            while tail.range(of: #"^[・、,\s]+$"#, options: .regularExpression) != nil, sharedIndex + 1 < matches.count {
++                sharedIndex += 1
++                let nextEnd = sharedIndex + 1 < matches.count ? matches[sharedIndex + 1].range.location : ns.length
++                tail = ns.substring(with: NSRange(location: NSMaxRange(matches[sharedIndex].range), length: nextEnd - NSMaxRange(matches[sharedIndex].range)))
++            }
++            let prefixStart = index > 0 ? NSMaxRange(matches[index - 1].range) : 0
++            let prefix = ns.substring(with: NSRange(location: prefixStart, length: match.range.location - prefixStart))
++            let dayLabel = regex(#"DAY\.?\s*(\d+)"#, prefix).last.flatMap { group($0, 1, in: prefix) }.map { "DAY\($0)" }
++            let pairPattern = #"(?:開場\s*[:：]?\s*)?(\d{1,2}):(\d{2})\s*(?:開場)?\s*[／/]\s*(?:開演\s*[:：]?\s*)?(\d{1,2}):(\d{2})\s*(?:開演)?"#
++            let pairs = regex(pairPattern, tail)
++            if pairs.isEmpty {
++                let start = regex(#"開演\s*[:：]?\s*(\d{1,2}):(\d{2})"#, tail).first
++                results.append(.init(localDate: local, dayLabel: dayLabel, doorsAt: nil,
++                    startsAt: start.flatMap { timeDate(local, hour: group($0, 1, in: tail), minute: group($0, 2, in: tail)) },
++                    raw: group(match, 0, in: source) ?? local))
++            } else {
++                for (pairIndex, pair) in pairs.enumerated() {
++                    let before = (tail as NSString).substring(to: pair.range.location)
++                    let sessionLabel = regex(#"昼(?:公演|の部)|夜(?:公演|の部)|第[一二三123]部"#, before).last.flatMap { group($0, 0, in: before) }
++                    results.append(.init(localDate: local, dayLabel: sessionLabel ?? (pairs.count > 1 ? "第\(pairIndex + 1)部" : dayLabel),
++                        doorsAt: timeDate(local, hour: group(pair, 1, in: tail), minute: group(pair, 2, in: tail)),
++                        startsAt: timeDate(local, hour: group(pair, 3, in: tail), minute: group(pair, 4, in: tail)),
++                        raw: (group(match, 0, in: source) ?? local) + " " + (group(pair, 0, in: tail) ?? "")))
++                }
++            }
+         }
+         var seen: Set<String> = []
+         return results.filter { seen.insert("\($0.localDate)|\($0.dayLabel ?? "")").inserted }
+@@ -440,7 +530,7 @@
+         let priceArea = HTML.sectionHTML(html, heading: "料金") ?? html
+         let raw = HTML.text(priceArea).precomposedStringWithCompatibilityMapping
+         let pattern = #"([^\n:：]{1,60}?)[：:]\s*(?:\+|＋)?\s*([\d,]+)円"#
+-        return regex(pattern, raw).enumerated().compactMap { index, match in
++        let yen: [TicketTier] = regex(pattern, raw).enumerated().compactMap { index, match in
+             guard let name = group(match, 1, in: raw).map(clean),
+                   let amountRaw = group(match, 2, in: raw)?.replacingOccurrences(of: ",", with: ""),
+                   let amount = Int(amountRaw),
+@@ -450,35 +540,124 @@
+             let id = cached.first(where: { clean($0.name) == name })?.id ?? "\(eventID)-tier-\(stableHash(name))"
+             return TicketTier(id: id, eventID: eventID, name: name, priceJPY: amount, priceKind: kind, amount: MoneyAmount(minorUnits: Int64(amount), currency: "JPY"), includes: nil, feeNote: nil, taxNote: raw.contains("税込") ? "税込" : nil)
+         }
+-    }
+-
+-    static func parseTicketRounds(_ html: String, eventID: String, cached: [TicketRound]) -> [TicketRound] {
++        let foreign: [TicketTier] = regex(#"([^\n:：]{1,80})[：:]\s*(HK\$|NT\$)\s*([\d,]+)([^\n]*)"#, raw).compactMap { match in
++            guard let name = group(match, 1, in: raw).map(clean), let unit = group(match, 2, in: raw),
++                  let digits = group(match, 3, in: raw)?.replacingOccurrences(of: ",", with: ""), let amount = Int64(digits) else { return nil }
++            let currency = unit == "HK$" ? "HKD" : "TWD"
++            let id = cached.first { clean($0.name) == name }?.id ?? "\(eventID)-tier-\(stableHash(name))"
++            return TicketTier(id: id, eventID: eventID, name: name, priceJPY: nil, priceKind: .full,
++                amount: MoneyAmount(minorUnits: amount * 100, currency: currency), includes: group(match, 4, in: raw).map(clean), feeNote: nil, taxNote: nil)
++        }
++        var additional: [TicketTier] = []
++        for section in HTML.headingSections(priceArea) {
++            let text = HTML.text(section.html).precomposedStringWithCompatibilityMapping
++            guard section.heading.contains("チケット"),
++                  let match = regex(#"[¥￥]\s*([\d,]+)"#, text).first,
++                  let digits = group(match, 1, in: text)?.replacingOccurrences(of: ",", with: ""), let value = Int(digits) else { continue }
++            let name = clean(section.heading).precomposedStringWithCompatibilityMapping
++            additional.append(TicketTier(id: cached.first { clean($0.name) == name }?.id ?? "\(eventID)-tier-\(stableHash(name))",
++                eventID: eventID, name: name, priceJPY: value, priceKind: .full,
++                amount: MoneyAmount(minorUnits: Int64(value), currency: "JPY"), includes: nil, feeNote: nil, taxNote: text.contains("税込") ? "税込" : nil))
++        }
++        if raw.contains("チケット代無料") || raw.contains("チケット代金は無料") {
++            additional.append(TicketTier(id: "\(eventID)-tier-free", eventID: eventID, name: "チケット代", priceJPY: 0, priceKind: .full,
++                amount: MoneyAmount(minorUnits: 0, currency: "JPY"), includes: nil,
++                feeNote: HTML.text(html).contains("システム利用料") ? "別途システム利用料が発生します。" : nil, taxNote: nil))
++        }
++        return yen + foreign + additional
++    }
++
++    static func ticketRoundIdentity(_ name: String) -> String {
++        clean(name.precomposedStringWithCompatibilityMapping
++            .replacingOccurrences(of: #"\s*\((?:受付)?終了\)\s*$"#, with: "", options: .regularExpression))
++    }
++
++    static func parseTicketRounds(_ html: String, eventID: String, cached: [TicketRound], timeZone: String = "Asia/Tokyo", referenceDate: String? = nil) -> [TicketRound] {
+         let headings = HTML.headingSections(html)
+         return headings.enumerated().compactMap { index, section in
+             let raw = HTML.text(section.html)
+-            guard raw.contains("受付期間") || raw.contains("申込期間") else { return nil }
++            guard raw.contains("受付期間") || raw.contains("申込期間") || section.heading.contains("受付期間") else { return nil }
+             let kind: TicketRoundKind = raw.contains("先着") || section.heading.contains("一般発売") ? .firstComeFirstServed
+-                : raw.contains("トレード") ? .resale : section.heading.contains("アップグレード") ? .upgrade : .lottery
++                : (raw + section.heading).contains("トレード") ? .resale : section.heading.contains("アップグレード") ? .upgrade : .lottery
+             let urls = HTML.allAttributes(section.html, tag: "a", name: "href").compactMap { URL(string: HTML.decode($0)) }
+-            let id = cached.first(where: { clean($0.officialName) == clean(section.heading) })?.id
+-                ?? "\(eventID)-round-\(stableHash(section.heading))"
++            // An album eligibility link is not an application page.
++            let applicationURLs = urls.filter { url in
++                guard let host = url.host?.lowercased() else { return false }
++                return ["eplus.jp", "pia.jp", "t.pia.jp", "l-tike.com", "tixplus.jp", "ticket.bushiroad-music.com", "kktix.cc", "kktix.com", "cityline.com"].contains { host == $0 || host.hasSuffix("." + $0) }
++            }
++            var period = markedText(raw, markers: ["受付期間", "申込期間"])
++                ?? (section.heading.contains("受付期間") ? raw : nil)
++            if let value = period, !value.contains("年"), let referenceDate,
++               let monthMatch = regex(#"(\d{1,2})月"#, value).first,
++               let month = group(monthMatch, 1, in: value).flatMap(Int.init) {
++                let parts = referenceDate.split(separator: "-").compactMap { Int($0) }
++                if parts.count == 3 {
++                    let year = parts[0] - (month > parts[1] ? 1 : 0)
++                    let ns = value as NSString
++                    period = ns.substring(to: monthMatch.range.location) + "\(year)年" + ns.substring(from: monthMatch.range.location)
++                }
++            }
++            let dates = parseExplicitDateTimes(period ?? "").compactMap { reinterpretJapanWallTime($0, in: timeZone) }
++            let waiting = dates.isEmpty && raw.range(of: "後日|追って|未定", options: .regularExpression) != nil
++            let id = cached.first(where: { ticketRoundIdentity($0.officialName) == ticketRoundIdentity(section.heading) })?.id
++                ?? "\(eventID)-round-\(stableHash(ticketRoundIdentity(section.heading)))"
+             return TicketRound(
+                 id: id, eventID: eventID,
+                 officialName: section.heading, kind: kind,
+                 scope: .unconfirmed,
+-                applyStartAt: parseExplicitDateTime(raw), applyEndAt: parseExplicitDateTimes(raw).dropFirst().first,
+-                resultAt: markerDate(raw, marker: "当落発表"), paymentDeadlineAt: markerDate(raw, marker: "入金期間"),
++                applyStartAt: dates.first, applyEndAt: dates.dropFirst().first,
++                resultAt: reinterpretJapanWallTime(markerDate(raw, marker: "当落発表") ?? markerDate(raw, marker: "当選発表"), in: timeZone), paymentDeadlineAt: reinterpretJapanWallTime(markedText(raw, markers: ["入金期間", "支払期間", "支払期限"]).flatMap { parseExplicitDateTimes($0).last }, in: timeZone),
+                 eligibility: raw.range(of: "封入|申込券|ムビチケ", options: .regularExpression) != nil ? raw : nil,
+-                announcementURL: nil, applyURL: urls.first?.absoluteString, overseasURL: urls.first(where: { $0.host?.hasPrefix("ib.") == true })?.absoluteString,
+-                officialStatus: raw.contains("受付終了") ? "受付終了" : nil, status: .confirmed
++                announcementURL: nil, applyURL: applicationURLs.first?.absoluteString, overseasURL: urls.first(where: { $0.host?.hasPrefix("ib.") == true })?.absoluteString,
++                officialStatus: (section.heading + raw).contains("受付終了") || section.heading.contains("（終了）") || section.heading.contains("(終了)") ? "受付終了" : nil, status: waiting ? .officiallyTBA : .confirmed
+             )
+         }
+     }
+ 
++    static func parseStreams(_ html: String, sourceURL: URL, eventID: String) -> [StreamOffer] {
++        guard let heading = HTML.headingSections(html).first(where: { $0.heading.hasPrefix("配信チケット") }),
++              let section = HTML.sectionHTML(html, heading: heading.heading) else { return [] }
++        let raw = HTML.text(section)
++        let links = HTML.allAttributes(section, tag: "a", name: "href").compactMap { URL(string: HTML.decode($0), relativeTo: sourceURL)?.absoluteURL }
++        let url = links.first { $0.host?.contains("eplus") == true }?.absoluteString
++        let prices = parseTicketTiers(section, eventID: eventID, cached: [])
++        var offers: [StreamOffer] = []
++        let allDates = parseExplicitDateTimes(raw)
++        let year = allDates.first.map { japanCalendar.component(.year, from: $0) }
++        let priceRows: [(String, MoneyAmount?)] = prices.isEmpty ? [("配信チケット", regex(#"([\d,]+)円"#, raw).first.flatMap { group($0, 1, in: raw)?.replacingOccurrences(of: ",", with: "") }.flatMap(Int64.init).map { MoneyAmount(minorUnits: $0, currency: "JPY") })] : prices.map { ($0.name, $0.amount) }
++        for (name, amount) in priceRows {
++            let detail = HTML.sectionText(section, heading: name) ?? raw
++            // A DAY label makes each archive deadline an independent offer.
++            let dayMatches = regex(#"[・●]?\s*DAY\s*\d+"#, detail)
++            var slices: [(String, String)] = []
++            if dayMatches.count > 1 {
++                let ns = detail as NSString
++                for (index, match) in dayMatches.enumerated() {
++                    let end = index + 1 < dayMatches.count ? dayMatches[index + 1].range.location : ns.length
++                    slices.append((name + " " + (group(match, 0, in: detail) ?? ""), ns.substring(with: NSRange(location: NSMaxRange(match.range), length: end - NSMaxRange(match.range)))))
++                }
++            } else { slices = [(name, detail)] }
++            for (label, slice) in slices {
++                let sales = slice.range(of: "販売期間").map { String(slice[$0.upperBound...]) }
++                let salesPart = sales.map { $0.components(separatedBy: "配信期間")[0] } ?? ""
++                let dates = parseExplicitDateTimes(salesPart)
++                var archiveText = slice.range(of: "配信期間").map { String(slice[$0.upperBound...]).components(separatedBy: "\n")[0] } ?? ""
++                if !archiveText.contains("年"), let year { archiveText = archiveText.replacingOccurrences(of: #"^[：:\s～〜]+"#, with: "", options: .regularExpression); archiveText = "\(year)年" + archiveText }
++                let archive = parseExplicitDateTimes(archiveText).last
++                guard amount != nil || url != nil || !dates.isEmpty else { continue }
++                offers.append(StreamOffer(id: stableID(prefix: "\(eventID)-stream", seed: label), eventID: eventID,
++                    platform: url?.contains("eplus") == true ? "Streaming+" : "公式配信", officialName: label,
++                    scope: .unconfirmed, amount: amount, salesStartAt: dates.first, salesEndAt: dates.dropFirst().first,
++                    archiveAvailableUntil: archive, regionNote: nil, url: url, status: .confirmed))
++            }
++        }
++        return offers
++    }
++
+     static func parseMediaAssets(_ html: String, sourceURL: URL, eventID: String, cached: [MediaAsset]) -> [MediaAsset] {
+-        let sections = HTML.headingSections(html).filter { $0.heading.contains("座席") }
++        let sections = HTML.headingSections(html).filter { $0.heading.contains("座席") || $0.heading.contains("会場エリア") }
+         return sections.flatMap { section in
+-            extractImages(section.html, relativeTo: sourceURL).map { image in
++            extractImages(HTML.sectionHTML(html, heading: section.heading) ?? section.html, relativeTo: sourceURL).map { image in
+                 let prior = cached.first { canonicalURL($0.originalURL) == canonicalURL(image.original.absoluteString) }
+                 return MediaAsset(
+                     id: prior?.id ?? stableID(prefix: "\(eventID)-media", seed: canonicalURL(image.original.absoluteString)),
+@@ -526,10 +705,22 @@
+                 .compactMap { URL(string: HTML.decode($0), relativeTo: sourceURL)?.absoluteURL }
+                 .first { ($0.scheme == "https" || $0.scheme == "http") && !isDirectImageURL($0) }
+             guard link != nil || !text.isEmpty || !assets.isEmpty else { return nil }
+-            let channel: GoodsChannel = section.heading.contains("通販") || text.contains("通販") ? .online
+-                : section.heading.contains("会場") || text.contains("会場販売") ? .venue : .unknown
++            let channel: GoodsChannel = section.heading.contains("会場") ? .venue
++                : section.heading.contains("通販") ? .online
++                : text.contains("会場販売") ? .venue : text.contains("通販") ? .online : .unknown
+             let fulfillment: GoodsFulfillment = channel == .online ? .shipping : channel == .venue ? .venuePickup : .unknown
+-            let phase: GoodsPhase = section.heading.contains("事前") || section.heading.contains("先行") || text.contains("事前通販") ? .pre : .unknown
++            let phase: GoodsPhase = section.heading.contains("事後") || text.contains("事後通販") ? .post
++                : section.heading.contains("事前") || section.heading.contains("先行") || text.contains("事前通販") || text.contains("先行通販") ? .pre
++                : channel == .venue ? .during : .unknown
++            let salesText = ["先行通販開始", "通販期間", "販売期間", "受付期間", "販売日時"]
++                .compactMap { HTML.sectionText(section.html, heading: $0) }.first
++            let salesDates = parseExplicitDateTimes(salesText ?? "")
++            let location = HTML.sectionText(section.html, heading: "販売場所")
++            let purchaseLimit = HTML.sectionText(section.html, heading: "購入制限について")
++                ?? HTML.sectionText(section.html, heading: "購入制限")
++            let payment = text.split(separator: "\n").filter {
++                $0.contains("現金") || $0.contains("クレジット") || $0.contains("QR決済") || $0.contains("PayPay")
++            }.joined(separator: "\n")
+             let key = link.map { canonicalURL($0.absoluteString) } ?? clean(section.heading)
+             let prior = cachedCampaigns.first { campaign in
+                 if let lhs = campaign.url, let link { return canonicalURL(lhs) == canonicalURL(link.absoluteString) }
+@@ -538,9 +729,9 @@
+             return GoodsCampaign(
+                 id: prior?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), eventID: eventID,
+                 officialName: section.heading, channel: channel, fulfillment: fulfillment, phase: phase,
+-                scope: .unconfirmed, salesStartAt: nil, salesEndAt: nil, pickupWindow: nil,
+-                shippingNote: nil, location: nil, requiresTicket: nil, purchaseLimit: nil,
+-                paymentMethods: nil, url: link?.absoluteString,
++                scope: .unconfirmed, salesStartAt: salesDates.first, salesEndAt: salesDates.dropFirst().first, pickupWindow: channel == .venue ? salesText : nil,
++                shippingNote: nil, location: location, requiresTicket: nil, purchaseLimit: purchaseLimit,
++                paymentMethods: payment.isEmpty ? nil : payment, url: link?.absoluteString,
+                 mediaAssetIDs: assets.map(\.id), status: .confirmed
+             )
+         }
+@@ -550,7 +741,7 @@
+     }
+ 
+     static func isGoodsHeading(_ heading: String) -> Bool {
+-        heading.contains("グッズ通販") || heading.contains("グッズ販売") || heading.contains("事前通販")
++        heading.contains("グッズ通販") || heading.contains("グッズ販売") || heading.contains("事前通販") || heading == "グッズ情報" || (heading.hasPrefix("グッズ") && heading.contains("販売"))
+     }
+ 
+     static func extractImages(_ html: String, relativeTo baseURL: URL) -> [(original: URL, thumbnail: URL?)] {
+@@ -627,13 +818,28 @@
+ 
+     static func parseExplicitDateTimes(_ raw: String) -> [Date] {
+         let source = raw.precomposedStringWithCompatibilityMapping
+-        let pattern = #"(\d{4})年(\d{1,2})月(\d{1,2})日(?:\([^)]*\))?\s*(\d{1,2})(?::|時)(\d{2})(?:分)?"#
++        let pattern = #"(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日(?:\([^)]*\))?\s*(\d{1,2})(?::|時)(\d{2})(?:分)?"#
++        var year: Int?
++        var month: Int?
+         return regex(pattern, source).compactMap { match in
+-            guard let y = group(match, 1, in: source).flatMap(Int.init), let m = group(match, 2, in: source).flatMap(Int.init),
+-                  let d = group(match, 3, in: source).flatMap(Int.init), let h = group(match, 4, in: source).flatMap(Int.init),
+-                  let minute = group(match, 5, in: source).flatMap(Int.init) else { return nil }
+-            return japanCalendar.date(from: DateComponents(year: y, month: m, day: d, hour: h, minute: minute))
+-        }
++            let explicitYear = group(match, 1, in: source).flatMap(Int.init)
++            if let explicitYear { year = explicitYear }
++            if let m = group(match, 2, in: source).flatMap(Int.init) {
++                if explicitYear == nil, let previousMonth = month, m < previousMonth, let previousYear = year { year = previousYear + 1 }
++                month = m
++            }
++            guard let year, let month, let day = group(match, 3, in: source).flatMap(Int.init),
++                  validDate(year: year, month: month, day: day) != nil else { return nil }
++            return timeDate(String(format: "%04d-%02d-%02d", year, month, day), hour: group(match, 4, in: source), minute: group(match, 5, in: source))
++        }
++    }
++
++    static func markedText(_ raw: String, markers: [String]) -> String? {
++        guard let range = markers.compactMap({ raw.range(of: $0) }).min(by: { $0.lowerBound < $1.lowerBound }) else { return nil }
++        let tail = String(raw[range.upperBound...])
++        // Allow a range to wrap, but don't consume a result/payment date as its end.
++        let boundary = tail.range(of: #"当落|当選発表|結果|入金|支払|受付URL|申込URL|※"#, options: .regularExpression)
++        return boundary.map { String(tail[..<$0.lowerBound]) } ?? tail
+     }
+ 
+     static func markerDate(_ raw: String, marker: String) -> Date? {
+@@ -691,6 +897,63 @@
+             .values.sorted { $0.id < $1.id }
+     }
+ 
++    static func datedContexts(_ text: String, year: String, month: String) -> [(dates: [String], context: String)] {
++        let source = text.precomposedStringWithCompatibilityMapping
++        let matches = regex(#"(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日(?:\([^)]*\))?"#, source)
++        var y = Int(year) ?? 0
++        var m = Int(month) ?? 0
++        var pending: [String] = []
++        var result: [(dates: [String], context: String)] = []
++        for (index, match) in matches.enumerated() {
++            if let value = group(match, 1, in: source).flatMap(Int.init) { y = value }
++            if let value = group(match, 2, in: source).flatMap(Int.init) { m = value }
++            guard let d = group(match, 3, in: source).flatMap(Int.init), validDate(year: y, month: m, day: d) != nil else { continue }
++            pending.append(String(format: "%04d-%02d-%02d", y, m, d))
++            let end = index + 1 < matches.count ? matches[index + 1].range.location : (source as NSString).length
++            let tail = (source as NSString).substring(with: NSRange(location: NSMaxRange(match.range), length: end - NSMaxRange(match.range)))
++            if tail.range(of: #"[^・、,\s]"#, options: .regularExpression) != nil {
++                result.append((pending, tail))
++                pending = []
++            }
++        }
++        return result
++    }
++
++    static func scopedVenue(_ rawVenue: String, note: String, date: String) -> String? {
++        let lines = rawVenue.split(separator: "\n").map(String.init)
++        let venues = lines.compactMap { line -> (String, String)? in
++            guard let match = regex(#"^(.+?)[（(]([^）)]+?)(?:公演|会場)[）)]"#, line).first,
++                  let venue = group(match, 1, in: line), let city = group(match, 2, in: line) else { return nil }
++            return (clean(venue), city)
++        }
++        guard venues.count > 1 else { return nil }
++        let parts = date.split(separator: "-").map(String.init)
++        let contexts = datedContexts(note, year: parts[0], month: parts[1])
++        for context in contexts where context.dates.contains(date) {
++            if let venue = venues.first(where: { context.context.contains($0.1) }) { return venue.0 }
++        }
++        return ""
++    }
++
++    static func notedPerformers(_ note: String, groups: [String], date: String, singleDate: Bool) -> [String] {
++        let parts = date.split(separator: "-").map(String.init)
++        let contexts = datedContexts(note, year: parts[0], month: parts[1])
++        let applicable = contexts.filter { $0.dates.contains(date) }.map(\.context).joined(separator: "\n")
++        let mentionedGroups = groups.filter { note.contains($0) }
++        let text = (contexts.isEmpty && singleDate) || (mentionedGroups.count == 1 && contexts.contains { $0.dates.contains(date) }) ? note : applicable
++        return groups.filter { text.contains($0) }.map { group in
++            // The official notice names an individual guest from this group.
++            if group == "夢限大みゅーたいぷ", text.contains("千石ユノ") { return "千石ユノ（夢限大みゅーたいぷ）" }
++            return group
++        }
++    }
++
++    static func cleanedVenue(_ raw: String, summary: String?) -> String {
++        let value = clean(raw).replacingOccurrences(of: #"^【(?:会場|場所)】\s*"#, with: "", options: .regularExpression)
++        if value.contains("http"), let summary, !summary.isEmpty { return clean(summary) }
++        return value
++    }
++
+     static func venueFromOverview(_ raw: String) -> String? {
+         if let marker = raw.range(of: "■会場", options: .backwards) {
+             var value = String(raw[marker.upperBound...])
+@@ -700,18 +963,67 @@
+             let cleaned = clean(value.replacingOccurrences(of: #"^[：:\s]+"#, with: "", options: .regularExpression))
+             if !cleaned.isEmpty { return cleaned }
+         }
+-        guard let match = regex(#"(?:^|\n)会場[：:]?\s*([^\n■]+)"#, raw).first else { return nil }
++        guard let match = regex(#"(?:^|\n)[\s　]*(?:会場|開催場所)[：:]?[ \t　]*([^\n■]+)"#, raw).first else { return nil }
+         return group(match, 1, in: raw).map(clean)
++    }
++
++    static func inlinePerformers(_ raw: String) -> [String]? {
++        guard let match = regex(#"(?:^|\n)出演[：:]([^\n]+)"#, raw).first, let value = group(match, 1, in: raw) else { return nil }
++        let names = splitNames(value).filter { !$0.localizedCaseInsensitiveContains("and more") }
++        return names.isEmpty ? nil : names
++    }
++
++    static func performersForDay(_ raw: String, dayLabel: String) -> [String] {
++        let normalized = raw.precomposedStringWithCompatibilityMapping
++        let labels = regex(#"DAY\s*(\d+)"#, normalized)
++        guard let requested = regex(#"DAY\s*(\d+)"#, dayLabel).first.flatMap({ group($0, 1, in: dayLabel) }),
++              let matchIndex = labels.firstIndex(where: { group($0, 1, in: normalized) == requested }) else { return splitNames(raw) }
++        let ns = normalized as NSString
++        let prefix = ns.substring(to: labels[0].range.location)
++        let match = labels[matchIndex]
++        let end = matchIndex + 1 < labels.count ? labels[matchIndex + 1].range.location : ns.length
++        let selected = ns.substring(with: NSRange(location: NSMaxRange(match.range), length: end - NSMaxRange(match.range)))
++        return splitNames(prefix + "\n" + selected)
+     }
+ 
+     static func splitNames(_ raw: String?) -> [String] {
+         guard let raw else { return [] }
+-        return raw.split(whereSeparator: { "、,，／/\n".contains($0) }).map { clean(String($0)) }.filter { !$0.isEmpty }
++        var depth = 0
++        var current = ""
++        var parts: [String] = []
++        for character in raw {
++            if "（([".contains(character) { depth += 1 }
++            if "）)]".contains(character) { depth = max(0, depth - 1) }
++            if character == "\n" || (depth == 0 && "、,，／/×".contains(character)) {
++                parts.append(current); current = ""
++            } else { current.append(character) }
++        }
++        parts.append(current)
++        return parts.map { clean($0).trimmingCharacters(in: CharacterSet(charactersIn: "・<>＜＞：: ")) }.filter {
++            !$0.isEmpty && !$0.hasPrefix("※") && !$0.hasPrefix("【") && !$0.hasPrefix("オープニングアクト")
++                && $0.range(of: #"^DAY\s*\d+$"#, options: [.regularExpression, .caseInsensitive]) == nil
++        }
+     }
+ 
+     static func venueCity(_ venue: String) -> String {
+         let prefix = venue.split(separator: "・", maxSplits: 1).first.map(String.init) ?? ""
+         return ["東京", "神奈川", "大阪", "愛知", "福岡", "石川", "兵庫", "埼玉", "千葉", "北海道", "宮城"].contains(prefix) ? prefix : ""
++    }
++
++    static func officialTimeZone(_ context: String) -> String {
++        if context.contains("香港") || context.contains("AsiaWorld-Expo") { return "Asia/Hong_Kong" }
++        if context.contains("台北") || context.contains("台湾") || context.contains("TAIPEI") { return "Asia/Taipei" }
++        if context.contains("韓国") || context.contains("ソウル") || context.contains("Seoul") { return "Asia/Seoul" }
++        if context.contains("Crypto.com Arena") { return "America/Los_Angeles" }
++        if context.contains("上海") { return "Asia/Shanghai" }
++        return "Asia/Tokyo"
++    }
++
++    static func reinterpretJapanWallTime(_ date: Date?, in zone: String) -> Date? {
++        guard let date else { return nil }
++        var target = japanCalendar
++        target.timeZone = TimeZone(identifier: zone) ?? japanCalendar.timeZone
++        return target.date(from: japanCalendar.dateComponents([.year, .month, .day, .hour, .minute], from: date))
+     }
+ 
+     static var japanCalendar: Calendar {
+@@ -838,6 +1150,15 @@
+         return tags.flatMap { blocks(html, tag: $0, className: className).map(text) }.filter { !$0.isEmpty }
+     }
+ 
++    static func tableValue(_ html: String, label: String) -> String? {
++        for table in blocks(html, tag: "div", className: "p-live-event-detail__table") {
++            for row in blocks(table, tag: "tr", className: nil) where firstTagText(row, tag: "th") == label {
++                return firstTagText(row, tag: "td")
++            }
++        }
++        return nil
++    }
++
+     static func firstTagText(_ html: String, tag: String) -> String? { blocks(html, tag: tag, className: nil).first.map(text) }
+ 
+     static func firstAttribute(_ html: String, tag: String, name: String) -> String? { allAttributes(html, tag: tag, name: name).first }
+@@ -860,9 +1181,10 @@
+     }
+ 
+     static func sectionHTML(_ html: String, heading: String) -> String? {
+-        let pattern = #"<h([1-6])\b[^>]*>\s*(?:<[^>]+>\s*)*\#(NSRegularExpression.escapedPattern(for: heading))(?:\s*</[^>]+>)*\s*</h\1>"#
+-        guard let match = OfficialEventScraper.regex(pattern, html, options: [.caseInsensitive, .dotMatchesLineSeparators]).first,
+-              let level = OfficialEventScraper.group(match, 1, in: html).flatMap(Int.init) else { return nil }
++        let matches = OfficialEventScraper.regex(#"<h([1-6])\b[^>]*>(.*?)</h\1>"#, html, options: [.caseInsensitive, .dotMatchesLineSeparators])
++        guard let match = matches.first(where: { match in
++            OfficialEventScraper.group(match, 2, in: html).map(text) == OfficialEventScraper.clean(heading)
++        }), let level = OfficialEventScraper.group(match, 1, in: html).flatMap(Int.init) else { return nil }
+         let ns = html as NSString
+         let start = NSMaxRange(match.range)
+         let tail = NSRange(location: start, length: ns.length - start)

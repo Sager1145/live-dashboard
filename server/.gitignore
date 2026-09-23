@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.build/
+DerivedData/
+.env
+*.xcuserstate
+__pycache__/
+.venv/
+.runtime/
+server/data/
+*.log

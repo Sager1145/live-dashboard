@@ -1,0 +1,87 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd03-morfonica-movement",
+    "officialName": "Morfonica LIVE「Movement」",
+    "shortName": "Morfonica「Movement」",
+    "franchise": "bangdream",
+    "groups": ["Morfonica"],
+    "eventType": "live",
+    "structure": "single",
+    "lifecycle": "in_progress",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/events/morfonica_live_2026/", "role": "event", "adapter": "bangdream_event" },
+      { "url": "https://www.t-sg.jp/events/2026/09/00001502.php", "role": "venue_schedule", "adapter": "venue_schedule" },
+      { "url": "https://bushiroad-store.com/pages/morfonica_live_2026", "role": "goods", "adapter": "store_media" }
+    ],
+    "relatedEntities": [
+      { "relation": "successor", "kind": "event", "name": "Morfonica LIVE「eleganza」", "entityId": "bd04-morfonica-eleganza", "note": "同艺人独立公演，不合并" }
+    ]
+  },
+  "performances": [
+    { "id": "bd03-main", "eventId": "bd03-morfonica-movement",
+      "date": "2026-09-22", "session": "single",
+      "doorsAt": "17:00", "startsAt": "18:00", "timeZone": "Asia/Tokyo",
+      "venue": "TACHIKAWA STAGE GARDEN", "city": "立川",
+      "performanceType": "live", "lifecycle": "in_progress",
+      "performers": { "onStage": ["Morfonica"] } }
+  ],
+  "salesRounds": [
+    { "id": "bd03-round-venue", "eventId": "bd03-morfonica-movement",
+      "name": "会場チケット", "method": "unknown", "channel": "ticket_platform",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd03-main"] },
+      "applicationWindow": { "state": "not_fetched" },
+      "platformStatus": "sold_out",
+      "entryUrl": { "state": "not_fetched" } }
+  ],
+  "streams": [
+    { "id": "bd03-stream", "eventId": "bd03-morfonica-movement", "platform": { "state": "not_fetched" }, "kind": "unknown",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd03-main"] },
+      "price": { "state": "not_fetched" },
+      "salesWindow": { "state": "not_confirmed", "note": "官网索引有配信票分区，期限未读取" },
+      "viewingWindow": { "state": "not_fetched" },
+      "hasArchive": { "state": "not_fetched" },
+      "entryUrl": { "state": "not_fetched" } }
+  ],
+  "merchBatches": [
+    { "id": "bd03-merch-store", "eventId": "bd03-morfonica-movement",
+      "officialName": "ブシロードストア 通販", "channel": "online_pre",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd03-main"] },
+      "salesWindow": { "state": "not_fetched" },
+      "status": "accepting",
+      "storeUrl": "https://bushiroad-store.com/pages/morfonica_live_2026" }
+  ],
+  "products": [
+    { "id": "bd03-prod-a", "eventId": "bd03-morfonica-movement", "batchId": "bd03-merch-store",
+      "name": { "state": "not_confirmed", "note": "商店中一件在售商品，名称未读取" }, "price": { "state": "not_fetched" },
+      "orderType": "unknown", "stockStatus": "in_stock", "productUrl": { "state": "not_fetched" } },
+    { "id": "bd03-prod-b", "eventId": "bd03-morfonica-movement", "batchId": "bd03-merch-store",
+      "name": { "state": "not_confirmed", "note": "商店中一件售罄商品，名称未读取" }, "price": { "state": "not_fetched" },
+      "orderType": "unknown", "stockStatus": "sold_out", "productUrl": { "state": "not_fetched" } }
+  ],
+  "evidence": [
+    { "id": "bd03-ev-venue-schedule", "field": "performances[bd03-main].date,doorsAt,startsAt", "sourceUrl": "https://www.t-sg.jp/events/2026/09/00001502.php",
+      "sourceSection": "イベントスケジュール", "sectionKind": "event_specific",
+      "rawEvidence": "2026年9月22日 Morfonica LIVE「Movement」 開場17:00 開演18:00",
+      "scope": { "scope": "explicit", "performanceIds": ["bd03-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd03-ev-soldout", "field": "salesRounds[bd03-round-venue].platformStatus", "sourceUrl": "https://bang-dream.com/events/morfonica_live_2026/",
+      "sourceSection": "チケット", "sectionKind": "search_index_snippet",
+      "rawEvidence": "会場チケット SOLD OUT / 配信チケット",
+      "scope": { "scope": "explicit", "performanceIds": ["bd03-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "pending" },
+    { "id": "bd03-ev-stock", "field": "products[*].stockStatus", "sourceUrl": "https://bushiroad-store.com/pages/morfonica_live_2026",
+      "sourceSection": "商品一覧", "sectionKind": "product_specific",
+      "rawEvidence": "一部商品 在庫あり / 一部商品 SOLD OUT",
+      "scope": { "scope": "explicit", "performanceIds": ["bd03-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "bd03-a11", "scenario": "现场售罄与配信、商品独立",
+      "mustHold": ["详情不显示只有一个选项的 Day 选择器", "salesRound sold_out 时 stream 与 merchBatch 状态独立显示", "bd03-prod-a in_stock 与 bd03-prod-b sold_out 并存"],
+      "mustNotHold": ["一个 isSoldOut 控制整张卡", "商品售罄改变 merchBatch.status"] }
+  ]
+}

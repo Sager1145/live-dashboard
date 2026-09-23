@@ -1,0 +1,35 @@
+iOS Simulator: 0C693FBC-EF04-4616-81D4-2E650146A313
+Scheme: LiveDashboard; Swift 6; CODE_SIGNING_ALLOWED=NO; parallel-testing-enabled NO
+Command: xcodebuild -project ios/LiveDashboard.xcodeproj -scheme LiveDashboard -destination platform=iOS Simulator,id=0C693FBC-EF04-4616-81D4-2E650146A313 -derivedDataPath /tmp/livedashboard-native-derived CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO test
+
+Test Suite 'All tests' started at 2026-09-22 21:13:06.216.
+Test Suite 'LiveDashboardKitTests.xctest' started at 2026-09-22 21:13:06.219.
+Test Suite 'ContractTests' started at 2026-09-22 21:13:06.220.
+Test Suite 'ContractTests' passed at 2026-09-22 21:13:06.467.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.243 (0.247) seconds
+Test Suite 'LocalRepositoryTests' started at 2026-09-22 21:13:06.468.
+Test Suite 'LocalRepositoryTests' passed at 2026-09-22 21:13:06.510.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.038 (0.042) seconds
+Test Suite 'MediaPresentationTests' started at 2026-09-22 21:13:06.510.
+Test Suite 'MediaPresentationTests' passed at 2026-09-22 21:13:06.559.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.046 (0.049) seconds
+Test Suite 'OfficialAuditRegressionTests' started at 2026-09-22 21:13:06.559.
+Test Suite 'OfficialAuditRegressionTests' passed at 2026-09-22 21:13:06.695.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.128 (0.135) seconds
+Test Suite 'OfficialEventScraperTests' started at 2026-09-22 21:13:06.695.
+Test Suite 'OfficialEventScraperTests' passed at 2026-09-22 21:13:06.837.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.141 (0.142) seconds
+Test Suite 'LiveDashboardKitTests.xctest' passed at 2026-09-22 21:13:06.837.
+	 Executed 44 tests, with 0 failures (0 unexpected) in 0.596 (0.618) seconds
+Test Suite 'All tests' passed at 2026-09-22 21:13:06.838.
+	 Executed 44 tests, with 0 failures (0 unexpected) in 0.596 (0.622) seconds
+Test Suite 'All tests' started at 2026-09-22 21:13:15.734.
+Test Suite 'LiveDashboardUITests.xctest' started at 2026-09-22 21:13:15.736.
+Test Suite 'NavigationUITests' started at 2026-09-22 21:13:15.736.
+Test Suite 'NavigationUITests' passed at 2026-09-22 21:13:30.254.
+	 Executed 1 test, with 0 failures (0 unexpected) in 14.511 (14.518) seconds
+Test Suite 'LiveDashboardUITests.xctest' passed at 2026-09-22 21:13:30.255.
+	 Executed 1 test, with 0 failures (0 unexpected) in 14.511 (14.519) seconds
+Test Suite 'All tests' passed at 2026-09-22 21:13:30.256.
+	 Executed 1 test, with 0 failures (0 unexpected) in 14.511 (14.522) seconds
+** TEST SUCCEEDED **

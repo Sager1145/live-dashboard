@@ -1,0 +1,688 @@
+{
+  "schema_version": "0.1-research",
+  "research_as_of": "2026-09-22",
+  "language": "zh-CN",
+  "scope": "10 BanG Dream! and 10 Love Live! representative recent or announced event-card candidates; not a claim of the chronologically latest twenty productions.",
+  "not_production_data": true,
+  "ui": {
+    "tabs": [
+      "overview",
+      "tickets",
+      "seating",
+      "goods"
+    ],
+    "shared_selection": [
+      "eventID",
+      "editionID",
+      "stopID",
+      "performanceID"
+    ],
+    "card_configuration": [
+      "visible",
+      "sortOrder",
+      "pinned",
+      "density",
+      "selectedFields",
+      "changeNotifications",
+      "deadlineNotifications"
+    ],
+    "homepage_status_dimensions": [
+      "performanceLifecycle",
+      "ticketRoundStatus",
+      "goodsCampaignStatus",
+      "streamingStatus"
+    ],
+    "unknown_values": [
+      "not_fetched",
+      "parse_failed",
+      "not_confirmed",
+      "officially_tba",
+      "not_applicable"
+    ]
+  },
+  "evidence_contract": {
+    "required_for_each_fact": [
+      "sourceURL",
+      "sourceSection",
+      "rawEvidence",
+      "scope",
+      "observedAt",
+      "verificationStatus"
+    ],
+    "timestamp_semantics": [
+      "performanceDate",
+      "doorsAt",
+      "startsAt",
+      "applicationOpensAt",
+      "applicationClosesAt",
+      "resultsAt",
+      "paymentDueAt",
+      "goodsSaleOpensAt",
+      "goodsSaleClosesAt",
+      "pickupWindow",
+      "shippingEstimate",
+      "streamSalesClosesAt",
+      "archiveAvailableUntil"
+    ],
+    "rules": [
+      "Search snippets are discovery/partial evidence, not a stable production API.",
+      "Never infer official non-publication from fetch failure.",
+      "Never infer ticket inventory merely from an application window.",
+      "Do not infer an actual seating plan from a generic venue diagram.",
+      "Store source-publication time separately from fetch time.",
+      "Preserve semantic query parameters, including p and _id.",
+      "Do not inherit per-performance fields unless shared applicability is explicit."
+    ]
+  },
+  "events": [
+    {
+      "id": "BD01",
+      "franchise": "BanG Dream!",
+      "official_title": "BanG Dream! 13th☆LIVE",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/13th-live/",
+          "role": "production"
+        },
+        {
+          "url": "https://bang-dream.com/events/13th-live-day1/",
+          "role": "performance"
+        },
+        {
+          "url": "https://bang-dream.com/events/13th-live-day2/",
+          "role": "performance"
+        },
+        {
+          "url": "https://bang-dream.com/events/13th-live-day3/",
+          "role": "performance"
+        },
+        {
+          "url": "https://eplus.jp/sf/detail/4529430001",
+          "role": "ticket_rounds"
+        }
+      ],
+      "homepage_grouping": "一张公演卡，三天为子场次",
+      "detail_focus": [
+        "按日出演与副标题",
+        "按日受付轮次",
+        "三日通票与单日票",
+        "各日商品"
+      ],
+      "extraction_risks": [
+        "不能将三个详情URL生成三张重复首页卡",
+        "同价的通票与单日高级票不是同一票种"
+      ],
+      "acceptance_test": "切换Day1到Day2后，受付开始/结束日期和申请入口一起变化。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD02",
+      "franchise": "BanG Dream!",
+      "official_title": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/events/mygo_9th/",
+          "role": "original_edition"
+        },
+        {
+          "url": "https://bang-dream.com/events/mygo_9th_hyogo/",
+          "role": "kobe_edition"
+        },
+        {
+          "url": "https://ib.eplus.jp/mygo-9th_st",
+          "role": "streaming"
+        }
+      ],
+      "homepage_grouping": "建议一个9th系列父卡，原场与神戸再景編保留独立edition身份",
+      "detail_focus": [
+        "版本/站点选择",
+        "Day1/Day2",
+        "暖场出演",
+        "限制视野/站立区",
+        "回放"
+      ],
+      "extraction_risks": [
+        "追加版不能覆盖原场日期",
+        "不能把回放日期当现场日期",
+        "原场嘉宾不自动继承给再景篇"
+      ],
+      "acceptance_test": "神户版不得自动继承横滨版专属票价、座位图和暖场名单。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD03",
+      "franchise": "BanG Dream!",
+      "official_title": "Morfonica LIVE「Movement」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/events/morfonica_live_2026/",
+          "role": "event"
+        },
+        {
+          "url": "https://www.t-sg.jp/events/2026/09/00001502.php",
+          "role": "venue_schedule"
+        },
+        {
+          "url": "https://bushiroad-store.com/pages/morfonica_live_2026",
+          "role": "goods"
+        }
+      ],
+      "homepage_grouping": "单场卡，不显示无意义的Day选择器",
+      "detail_focus": [
+        "开场/开演",
+        "现场票与配信票分离",
+        "商品库存"
+      ],
+      "extraction_risks": [
+        "现场SOLD OUT不能覆盖配信销售",
+        "单件售罄不能代表整场物贩结束"
+      ],
+      "acceptance_test": "现场票售罄后，仍能独立展示已核验的配信与商品状态。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD04",
+      "franchise": "BanG Dream!",
+      "official_title": "Morfonica LIVE「eleganza」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/events/eleganza/",
+          "role": "event"
+        }
+      ],
+      "homepage_grouping": "独立单场卡，与Movement不合并",
+      "detail_focus": [
+        "已公布日程",
+        "先行受付",
+        "新增资料提醒"
+      ],
+      "extraction_risks": [
+        "相同艺人与相近发布时间不是同一公演",
+        "未读取到字段不等于官方未公布"
+      ],
+      "acceptance_test": "资料稀疏时不生成虚构票价、物贩期限或座位图。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD05",
+      "franchise": "BanG Dream!",
+      "official_title": "Roselia 10th Anniversary LIVE TOUR",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/events/roselia-10th-anniversary-live-tour/",
+          "role": "tour"
+        },
+        {
+          "url": "https://sp.bang-dream.com/roselia-10th-anniv/",
+          "role": "anniversary_hub"
+        }
+      ],
+      "homepage_grouping": "一张巡演卡，各城市为独立stop",
+      "detail_focus": [
+        "站点选择",
+        "城市与场馆",
+        "封入先行资格",
+        "下一站"
+      ],
+      "extraction_risks": [
+        "周年专题中的专辑发行与公演日期要分开",
+        "不能将某一站座位图继承给所有站"
+      ],
+      "acceptance_test": "同一张巡演卡切换城市后显示对应场馆、日期与证据。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD06",
+      "franchise": "BanG Dream!",
+      "official_title": "Roselia「Lehre der Rose」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/events/lehre-der-rose/",
+          "role": "event"
+        },
+        {
+          "url": "https://www.goodsmile.com/en/product/1146053",
+          "role": "licensed_goods"
+        }
+      ],
+      "homepage_grouping": "一张双日专辑纪念公演卡，与周年巡演独立关联",
+      "detail_focus": [
+        "双日选择",
+        "场贩",
+        "通贩",
+        "关联专辑"
+      ],
+      "extraction_risks": [
+        "专辑名/公演名相同不能按标题直接合并",
+        "商品销售日不是专辑发行日"
+      ],
+      "acceptance_test": "专辑、纪念Live和周年Tour保存三个独立实体及关联。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD07",
+      "franchise": "BanG Dream!",
+      "official_title": "Ave Mujica LIVE TOUR 2026「Exitus」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/avemujica_livetour_final/",
+          "role": "tour_final"
+        },
+        {
+          "url": "https://bang-dream.com/avemujica_livetour_taipei/",
+          "role": "taipei_stop"
+        },
+        {
+          "url": "https://bang-dream.com/avemujica_livetour_taipei_ticketlink/",
+          "role": "taipei_ticket"
+        }
+      ],
+      "homepage_grouping": "一张巡演父卡，FINAL和台北追加为子站点/版本",
+      "detail_focus": [
+        "地区选择",
+        "当地时区与原币",
+        "当地售票入口",
+        "站点Goods"
+      ],
+      "extraction_risks": [
+        "FINAL字样不证明整个巡演已无追加公演",
+        "日本与台湾规则/币种不互相覆盖"
+      ],
+      "acceptance_test": "台北场不得显示日本站的日元票价或日本场专属购票入口。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD08",
+      "franchise": "BanG Dream!",
+      "official_title": "RAISE A SUILEN LIVE 2026「Boot IGNITION」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/ras_2026_tokyo/",
+          "role": "tokyo_stop"
+        },
+        {
+          "url": "https://bang-dream.com/ras_2026_hyogo/",
+          "role": "hyogo_stop"
+        },
+        {
+          "url": "https://ib.eplus.jp/ras-2026_st",
+          "role": "streaming"
+        }
+      ],
+      "homepage_grouping": "一张多站公演卡",
+      "detail_focus": [
+        "会场票",
+        "配信票",
+        "官方票务转售入口",
+        "通贩",
+        "地区规则"
+      ],
+      "extraction_risks": [
+        "配信可观看地区不代表现场入场国籍限制",
+        "网络销售时间与开演时间分开"
+      ],
+      "acceptance_test": "配信地域限制只作用于配信offer，不污染现场票。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD09",
+      "franchise": "BanG Dream!",
+      "official_title": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/yumemita_superposition/",
+          "role": "mixed_event_tour"
+        },
+        {
+          "url": "https://bang-dream.com/yumemita_superposition_spinup_tokyo/",
+          "role": "tokyo_live"
+        },
+        {
+          "url": "https://bang-dream.com/yumemita_superposition_spinup_niigata/",
+          "role": "niigata_live"
+        }
+      ],
+      "homepage_grouping": "混合活动巡回父卡；Live筛选仅保留确认为演唱会的子活动",
+      "detail_focus": [
+        "活动类型",
+        "各站列表",
+        "单独演唱会",
+        "免费部分配信"
+      ],
+      "extraction_risks": [
+        "47都道府县不等于47场演唱会",
+        "免费部分直播不等于整场免费或有回放"
+      ],
+      "acceptance_test": "默认Live过滤不纳入纯交流/宣传活动，保留相关活动入口。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "BD10",
+      "franchise": "BanG Dream!",
+      "official_title": "Poppin’Party×Roselia 合同ライブ「DREAMS GO ON」",
+      "sources": [
+        {
+          "url": "https://bang-dream.com/events/ppp-roselia2026/",
+          "role": "event"
+        }
+      ],
+      "homepage_grouping": "一张联合演出卡，两个团体标签",
+      "detail_focus": [
+        "联合出演",
+        "票价",
+        "CD/BD购买特典",
+        "商品图"
+      ],
+      "extraction_risks": [
+        "CD/BD消费门槛不是入场票价",
+        "关联两个艺人不应生成两张重复卡"
+      ],
+      "acceptance_test": "物贩抽奖的2000日元门槛不能进入ticketPrice。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL01",
+      "franchise": "Love Live!",
+      "official_title": "LoveLive! Series 15th Anniversary ラブライブ！フェス",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest",
+          "role": "event"
+        },
+        {
+          "url": "https://lovelive.fannect.jp/products/lamd84829",
+          "role": "after_pamphlet"
+        },
+        {
+          "url": "https://nearly-equal-joy.jp/news/detail/3511",
+          "role": "performer_official"
+        }
+      ],
+      "homepage_grouping": "一张跨系列双日公演卡",
+      "detail_focus": [
+        "按日出演/嘉宾",
+        "票价",
+        "事前通贩",
+        "After Pamphlet预订与发货"
+      ],
+      "extraction_risks": [
+        "不能对所有团体都假定全员或双日出演",
+        "After Pamphlet名称不代表其销售从演出后才开始"
+      ],
+      "acceptance_test": "公演结束、商品预订截止和发货分别更新状态。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL02",
+      "franchise": "Love Live!",
+      "official_title": "LoveLive! Series 15th Anniversary ラブライブ！フェス 前夜祭 FILM LIVE ～未来へ届けるタイムカプセル～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai",
+          "role": "event"
+        },
+        {
+          "url": "https://sayuridate.jp/live/gs0o3o78l9m3",
+          "role": "performer_official"
+        },
+        {
+          "url": "https://www.jp-r.co.jp/event/2389b024c63853e65c4719febb4174d188dea5a2b4e8e2788a35f7e81d847899/",
+          "role": "performer_agency"
+        }
+      ],
+      "homepage_grouping": "独立Film Live卡；两日各昼夜场",
+      "detail_focus": [
+        "活动类型",
+        "日期+昼夜",
+        "现场出演与影像出演区分"
+      ],
+      "extraction_risks": [
+        "前夜祭名称不能用于推算日期",
+        "影像中的人不必实际到场"
+      ],
+      "acceptance_test": "四个performance独立；仅10月11日出演者不能出现在10月10日现场名单。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL03",
+      "franchise": "Love Live!",
+      "official_title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～おいでよ！石川大観光Ⅱ～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream",
+          "role": "event"
+        },
+        {
+          "url": "https://lovelive.fannect.jp/collections/ll-48-01",
+          "role": "goods"
+        }
+      ],
+      "homepage_grouping": "独立双日公演卡，与同名CD/旅游联动分开",
+      "detail_focus": [
+        "按日时刻",
+        "按日封入先行",
+        "物贩批次",
+        "商品原图"
+      ],
+      "extraction_risks": [
+        "Ⅱ是公演标题而非Day2",
+        "同名地方联动时间不是公演时间",
+        "旧批次结束不代表不会新增批次"
+      ],
+      "acceptance_test": "Day2序列码先行不自动适用于Day1。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL04",
+      "franchise": "Love Live!",
+      "official_title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～106期新入生入部記念公演～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream106",
+          "role": "event"
+        }
+      ],
+      "homepage_grouping": "独立单场卡，不与次日的103期卒业公演合并",
+      "detail_focus": [
+        "本场出演",
+        "普通票/U20",
+        "入场条件"
+      ],
+      "extraction_risks": [
+        "106期不是人数或2026日期",
+        "U20资格不能按用户未授权的年龄推断"
+      ],
+      "acceptance_test": "普通票与U20价格并列，不把折扣票伪装为所有人的最低可买票价。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL05",
+      "franchise": "Love Live!",
+      "official_title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～103期卒業公演～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream103",
+          "role": "event"
+        },
+        {
+          "url": "https://www.lovelive-anime.jp/hasunosora/music/cd/?p=01_6397",
+          "role": "ticket_eligibility_release"
+        }
+      ],
+      "homepage_grouping": "独立双日公演卡，与106期新入生公演关联但不合并",
+      "detail_focus": [
+        "Day1/Day2",
+        "本日出演/嘉宾",
+        "不同封入资格"
+      ],
+      "extraction_risks": [
+        "相同会场与相邻日期不证明同一公演",
+        "某日嘉宾不能复制到另一日"
+      ],
+      "acceptance_test": "103与106保存独立eventID；缺少已核验嘉宾字段时不从团体总成员表自动补齐。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL06",
+      "franchise": "Love Live!",
+      "official_title": "ラブライブ！スーパースター!! Liella! 8th LoveLive! Tour ～Our Song, Our Dreams～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=8thlivetour",
+          "role": "tour"
+        },
+        {
+          "url": "https://www.lovelive-anime.jp/news/01_6570.html",
+          "role": "theme_album"
+        },
+        {
+          "url": "https://www.lovelive-anime.jp/news/01_6589.html",
+          "role": "fan_disc"
+        },
+        {
+          "url": "https://a-onstore.jp/item/item-1000242384",
+          "role": "album_eligibility"
+        }
+      ],
+      "homepage_grouping": "一张三站双日巡演卡",
+      "detail_focus": [
+        "城市+Day",
+        "主题专辑先行",
+        "Fan Disc先行",
+        "未来受付提醒"
+      ],
+      "extraction_risks": [
+        "CD发行日不是公演日",
+        "不同载体的封入券适用日期不同"
+      ],
+      "acceptance_test": "11月18日开始的Day1专辑先行不能覆盖11月27日开始的东京Day2 Fan Disc先行。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL07",
+      "franchise": "Love Live!",
+      "official_title": "いきづらい部！3rd LIVE ～いつかみんなで叶いそう～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=3rdLIVE",
+          "role": "event"
+        },
+        {
+          "url": "https://eplus.jp/sf/detail/4360810001",
+          "role": "ticket_rounds"
+        }
+      ],
+      "homepage_grouping": "一张多站双日公演卡",
+      "detail_focus": [
+        "站点+Day",
+        "最速先行",
+        "同行者登记",
+        "照片登记/身份确认"
+      ],
+      "extraction_risks": [
+        "_id参数是公演身份，不能丢弃",
+        "同一eplus艺人索引可能包含2nd和3rd"
+      ],
+      "acceptance_test": "按每个公演标题及场次区块提取，不能把2nd和3rd的轮次混合。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL08",
+      "franchise": "Love Live!",
+      "official_title": "いきづらい部！2nd LIVE Dou-Da? DOING! ～Reply to L～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=2ndLIVE",
+          "role": "event"
+        },
+        {
+          "url": "https://lovelive.fannect.jp/collections/ll-47-01",
+          "role": "goods"
+        },
+        {
+          "url": "https://www.lovelive-anime.jp/news/01_6600.html",
+          "role": "onsite_cd_bonus"
+        }
+      ],
+      "homepage_grouping": "独立双日公演卡，结束后保留仍有时效的相关信息",
+      "detail_focus": [
+        "按日回放",
+        "商品批次",
+        "发货通知",
+        "场贩历史图"
+      ],
+      "extraction_risks": [
+        "演出结束不等于配信观看结束",
+        "商店全站配送公告不全属于当前商品集合"
+      ],
+      "acceptance_test": "旧现场票折叠，但经核验仍有效的回放/购买信息可保持可见。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL09",
+      "franchise": "Love Live!",
+      "official_title": "ラブライブ！虹ヶ咲学園スクールアイドル同好会 8th Live! TOKIMEKI Express",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=8thlive",
+          "role": "event"
+        },
+        {
+          "url": "https://ib.eplus.jp/nijigasaki8th_te_ol",
+          "role": "streaming"
+        },
+        {
+          "url": "https://www.lovelive-anime.jp/news/01_6207.html",
+          "role": "onsite_campaign"
+        }
+      ],
+      "homepage_grouping": "一张两站双日巡演卡",
+      "detail_focus": [
+        "站点+Day",
+        "海外观众入口",
+        "物贩/出展",
+        "配信归档"
+      ],
+      "extraction_risks": [
+        "海外票务链接不等于海外演出",
+        "回放截止日不是第五场公演",
+        "场馆别名不能生成重复场馆"
+      ],
+      "acceptance_test": "大阪与东京的会场、场贩图和票务适用范围独立。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    },
+    {
+      "id": "LL10",
+      "franchise": "Love Live!",
+      "official_title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ 6th Live Dream ～Bloom Garden Party～",
+      "sources": [
+        {
+          "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=6thBGP",
+          "role": "tour"
+        },
+        {
+          "url": "https://lovelive.fannect.jp/collections/ll-43-03",
+          "role": "after_goods"
+        },
+        {
+          "url": "https://www.lovelive-anime.jp/news/01_6491.html",
+          "role": "blu_ray_release"
+        }
+      ],
+      "homepage_grouping": "一张巡演卡；Stage概念、城市和Day分别保存",
+      "detail_focus": [
+        "Stage+站点+Day",
+        "按站出演",
+        "场贩规则",
+        "受注商品发货区别"
+      ],
+      "extraction_risks": [
+        "电影/Live/同名BD分开",
+        "Stage不是物理舞台方位或座位区",
+        "受注商品可能晚于普通商品发货"
+      ],
+      "acceptance_test": "不同站点条件不互相继承；BD发售不能生成新现场公演。",
+      "verification_note": "Research source manifest, not a complete extracted live feed. Source discovery is confirmed; all fields and image applicability require evidence-based validation before publication. No tested DOM selectors are supplied."
+    }
+  ]
+}

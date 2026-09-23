@@ -1,0 +1,77 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd07-ave-mujica-exitus-tour",
+    "officialName": "Ave Mujica LIVE TOUR 2026「Exitus」",
+    "shortName": "Ave Mujica TOUR「Exitus」",
+    "franchise": "bangdream",
+    "groups": ["Ave Mujica"],
+    "eventType": "tour",
+    "structure": "tour",
+    "lifecycle": "ended",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/avemujica_livetour_final/", "role": "tour_final", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/avemujica_livetour_taipei/", "role": "taipei_stop", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/avemujica_livetour_taipei_ticketlink/", "role": "taipei_ticket", "adapter": "bangdream_event" }
+    ]
+  },
+  "stops": [
+    { "id": "bd07-stop-fukuoka", "eventId": "bd07-ave-mujica-exitus-tour", "name": "福岡公演", "city": "福岡", "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd07-stop-osaka", "eventId": "bd07-ave-mujica-exitus-tour", "name": "大阪公演", "city": "大阪", "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd07-stop-aichi", "eventId": "bd07-ave-mujica-exitus-tour", "name": "愛知公演", "city": "愛知", "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd07-stop-tokyo", "eventId": "bd07-ave-mujica-exitus-tour", "name": "東京公演", "city": "東京", "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd07-stop-final", "eventId": "bd07-ave-mujica-exitus-tour", "name": "FINAL", "city": { "state": "not_fetched" }, "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY",
+      "sources": [ { "url": "https://bang-dream.com/avemujica_livetour_final/", "role": "tour_final" } ] },
+    { "id": "bd07-stop-taipei", "eventId": "bd07-ave-mujica-exitus-tour", "name": "台北追加公演", "city": "台北", "venue": "林口体育館", "country": "TW", "timeZone": "Asia/Taipei", "localCurrency": "TWD",
+      "sources": [ { "url": "https://bang-dream.com/avemujica_livetour_taipei/", "role": "taipei_stop" }, { "url": "https://bang-dream.com/avemujica_livetour_taipei_ticketlink/", "role": "taipei_ticket" } ] }
+  ],
+  "performances": [
+    { "id": "bd07-taipei-day1", "eventId": "bd07-ave-mujica-exitus-tour", "stopId": "bd07-stop-taipei", "date": "2026-08-08", "dayLabel": "Day1", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Taipei", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["Ave Mujica"] } },
+    { "id": "bd07-taipei-day2", "eventId": "bd07-ave-mujica-exitus-tour", "stopId": "bd07-stop-taipei", "date": "2026-08-09", "dayLabel": "Day2", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Taipei", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["Ave Mujica"] } },
+    { "id": "bd07-final-main", "eventId": "bd07-ave-mujica-exitus-tour", "stopId": "bd07-stop-final", "date": { "state": "not_fetched" }, "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["Ave Mujica"] } }
+  ],
+  "salesRounds": [
+    { "id": "bd07-round-taipei", "eventId": "bd07-ave-mujica-exitus-tour",
+      "name": "台北公演 售票", "method": "unknown", "channel": "overseas_agent",
+      "appliesTo": { "scope": "explicit", "stopIds": ["bd07-stop-taipei"] },
+      "applicationWindow": { "state": "not_fetched" },
+      "platformStatus": "closed",
+      "entryUrl": "https://bang-dream.com/avemujica_livetour_taipei_ticketlink/" }
+  ],
+  "ticketTypes": [
+    { "id": "bd07-tt-taipei", "eventId": "bd07-ave-mujica-exitus-tour", "name": "台北公演 票種（原幣）", "kind": "other",
+      "price": { "state": "not_fetched", "note": "币种必须为 TWD" },
+      "appliesTo": { "scope": "explicit", "stopIds": ["bd07-stop-taipei"] }, "salesRoundIds": ["bd07-round-taipei"] }
+  ],
+  "merchBatches": [
+    { "id": "bd07-merch-taipei", "eventId": "bd07-ave-mujica-exitus-tour", "officialName": "台北公演 会場物販", "channel": "venue",
+      "appliesTo": { "scope": "explicit", "stopIds": ["bd07-stop-taipei"] },
+      "salesWindow": { "state": "not_fetched" }, "venueHours": { "state": "not_fetched" }, "status": "closed", "storeUrl": { "state": "not_applicable" } }
+  ],
+  "evidence": [
+    { "id": "bd07-ev-nav", "field": "stops[*]", "sourceUrl": "https://bang-dream.com/avemujica_livetour_final/",
+      "sourceSection": "ナビゲーション", "sectionKind": "event_specific",
+      "rawEvidence": "福岡 / 大阪 / 愛知 / 東京 / FINAL / 台北追加公演",
+      "scope": { "scope": "all", "evidenceIds": ["bd07-ev-nav"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd07-ev-taipei", "field": "performances[bd07-taipei-*].date,stops[bd07-stop-taipei].venue", "sourceUrl": "https://bang-dream.com/avemujica_livetour_taipei/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "台北追加公演 2026年8月8日(土)・9日(日) 林口体育館",
+      "scope": { "scope": "explicit", "stopIds": ["bd07-stop-taipei"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "bd07-a12", "scenario": "跨境站点",
+      "mustHold": ["巡演关系来自站点导航，不靠标题推测", "台北站显示 Asia/Taipei、TWD、当地售票入口与当地物贩说明", "所有 Money 带 currency"],
+      "mustNotHold": ["台北站显示日本站日元票价或日本站购票按钮", "FINAL 字样使系统停止发现追加场"] }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "deterministicUnitTestsPassed": 49,
+  "uiTestsPassed": 1,
+  "optInNetworkTestsPassed": 1,
+  "liveOfficialDetails": [
+    {
+      "id": "LL01",
+      "performances": 2
+    },
+    {
+      "id": "LL02",
+      "performances": 4
+    },
+    {
+      "id": "LL03",
+      "performances": 2
+    },
+    {
+      "id": "LL04",
+      "performances": 1
+    },
+    {
+      "id": "LL05",
+      "performances": 2
+    },
+    {
+      "id": "LL06",
+      "performances": 6
+    },
+    {
+      "id": "LL07",
+      "performances": 4
+    },
+    {
+      "id": "LL08",
+      "performances": 4
+    },
+    {
+      "id": "LL09",
+      "performances": 6
+    },
+    {
+      "id": "LL10",
+      "performances": 2
+    },
+    {
+      "id": "LL11",
+      "performances": 4
+    },
+    {
+      "id": "LL12",
+      "performances": 8
+    },
+    {
+      "id": "LL13",
+      "performances": 2
+    },
+    {
+      "id": "LL14",
+      "performances": 2
+    },
+    {
+      "id": "LL15",
+      "performances": 2
+    },
+    {
+      "id": "LL16",
+      "performances": 2
+    },
+    {
+      "id": "LL17",
+      "performances": 4
+    },
+    {
+      "id": "LL18",
+      "performances": 5
+    },
+    {
+      "id": "LL19",
+      "performances": 8
+    },
+    {
+      "id": "LL20",
+      "performances": 6
+    }
+  ],
+  "decodedImagePathGroups": [
+    "hasunosora",
+    "lovelive",
+    "nijigasaki",
+    "special",
+    "uranohoshi",
+    "yuigaoka"
+  ],
+  "bangDreamNormalizedRegression": {
+    "matched": 40,
+    "total": 40
+  },
+  "scope": "Access repair, nonempty performance parsing and representative image decoding. Not a complete Love Live field audit."
+}

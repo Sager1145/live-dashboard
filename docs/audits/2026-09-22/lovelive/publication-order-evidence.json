@@ -1,0 +1,42 @@
+{
+  "asOf": "2026-09-22T00:00:00-04:00",
+  "source": "https://www.lovelive-anime.jp/news/?subcategory=event&page=1",
+  "sourceType": "official-series-news-live-event-filter",
+  "orderingStatement": "The official filtered NEWS pages were visibly sorted newest publication date first. This is the only cross-branch publication order verified in the current run.",
+  "pagesInspected": [
+    "https://www.lovelive-anime.jp/news/?subcategory=event&page=1",
+    "https://www.lovelive-anime.jp/news/?subcategory=event&page=2",
+    "https://www.lovelive-anime.jp/news/?subcategory=event&page=3",
+    "https://www.lovelive-anime.jp/news/?subcategory=event&page=4",
+    "https://www.lovelive-anime.jp/news/?subcategory=event&page=5",
+    "https://www.lovelive-anime.jp/news/?subcategory=event&page=6"
+  ],
+  "method": "Normal browser navigation; read visible official cards in DOM order; collapse later updates that clearly name the same event. No publication date was inferred from performance dates.",
+  "latestDistinctEventPublications": [
+    {"rank":1,"publishedAt":"2026-09-19","series":["ミュージカル"],"title":"『ラブライブ！スクールアイドルミュージカル DREAM LIVE！』開催決定！！","sourceURL":"https://www.lovelive-anime.jp/news/01_6628.html"},
+    {"rank":2,"publishedAt":"2026-09-17","series":["サンシャイン!!"],"title":"TOKYO GAME SHOW 2026のVRChatブースに『ラブライブ！サンシャイン!!』が参加！VRChatワールドもアップデート","sourceURL":"https://www.lovelive-anime.jp/news/01_6632.html"},
+    {"rank":3,"publishedAt":"2026-09-10","series":["イキヅライブ！"],"title":"いきづらい部！ 2nd LIVE Dou-Da? DOING! ～Reply to L～ 会場CD購入者特典決定！","sourceURL":"https://www.lovelive-anime.jp/news/01_6600.html","eventURL":"https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=2ndLIVE"},
+    {"rank":4,"publishedAt":"2026-08-07","series":["サンシャイン!!"],"title":"『ラブライブ！サンシャイン!! Aqours スクールアイドル活動展 Dive into Sparkle』夏制服キービジュアルとオフィシャルグッズ詳細を公開！","sourceURL":"https://www.lovelive-anime.jp/news/01_6504.html"},
+    {"rank":5,"publishedAt":"2026-08-05","series":["ミュージカル"],"title":"『スクールアイドルミュージカル』2026年公演について出演者変更のお知らせ","sourceURL":"https://www.lovelive-anime.jp/news/01_6480.html"},
+    {"rank":6,"publishedAt":"2026-08-04","series":["サンシャイン!!"],"title":"『Sanrio Virtual Festival 2026 Summer Edition』にGuilty Kissが出演決定！","sourceURL":"https://www.lovelive-anime.jp/news/01_6475.html"},
+    {"rank":7,"publishedAt":"2026-07-28","series":["スーパースター!!"],"title":"『ラブライブ！スーパースター!! Liella!のちゅーとりえらいぶ!! 2026』CD/Blu-ray物販特典決定！","sourceURL":"https://www.lovelive-anime.jp/news/01_6425.html"},
+    {"rank":8,"publishedAt":"2026-07-09","series":["イキヅライブ！"],"title":"11月21日(土)『東武鉄道 presents ANIMAX MUSIX 2026 supported by Lemino』DAY2に、いきづらい部！の出演が決定！","sourceURL":"https://www.lovelive-anime.jp/news/01_6293.html"},
+    {"rank":9,"publishedAt":"2026-07-08","series":["イキヅライブ！"],"title":"7月19日(日) Shibuya LOVEZ OPENING SERIES『Lantis DAYZ』いきづらい部！会場CD購入者特典決定！","sourceURL":"https://www.lovelive-anime.jp/news/01_6377.html"},
+    {"rank":10,"publishedAt":"2026-06-26","series":["イキヅライブ！"],"title":"7月10日(金)『Animelo Summer Live 2026 -Messenger-』いきづらい部！会場CD購入者特典決定！","sourceURL":"https://www.lovelive-anime.jp/news/01_6318.html"},
+    {"rank":11,"publishedAt":"2026-06-25","series":["サンシャイン!!"],"title":"ラブライブ！サンシャイン!! Guilty Kiss × Saint Snow TWO-MAN LIVE \"VS\"","sourceURL":"https://www.lovelive-anime.jp/news/01_6320.html","eventURL":"https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=GKSS_TWO-MAN"},
+    {"rank":12,"publishedAt":"2026-06-14","series":["虹ヶ咲学園"],"title":"ラブライブ！虹ヶ咲学園スクールアイドル同好会 8th Live! TOKIMEKI Express","sourceURL":"https://www.lovelive-anime.jp/news/01_6271.html","eventURL":"https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=8thlive"},
+    {"rank":13,"publishedAt":"2026-06-04","series":["イキヅライブ！"],"title":"KIMCHIKURA Fes '26","sourceURL":"https://www.lovelive-anime.jp/news/01_6232.html"},
+    {"rank":14,"publishedAt":"2026-05-27","series":["蓮ノ空女学院"],"title":"ラブライブ！蓮ノ空女学院スクールアイドルクラブ 6th Live Dream ～Bloom Garden Party～","sourceURL":"https://www.lovelive-anime.jp/news/01_6211.html","eventURL":"https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=6thBGP"},
+    {"rank":15,"publishedAt":"2026-05-15","series":["スーパースター!!"],"title":"Japan Weekend Madrid Liella! appearance","sourceURL":"https://www.lovelive-anime.jp/news/01_6168.html"},
+    {"rank":16,"publishedAt":"2026-05-11","series":["イキヅライブ！"],"title":"いきづらい部！ 2nd Single『Dou-Da? DOING! / REGAIN AGAIN LLLLOVE』発売記念リリースイベント","sourceURL":"https://www.lovelive-anime.jp/news/01_6144.html"},
+    {"rank":17,"publishedAt":"2026-03-20","series":["サンシャイン!!"],"title":"リスアニ！LIVE on TOKYO ANIME MUSIC HIGHLIGHTS","sourceURL":"https://www.lovelive-anime.jp/news/01_5996.html"},
+    {"rank":18,"publishedAt":"2026-03-10","series":["スーパースター!!"],"title":"LuckyFes'26 Liella! appearance","sourceURL":"https://www.lovelive-anime.jp/news/01_5966.html"},
+    {"rank":19,"publishedAt":"2026-03-08","series":["スーパースター!!"],"title":"CON-CON HONG KONG 2026 Liella! appearance","sourceURL":"https://www.lovelive-anime.jp/news/01_5965.html"},
+    {"rank":20,"publishedAt":"2026-03-06","series":["スーパースター!!"],"title":"ラブライブ！スーパースター!! Liella! 7th LoveLive! ～Fly! MUSIC WORLD♪～","sourceURL":"https://www.lovelive-anime.jp/news/01_5946.html","eventURL":"https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=7thlive"}
+  ],
+  "limitations": [
+    "The NEWS category contains update notices and third-party appearances, not only first-party live detail pages.",
+    "Several current branch-index events do not appear in the inspected aggregate pages, so they cannot be inserted into this dated cross-branch order without a separate dated official publication.",
+    "Same-day tie order is preserved exactly as visible; the site exposes dates but not publication times."
+  ]
+}

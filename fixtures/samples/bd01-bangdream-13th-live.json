@@ -1,0 +1,174 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd01-bangdream-13th-live",
+    "officialName": "BanG Dream! 13th☆LIVE",
+    "shortName": "13th☆LIVE｜3 DAYS",
+    "franchise": "bangdream",
+    "groups": ["Poppin'Party", "夢限大みゅーたいぷ", "RAISE A SUILEN"],
+    "eventType": "live",
+    "structure": "multi_day",
+    "lifecycle": "on_sale",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/13th-live/", "role": "production", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/events/13th-live-day1/", "role": "performance", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/events/13th-live-day2/", "role": "performance", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/events/13th-live-day3/", "role": "performance", "adapter": "bangdream_event" },
+      { "url": "https://eplus.jp/sf/detail/4529430001", "role": "ticket_rounds", "adapter": "ticket_platform" }
+    ]
+  },
+  "performances": [
+    {
+      "id": "bd01-day1", "eventId": "bd01-bangdream-13th-live",
+      "date": "2026-10-10", "dayLabel": "Day1", "session": "single", "subtitle": "Poppin'Party",
+      "doorsAt": "16:30", "startsAt": "18:00", "timeZone": "Asia/Tokyo",
+      "venue": "東京ガーデンシアター", "city": "東京",
+      "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["Poppin'Party"], "openingAct": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } },
+      "sources": [ { "url": "https://bang-dream.com/events/13th-live-day1/", "role": "performance" } ]
+    },
+    {
+      "id": "bd01-day2", "eventId": "bd01-bangdream-13th-live",
+      "date": "2026-10-11", "dayLabel": "Day2", "session": "single", "subtitle": "夢限大みゅーたいぷ",
+      "doorsAt": "16:30", "startsAt": "18:00", "timeZone": "Asia/Tokyo",
+      "venue": "東京ガーデンシアター", "city": "東京",
+      "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["夢限大みゅーたいぷ"], "openingAct": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } },
+      "sources": [ { "url": "https://bang-dream.com/events/13th-live-day2/", "role": "performance" } ]
+    },
+    {
+      "id": "bd01-day3", "eventId": "bd01-bangdream-13th-live",
+      "date": "2026-10-12", "dayLabel": "Day3", "session": "single", "subtitle": "RAISE A SUILEN",
+      "doorsAt": "16:30", "startsAt": "18:00", "timeZone": "Asia/Tokyo",
+      "venue": "東京ガーデンシアター", "city": "東京",
+      "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["RAISE A SUILEN"], "openingAct": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } },
+      "sources": [ { "url": "https://bang-dream.com/events/13th-live-day3/", "role": "performance" } ]
+    }
+  ],
+  "ticketTypes": [
+    {
+      "id": "bd01-tt-3days-pass", "eventId": "bd01-bangdream-13th-live",
+      "name": "3DAYS通し券", "kind": "multi_day_pass",
+      "price": { "amount": 23100, "currency": "JPY", "taxIncluded": true },
+      "includes": { "state": "not_fetched" },
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd01-day1", "bd01-day2", "bd01-day3"] },
+      "salesRoundIds": ["bd01-round-3days-pass"]
+    },
+    {
+      "id": "bd01-tt-premium-single", "eventId": "bd01-bangdream-13th-live",
+      "name": "Premium Seat（単日）", "kind": "premium",
+      "price": { "amount": 23100, "currency": "JPY", "taxIncluded": true },
+      "includes": { "state": "not_fetched" },
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd01-day1", "bd01-day2", "bd01-day3"] },
+      "salesRoundIds": ["bd01-round-general-day1", "bd01-round-general-day2", "bd01-round-general-day3"]
+    }
+  ],
+  "salesRounds": [
+    {
+      "id": "bd01-round-3days-pass", "eventId": "bd01-bangdream-13th-live",
+      "name": "3DAYS通し券 受付", "method": "unknown", "channel": "ticket_platform", "platform": "e+",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd01-day1", "bd01-day2", "bd01-day3"] },
+      "applicationWindow": { "state": "not_confirmed", "note": "官方页面标记受付结束，具体期间未读取" },
+      "platformStatus": "closed",
+      "entryUrl": { "state": "not_fetched" },
+      "ticketTypeIds": ["bd01-tt-3days-pass"]
+    },
+    {
+      "id": "bd01-round-general-day1", "eventId": "bd01-bangdream-13th-live",
+      "name": "一般発売（Day1）", "method": "first_come", "channel": "ticket_platform", "platform": "e+",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd01-day1"] },
+      "applicationWindow": { "opensAt": "2026-09-19T12:00+09:00", "closesAt": "2026-10-09T23:59+09:00", "timeZone": "Asia/Tokyo" },
+      "platformStatus": "accepting",
+      "entryUrl": "https://eplus.jp/sf/detail/4529430001"
+    },
+    {
+      "id": "bd01-round-general-day2", "eventId": "bd01-bangdream-13th-live",
+      "name": "一般発売（Day2）", "method": "first_come", "channel": "ticket_platform", "platform": "e+",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd01-day2"] },
+      "applicationWindow": { "opensAt": "2026-09-10T21:00+09:00", "closesAt": "2026-10-10T23:59+09:00", "timeZone": "Asia/Tokyo" },
+      "platformStatus": "accepting",
+      "entryUrl": "https://eplus.jp/sf/detail/4529430001"
+    },
+    {
+      "id": "bd01-round-general-day3", "eventId": "bd01-bangdream-13th-live",
+      "name": "一般発売（Day3）", "method": "first_come", "channel": "ticket_platform", "platform": "e+",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd01-day3"] },
+      "applicationWindow": { "opensAt": "2026-09-05T12:00+09:00", "closesAt": "2026-10-11T23:59+09:00", "timeZone": "Asia/Tokyo" },
+      "platformStatus": "accepting",
+      "entryUrl": "https://eplus.jp/sf/detail/4529430001"
+    }
+  ],
+  "merchBatches": [
+    {
+      "id": "bd01-merch-pre", "eventId": "bd01-bangdream-13th-live",
+      "officialName": "事前通販", "channel": "online_pre",
+      "appliesTo": { "scope": "unknown" },
+      "salesWindow": { "state": "not_fetched" },
+      "shippingEstimate": "10月3日以降発送",
+      "status": { "state": "not_confirmed" },
+      "storeUrl": { "state": "not_fetched" }
+    }
+  ],
+  "products": [
+    {
+      "id": "bd01-prod-badge", "eventId": "bd01-bangdream-13th-live", "batchId": "bd01-merch-pre",
+      "name": "缶バッジ", "spec": { "state": "not_fetched" },
+      "price": { "amount": 660, "currency": "JPY", "taxIncluded": true },
+      "purchaseLimit": { "state": "not_confirmed", "note": "页面有限购数量，数值未读取" },
+      "orderType": "unknown",
+      "stockStatus": { "state": "not_fetched" },
+      "productUrl": { "state": "not_fetched" }
+    }
+  ],
+  "images": [
+    { "id": "bd01-img-seatmap", "eventId": "bd01-bangdream-13th-live", "purpose": "event_seat_map",
+      "url": { "state": "not_fetched" }, "appliesTo": { "scope": "unknown" } }
+  ],
+  "evidence": [
+    { "id": "bd01-ev-dates", "field": "performances[*].date,doorsAt,startsAt", "sourceUrl": "https://bang-dream.com/13th-live/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "2026年10月10日(土)〜12日(月・祝) 東京ガーデンシアター 開場16:30 / 開演18:00 Day1 Poppin'Party / Day2 夢限大みゅーたいぷ / Day3 RAISE A SUILEN",
+      "scope": { "scope": "explicit", "performanceIds": ["bd01-day1", "bd01-day2", "bd01-day3"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd01-ev-round-day1", "field": "salesRounds[bd01-round-general-day1].applicationWindow", "sourceUrl": "https://eplus.jp/sf/detail/4529430001",
+      "sourceSection": "一般発売 Day1", "sectionKind": "event_specific",
+      "rawEvidence": "一般発売 2026/9/19(土) 12:00 〜 2026/10/9(金) 23:59 受付中",
+      "scope": { "scope": "explicit", "performanceIds": ["bd01-day1"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd01-ev-round-day2", "field": "salesRounds[bd01-round-general-day2].applicationWindow", "sourceUrl": "https://eplus.jp/sf/detail/4529430001",
+      "sourceSection": "一般発売 Day2", "sectionKind": "event_specific",
+      "rawEvidence": "一般発売 2026/9/10(木) 21:00 〜 2026/10/10(土) 23:59 受付中",
+      "scope": { "scope": "explicit", "performanceIds": ["bd01-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd01-ev-round-day3", "field": "salesRounds[bd01-round-general-day3].applicationWindow", "sourceUrl": "https://eplus.jp/sf/detail/4529430001",
+      "sourceSection": "一般発売 Day3", "sectionKind": "event_specific",
+      "rawEvidence": "一般発売 2026/9/5(土) 12:00 〜 2026/10/11(日) 23:59 受付中",
+      "scope": { "scope": "explicit", "performanceIds": ["bd01-day3"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd01-ev-prices", "field": "ticketTypes[*].price", "sourceUrl": "https://bang-dream.com/13th-live/",
+      "sourceSection": "チケット", "sectionKind": "event_specific",
+      "rawEvidence": "3DAYS通し券 ¥23,100（受付終了） / Premium Seat ¥23,100（各日）",
+      "scope": { "scope": "explicit", "performanceIds": ["bd01-day1", "bd01-day2", "bd01-day3"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd01-ev-badge", "field": "products[bd01-prod-badge].price,merchBatches[bd01-merch-pre].shippingEstimate", "sourceUrl": "https://bang-dream.com/13th-live/",
+      "sourceSection": "GOODS", "sectionKind": "product_specific",
+      "rawEvidence": "缶バッジ ¥660 / お一人様○点まで / 10月3日以降発送",
+      "scope": { "scope": "unknown" },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "pending" }
+  ],
+  "acceptance": [
+    { "id": "bd01-a1", "scenario": "切换 Day1 → Day2",
+      "mustHold": ["最近截止从 2026-10-09 23:59 变为 2026-10-10 23:59", "受付入口、特典、出演者随 performanceId 变化"],
+      "mustNotHold": ["三个 Day 详情 URL 生成三张首页卡"] },
+    { "id": "bd01-a8", "scenario": "同价不同权益",
+      "mustHold": ["bd01-tt-3days-pass 与 bd01-tt-premium-single 是两个 TicketType"],
+      "mustNotHold": ["按金额 23100 合并票种"] },
+    { "id": "bd01-a-merch", "scenario": "商品金额语义",
+      "mustHold": ["¥660 只出现在 products[].price"],
+      "mustNotHold": ["¥660 出现在任何 TicketType.price", "10月3日 出现在任何 performances[].date"] }
+  ]
+}

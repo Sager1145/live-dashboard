@@ -1,0 +1,71 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd09-yumemita-superposition-tour",
+    "officialName": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション」",
+    "shortName": "夢限大みゅーたいぷ 47都道府県「スーパーポジション」",
+    "franchise": "bangdream",
+    "groups": ["夢限大みゅーたいぷ"],
+    "eventType": "mixed_event_tour",
+    "structure": "tour_with_editions",
+    "lifecycle": "in_progress",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/yumemita_superposition/", "role": "mixed_event_tour", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/yumemita_superposition_spinup_tokyo/", "role": "tokyo_live", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/yumemita_superposition_spinup_niigata/", "role": "niigata_live", "adapter": "bangdream_event" }
+    ]
+  },
+  "editions": [
+    { "id": "bd09-ed-spinup", "eventId": "bd09-yumemita-superposition-tour", "name": "スピンアップ編（単独ライブ）", "kind": "stage" },
+    { "id": "bd09-ed-mugendai", "eventId": "bd09-yumemita-superposition-tour", "name": "夢限大編（その他イベント形式）", "kind": "stage" }
+  ],
+  "stops": [
+    { "id": "bd09-stop-tokyo", "eventId": "bd09-yumemita-superposition-tour", "editionId": "bd09-ed-spinup", "name": "東京", "city": "東京", "venue": "SGC HALL ARIAKE", "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY",
+      "sources": [ { "url": "https://bang-dream.com/yumemita_superposition_spinup_tokyo/", "role": "tokyo_live" } ] },
+    { "id": "bd09-stop-niigata", "eventId": "bd09-yumemita-superposition-tour", "editionId": "bd09-ed-spinup", "name": "新潟", "city": "新潟", "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY",
+      "sources": [ { "url": "https://bang-dream.com/yumemita_superposition_spinup_niigata/", "role": "niigata_live" } ] }
+  ],
+  "performances": [
+    { "id": "bd09-tokyo-live", "eventId": "bd09-yumemita-superposition-tour", "editionId": "bd09-ed-spinup", "stopId": "bd09-stop-tokyo",
+      "date": "2026-06-21", "session": "single", "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "performanceType": "live", "lifecycle": "ended", "performers": { "onStage": ["夢限大みゅーたいぷ"] } },
+    { "id": "bd09-niigata-live", "eventId": "bd09-yumemita-superposition-tour", "editionId": "bd09-ed-spinup", "stopId": "bd09-stop-niigata",
+      "date": { "state": "not_fetched" }, "session": "single", "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "performanceType": "live", "lifecycle": { "state": "not_fetched" }, "performers": { "onStage": ["夢限大みゅーたいぷ"] } },
+    { "id": "bd09-mugendai-placeholder", "eventId": "bd09-yumemita-superposition-tour", "editionId": "bd09-ed-mugendai",
+      "date": { "state": "not_fetched" }, "session": "single", "timeZone": "Asia/Tokyo",
+      "performanceType": "other", "lifecycle": { "state": "not_fetched" },
+      "performers": { "onStage": { "state": "not_fetched" } } }
+  ],
+  "streams": [
+    { "id": "bd09-stream-tokyo-free", "eventId": "bd09-yumemita-superposition-tour", "platform": { "state": "not_fetched" }, "kind": "free_partial_live",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd09-tokyo-live"] },
+      "price": { "amount": 0, "currency": "JPY" },
+      "viewingWindow": { "opensAt": "2026-06-21T00:00+09:00", "timeZone": "Asia/Tokyo" },
+      "hasArchive": false,
+      "entryUrl": { "state": "not_fetched" } }
+  ],
+  "evidence": [
+    { "id": "bd09-ev-structure", "field": "editions[*]", "sourceUrl": "https://bang-dream.com/yumemita_superposition/",
+      "sourceSection": "ツアー概要", "sectionKind": "event_specific",
+      "rawEvidence": "単独ライブ「スピンアップ編」 / その他イベント「夢限大編」",
+      "scope": { "scope": "all", "evidenceIds": ["bd09-ev-structure"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd09-ev-tokyo", "field": "performances[bd09-tokyo-live].date,stops[bd09-stop-tokyo].venue", "sourceUrl": "https://bang-dream.com/yumemita_superposition_spinup_tokyo/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific", "rawEvidence": "東京公演 2026年6月21日 SGC HALL ARIAKE",
+      "scope": { "scope": "explicit", "performanceIds": ["bd09-tokyo-live"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd09-ev-free-stream", "field": "streams[bd09-stream-tokyo-free]", "sourceUrl": "https://bang-dream.com/yumemita_superposition_spinup_tokyo/",
+      "sourceSection": "配信", "sectionKind": "event_specific", "rawEvidence": "一部無料生配信 / アーカイブなし",
+      "scope": { "scope": "explicit", "performanceIds": ["bd09-tokyo-live"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "bd09-a14", "scenario": "混合活动巡回",
+      "mustHold": ["父卡标记“混合活动巡回”", "Live 筛选只保留 performanceType=live 的子活动", "免费直播卡显示 kind=free_partial_live、hasArchive=false"],
+      "mustNotHold": ["宣称“47 场演唱会”", "摘要为“整场免费”", "自动生成回放入口"] }
+  ]
+}

@@ -1,0 +1,81 @@
+name: LiveDashboard
+options:
+  bundleIdPrefix: app.live-dashboard
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: ""
+targets:
+  LiveDashboardKit:
+    type: framework
+    platform: iOS
+    sources:
+      - path: Sources/LiveDashboardKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard.kit
+        GENERATE_INFOPLIST_FILE: YES
+  LiveDashboard:
+    type: application
+    platform: iOS
+    sources:
+      - path: LiveDashboard
+    info:
+      path: LiveDashboard/Info.plist
+      properties:
+        CFBundleDisplayName: Live Dashboard
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        CFBundleURLTypes:
+          - CFBundleURLName: app.live-dashboard.deep-link
+            CFBundleURLSchemes:
+              - live-dashboard
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    dependencies:
+      - target: LiveDashboardKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard
+        CODE_SIGN_ENTITLEMENTS: LiveDashboard/LiveDashboard.entitlements
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
+  LiveDashboardKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/LiveDashboardKitTests
+    dependencies:
+      - target: LiveDashboardKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard.tests
+        CODE_SIGNING_ALLOWED: NO
+  LiveDashboardUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/LiveDashboardUITests
+    dependencies:
+      - target: LiveDashboard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard.ui-tests
+        CODE_SIGNING_ALLOWED: NO
+schemes:
+  LiveDashboard:
+    build:
+      targets:
+        LiveDashboard: all
+        LiveDashboardKitTests: [test]
+    test:
+      targets:
+        - LiveDashboardKitTests
+        - LiveDashboardUITests

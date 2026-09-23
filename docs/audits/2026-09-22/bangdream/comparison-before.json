@@ -1,0 +1,879 @@
+[
+  {
+    "id": "bangdream-26960",
+    "rank": 1,
+    "title": "Morfonica LIVE「eleganza」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-27889",
+    "rank": 2,
+    "title": "Roselia 10th Anniversary LIVE TOUR",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 4,
+        "actual": 0
+      }
+    ]
+  },
+  {
+    "id": "bangdream-27833",
+    "rank": 3,
+    "title": "WONDERLIVET 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].timeZone",
+        "expected": "Asia/Seoul",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].timeZone",
+        "expected": "Asia/Seoul",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].missingPerformers",
+        "expected": [
+          "Roselia",
+          "MyGO!!!!!"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[2].timeZone",
+        "expected": "Asia/Seoul",
+        "actual": "Asia/Tokyo"
+      }
+    ]
+  },
+  {
+    "id": "bangdream-27484",
+    "rank": 4,
+    "title": "NAKAMACHI ARALE LIVE 2026「RESONEXT」",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 2,
+        "actual": 1
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].doorsLocal",
+        "expected": "13:15",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].startLocal",
+        "expected": "14:00",
+        "actual": null
+      }
+    ]
+  },
+  {
+    "id": "bangdream-27204",
+    "rank": 5,
+    "title": "Bushiroad Fashion Journey",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 1,
+        "actual": 0
+      },
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "女性限定エリア指定席チケット|11000|JPY",
+          "女性限定エリア立見チケット(ブロック指定/整理番号有り/スタンディング)|7700|JPY",
+          "指定席チケット|11000|JPY",
+          "立見チケット(ブロック指定/整理番号有り/スタンディング)|7700|JPY"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-27075",
+    "rank": 6,
+    "title": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」- 神戸再景編 -",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-26979",
+    "rank": 7,
+    "title": "EVANESCENCE 2026 JAPAN",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].venue",
+        "expected": "SGC HALL ARIAKE",
+        "actual": "SGC HALL ARIAKE（東京公演）\nZepp Osaka Bayside（大阪公演）\n公式サイト\nhttps://www.creativeman.co.jp/artist/2026/12evanescence/\n SHARE"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].venue",
+        "expected": "SGC HALL ARIAKE",
+        "actual": "SGC HALL ARIAKE（東京公演）\nZepp Osaka Bayside（大阪公演）\n公式サイト\nhttps://www.creativeman.co.jp/artist/2026/12evanescence/\n SHARE"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[2].venue",
+        "expected": "Zepp Osaka Bayside",
+        "actual": "SGC HALL ARIAKE（東京公演）\nZepp Osaka Bayside（大阪公演）\n公式サイト\nhttps://www.creativeman.co.jp/artist/2026/12evanescence/\n SHARE"
+      },
+      {
+        "severity": "material",
+        "field": "performances[2].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-26574",
+    "rank": 8,
+    "title": "一家Dumb Rock! 1st GIG「ピース＆グルーヴ」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-26573",
+    "rank": 9,
+    "title": "millsage LIVE 001「極夜」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-25272",
+    "rank": 10,
+    "title": "TVアニメ「バンドリ！ ゆめ∞みた」放送記念フリーライブ「新宿着陸計画」DAY2",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 1,
+        "actual": 0
+      },
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "チケット代|0|JPY"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-26395",
+    "rank": 11,
+    "title": "Ave Mujica 7th LIVE「Virtus」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-26143",
+    "rank": 12,
+    "title": "KIMCHIKURA Fes '26",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].timeZone",
+        "expected": "Asia/Seoul",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "Morfonica",
+          "千石ユノ（夢限大みゅーたいぷ）"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-26072",
+    "rank": 13,
+    "title": "BM-ECHOES FESTIVAL 2026",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 2,
+        "actual": 0
+      }
+    ]
+  },
+  {
+    "id": "bangdream-25941",
+    "rank": 14,
+    "title": "BEAT AX -SUMMER EDITION 2026-",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN",
+          "Ave Mujica"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-25900",
+    "rank": 15,
+    "title": "ナガノアニエラフェスタ2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].startLocal",
+        "expected": "12:00",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].startLocal",
+        "expected": "12:00",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-25753",
+    "rank": 16,
+    "title": "FEST. INAZUMA 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].doorsLocal",
+        "expected": "10:00",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].startLocal",
+        "expected": "11:30",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].doorsLocal",
+        "expected": "10:00",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].startLocal",
+        "expected": "11:30",
+        "actual": null
+      }
+    ]
+  },
+  {
+    "id": "bangdream-25616",
+    "rank": 17,
+    "title": "BanG Dream! 13th☆LIVE DAY2 : 夢限大みゅーたいぷ「DIMENSIONAL OVERLAP」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-25013",
+    "rank": 18,
+    "title": "BanG Dream! 13th☆LIVE DAY1 : Poppin'Party「Now Roading♪♪」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-25617",
+    "rank": 19,
+    "title": "BanG Dream! 13th☆LIVE DAY3 : RAISE A SUILEN「EXTREME EXPRESS」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-25535",
+    "rank": 20,
+    "title": "Anime Expo 2026「J-POP SOUND CAPSULE」",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].timeZone",
+        "expected": "America/Los_Angeles",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "Roselia"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-24872",
+    "rank": 21,
+    "title": "MUSIC AWARDS JAPAN WEEK SPECIAL LIVE リスアニ！LIVE on TOKYO ANIME MUSIC HIGHLIGHTS",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "MyGO!!!!!"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-24777",
+    "rank": 22,
+    "title": "SUMMER SONIC 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].venue",
+        "expected": "万博記念公園",
+        "actual": "万博記念公園（大阪会場）\nZOZOマリンスタジアム＆幕張メッセ（東京会場）"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[2].venue",
+        "expected": "ZOZOマリンスタジアム＆幕張メッセ",
+        "actual": "万博記念公園（大阪会場）\nZOZOマリンスタジアム＆幕張メッセ（東京会場）"
+      },
+      {
+        "severity": "material",
+        "field": "performances[2].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-24587",
+    "rank": 23,
+    "title": "Animelo Summer Live 2026 -Messenger-",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].venue",
+        "expected": "幕張メッセ",
+        "actual": "幕張メッセ\n「Animelo Summer Live 2026 -Messenger-」公式サイト\nhttps://anisama.tv/2026/\n SHARE"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].venue",
+        "expected": "幕張メッセ",
+        "actual": "幕張メッセ\n「Animelo Summer Live 2026 -Messenger-」公式サイト\nhttps://anisama.tv/2026/\n SHARE"
+      },
+      {
+        "severity": "material",
+        "field": "performances[2].venue",
+        "expected": "幕張メッセ",
+        "actual": "幕張メッセ\n「Animelo Summer Live 2026 -Messenger-」公式サイト\nhttps://anisama.tv/2026/\n SHARE"
+      }
+    ]
+  },
+  {
+    "id": "bangdream-24390",
+    "rank": 24,
+    "title": "LuckyFes'26",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[1].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN",
+          "MyGO!!!!!"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13971",
+    "rank": 25,
+    "title": "Roselia「Lehre der Rose」 - Roselia 10th Anniversary Best Album「Lehre der Rose」リリース記念ライブ",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "プレミアムシート(特製グッズ付き)|22000|JPY",
+          "一般指定席(当日券)|11000|JPY",
+          "一般指定席(特製グッズ付き)(当日券)|16500|JPY",
+          "一般指定席(特製グッズ付き)|15400|JPY",
+          "一般指定席|9900|JPY"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13997",
+    "rank": 26,
+    "title": "CENTRAL MUSIC & ENTERTAINMENT FESTIVAL 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[1].venue",
+        "expected": "KT Zepp Yokohama",
+        "actual": "KT Zepp Yokohama\nCENTRAL MUSIC & ENTERTAINMENT FESTIVAL 2026\nhttps://central-fest.com/"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13991",
+    "rank": 27,
+    "title": "BanG Dream! Special LIVE in TAIPEI",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].timeZone",
+        "expected": "Asia/Taipei",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].doorsLocal",
+        "expected": "16:30",
+        "actual": "15:30"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].startLocal",
+        "expected": "18:30",
+        "actual": "17:30"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].wrongDayPerformers",
+        "expectedAbsent": [
+          "Poppin'Party",
+          "Roselia"
+        ],
+        "actual": [
+          "DAY1 : MyGO!!!!!×Ave Mujica",
+          "DAY2 : Poppin'Party×Roselia"
+        ]
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].timeZone",
+        "expected": "Asia/Taipei",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].doorsLocal",
+        "expected": "16:00",
+        "actual": "15:00"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].startLocal",
+        "expected": "18:00",
+        "actual": "17:00"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].wrongDayPerformers",
+        "expectedAbsent": [
+          "MyGO!!!!!",
+          "Ave Mujica"
+        ],
+        "actual": [
+          "DAY1 : MyGO!!!!!×Ave Mujica",
+          "DAY2 : Poppin'Party×Roselia"
+        ]
+      },
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "VIP A/B(特製グッズ付き)|588000|TWD",
+          "VIP A/B(特製グッズ無し)|585000|TWD",
+          "ZONE C/D/E(特製グッズ付き)|388000|TWD",
+          "ZONE C/D/E(特製グッズ無し)|385000|TWD",
+          "ZONE F|288000|TWD"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13993",
+    "rank": 28,
+    "title": "BanG Dream! Special LIVE in TAIPEI",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].timeZone",
+        "expected": "Asia/Taipei",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].doorsLocal",
+        "expected": "16:30",
+        "actual": "15:30"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].startLocal",
+        "expected": "18:30",
+        "actual": "17:30"
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].wrongDayPerformers",
+        "expectedAbsent": [
+          "Poppin'Party",
+          "Roselia"
+        ],
+        "actual": [
+          "DAY1 : MyGO!!!!!×Ave Mujica",
+          "DAY2 : Poppin'Party×Roselia"
+        ]
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].timeZone",
+        "expected": "Asia/Taipei",
+        "actual": "Asia/Tokyo"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].doorsLocal",
+        "expected": "16:00",
+        "actual": "15:00"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].startLocal",
+        "expected": "18:00",
+        "actual": "17:00"
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].wrongDayPerformers",
+        "expectedAbsent": [
+          "MyGO!!!!!",
+          "Ave Mujica"
+        ],
+        "actual": [
+          "DAY1 : MyGO!!!!!×Ave Mujica",
+          "DAY2 : Poppin'Party×Roselia"
+        ]
+      },
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "VIP A/B(特製グッズ付き)|588000|TWD",
+          "VIP A/B(特製グッズ無し)|585000|TWD",
+          "ZONE C/D/E(特製グッズ付き)|388000|TWD",
+          "ZONE C/D/E(特製グッズ無し)|385000|TWD",
+          "ZONE F|288000|TWD"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13984",
+    "rank": 29,
+    "title": "FLOW THE FESTIVAL 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].doorsLocal",
+        "expected": "10:00",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].startLocal",
+        "expected": "12:00",
+        "actual": null
+      },
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13975",
+    "rank": 30,
+    "title": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション 〜スピンアップ編〜」東京公演",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 1,
+        "actual": 0
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13979",
+    "rank": 31,
+    "title": "夢限大みゅーたいぷ 47都道府県制覇の旅 「スーパーポジション ～ゆめんそーれ沖縄～」",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 2,
+        "actual": 0
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13967",
+    "rank": 32,
+    "title": "RAISE A SUILEN LIVE 2026「Boot IGNITION」香港公演",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 2,
+        "actual": 0
+      },
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "A|168800|HKD",
+          "B|148800|HKD",
+          "C|98800|HKD",
+          "D|78800|HKD"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13963",
+    "rank": 33,
+    "title": "Morfonica LIVE「Movement」",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "アリーナスタンディング Aエリア(特製グッズ付き)|16500|JPY",
+          "アリーナスタンディング Sエリア(特製グッズ付き)|22000|JPY",
+          "スタンド指定席(特製グッズ付き)|14300|JPY",
+          "スタンド指定席|9900|JPY",
+          "注釈付きスタンド指定席(特製グッズ付き)|13200|JPY",
+          "注釈付きスタンド指定席|8800|JPY"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13954",
+    "rank": 34,
+    "title": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].wrongDayPerformers",
+        "expectedAbsent": [
+          "一家Dumb Rock!"
+        ],
+        "actual": [
+          "MyGO!!!!!",
+          "オープニングアクト（※両日18:00～予定）",
+          "【歌唱】",
+          "＜DAY1＞",
+          "・millsage",
+          "Key.＆Vo. 汐見蛍役　薬師寺李有",
+          "＜DAY2＞",
+          "・一家Dumb Rock!",
+          "Gt.＆Vo. 須賀蕾叶役　橘めい",
+          "Gt.＆Vo. 馬橋心玖役　涼泉桜花",
+          "※オープニングアクトの演奏は",
+          "全てサポートミュージシャンによるバックバンドにて実施します。"
+        ]
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].wrongDayPerformers",
+        "expectedAbsent": [
+          "millsage"
+        ],
+        "actual": [
+          "MyGO!!!!!",
+          "オープニングアクト（※両日18:00～予定）",
+          "【歌唱】",
+          "＜DAY1＞",
+          "・millsage",
+          "Key.＆Vo. 汐見蛍役　薬師寺李有",
+          "＜DAY2＞",
+          "・一家Dumb Rock!",
+          "Gt.＆Vo. 須賀蕾叶役　橘めい",
+          "Gt.＆Vo. 馬橋心玖役　涼泉桜花",
+          "※オープニングアクトの演奏は",
+          "全てサポートミュージシャンによるバックバンドにて実施します。"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13930",
+    "rank": 35,
+    "title": "Poppin'Party×Roselia 合同ライブ「DREAMS GO ON」",
+    "mismatches": []
+  },
+  {
+    "id": "bangdream-13926",
+    "rank": 36,
+    "title": "MEGA VEGAS 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "Ave Mujica"
+        ],
+        "actual": []
+      },
+      {
+        "severity": "material",
+        "field": "performances[1].missingPerformers",
+        "expected": [
+          "RAISE A SUILEN"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13918",
+    "rank": 37,
+    "title": "リスアニ！LIVE 2026",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "performances[0].missingPerformers",
+        "expected": [
+          "夢限大みゅーたいぷ"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13876",
+    "rank": 38,
+    "title": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション 〜スピンアップ編〜」福岡公演",
+    "mismatches": [
+      {
+        "field": "performanceCount",
+        "expected": 1,
+        "actual": 0
+      },
+      {
+        "severity": "material",
+        "field": "goodsImageURLs",
+        "expected": [
+          "https://bang-dream.com/2025/renew/6bf091fe-d874-4e1c-b4b0-9427cf744531.jpg",
+          "https://bang-dream.com/wordpress/wp-content/uploads/2026/05/21154619/8c742830-d28bb201-597d4472-b77a7831.png",
+          "https://bang-dream.com/wordpress/wp-content/uploads/2026/05/22132057/e84cfc58-78bc9199-e534f2af-bb94ed97.png"
+        ],
+        "actual": [
+          "https://bang-dream.com/2025/renew/6bf091fe-d874-4e1c-b4b0-9427cf744531.jpg"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13884",
+    "rank": 39,
+    "title": "ARALE Acoustic LIVE ～Copal～",
+    "mismatches": [
+      {
+        "severity": "material",
+        "field": "ticketTiers",
+        "expected": [
+          "一般スタンディング|5000|JPY",
+          "特典付きスタンディング|6500|JPY"
+        ],
+        "actual": []
+      }
+    ]
+  },
+  {
+    "id": "bangdream-13870",
+    "rank": 40,
+    "title": "MyGO!!!!!×Ave Mujica ツーマンライブ「“moment / memory”」",
+    "mismatches": []
+  }
+]

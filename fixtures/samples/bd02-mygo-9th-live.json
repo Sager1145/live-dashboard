@@ -1,0 +1,88 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd02-mygo-9th-live",
+    "officialName": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」",
+    "shortName": "MyGO!!!!! 9th LIVE",
+    "franchise": "bangdream",
+    "groups": ["MyGO!!!!!"],
+    "eventType": "live",
+    "structure": "editions",
+    "lifecycle": "upcoming",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/events/mygo_9th/", "role": "original_edition", "adapter": "bangdream_event" },
+      { "url": "https://bang-dream.com/events/mygo_9th_hyogo/", "role": "kobe_edition", "adapter": "bangdream_event" },
+      { "url": "https://ib.eplus.jp/mygo-9th_st", "role": "streaming", "adapter": "ticket_platform" }
+    ]
+  },
+  "editions": [
+    { "id": "bd02-ed-yokohama", "eventId": "bd02-mygo-9th-live", "name": "横浜公演（原公演）", "kind": "original",
+      "sources": [ { "url": "https://bang-dream.com/events/mygo_9th/", "role": "original_edition" } ] },
+    { "id": "bd02-ed-kobe", "eventId": "bd02-mygo-9th-live", "name": "神戸再景編", "kind": "additional",
+      "sources": [ { "url": "https://bang-dream.com/events/mygo_9th_hyogo/", "role": "kobe_edition" } ] }
+  ],
+  "performances": [
+    { "id": "bd02-yokohama-day1", "eventId": "bd02-mygo-9th-live", "editionId": "bd02-ed-yokohama",
+      "date": "2026-07-18", "dayLabel": "Day1", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": "ぴあアリーナMM", "city": "横浜", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["MyGO!!!!!"], "openingAct": { "state": "not_confirmed", "note": "官方页面有按日暖场出演，名单未读取" } },
+      "admissionNotes": ["注釈付き指定席（見切れ席）あり", "2階後方スタンディングエリアあり"] },
+    { "id": "bd02-yokohama-day2", "eventId": "bd02-mygo-9th-live", "editionId": "bd02-ed-yokohama",
+      "date": "2026-07-19", "dayLabel": "Day2", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": "ぴあアリーナMM", "city": "横浜", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["MyGO!!!!!"], "openingAct": { "state": "not_confirmed", "note": "与 Day1 不同，名单未读取" } },
+      "admissionNotes": { "state": "not_fetched" } },
+    { "id": "bd02-kobe-day1", "eventId": "bd02-mygo-9th-live", "editionId": "bd02-ed-kobe",
+      "date": "2026-11-14", "dayLabel": "Day1", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": { "state": "not_fetched" }, "city": "兵庫", "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["MyGO!!!!!"], "openingAct": { "state": "not_fetched" } },
+      "admissionNotes": { "state": "not_fetched" } },
+    { "id": "bd02-kobe-day2", "eventId": "bd02-mygo-9th-live", "editionId": "bd02-ed-kobe",
+      "date": "2026-11-15", "dayLabel": "Day2", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": { "state": "not_fetched" }, "city": "兵庫", "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["MyGO!!!!!"], "openingAct": { "state": "not_fetched" } },
+      "admissionNotes": { "state": "not_fetched" } }
+  ],
+  "streams": [
+    { "id": "bd02-stream-yokohama", "eventId": "bd02-mygo-9th-live", "platform": "Streaming+", "kind": "paid_archive",
+      "appliesTo": { "scope": "explicit", "editionIds": ["bd02-ed-yokohama"] },
+      "price": { "state": "not_fetched" },
+      "salesWindow": { "state": "not_fetched" }, "viewingWindow": { "state": "not_fetched" },
+      "hasArchive": { "state": "not_confirmed" },
+      "regionRestriction": { "state": "not_fetched" },
+      "entryUrl": "https://ib.eplus.jp/mygo-9th_st" }
+  ],
+  "images": [
+    { "id": "bd02-img-yokohama-seatmap", "eventId": "bd02-mygo-9th-live", "purpose": "event_seat_map",
+      "url": { "state": "not_fetched" }, "appliesTo": { "scope": "explicit", "editionIds": ["bd02-ed-yokohama"] } }
+  ],
+  "evidence": [
+    { "id": "bd02-ev-yokohama", "field": "performances[bd02-yokohama-*].date,venue", "sourceUrl": "https://bang-dream.com/events/mygo_9th/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "2026年7月18日(土)・19日(日) ぴあアリーナMM",
+      "scope": { "scope": "explicit", "editionIds": ["bd02-ed-yokohama"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd02-ev-yokohama-notes", "field": "performances[bd02-yokohama-day1].admissionNotes", "sourceUrl": "https://bang-dream.com/events/mygo_9th/",
+      "sourceSection": "チケット追加情報", "sectionKind": "event_specific",
+      "rawEvidence": "Day1 注釈付き指定席 / 2階後方スタンディングエリア 追加",
+      "scope": { "scope": "explicit", "performanceIds": ["bd02-yokohama-day1"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd02-ev-kobe", "field": "performances[bd02-kobe-*].date", "sourceUrl": "https://bang-dream.com/events/mygo_9th_hyogo/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "神戸再景編 2026年11月14日(土)・15日(日)",
+      "scope": { "scope": "explicit", "editionIds": ["bd02-ed-kobe"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "bd02-a2", "scenario": "原公演与追加版本",
+      "mustHold": ["首页一张系列父卡，默认关注 bd02-ed-kobe，横滨版折叠为已举行", "两个 editionId 各自绑定 performances、images、admissionNotes"],
+      "mustNotHold": ["神户版继承横滨版暖场名单、限制视野席说明、座位图或票价", "配信页日期改写任何 performances[].date", "神户版日期覆盖横滨版日期"] }
+  ]
+}

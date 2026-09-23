@@ -1,0 +1,75 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd05-roselia-10th-anniversary-tour",
+    "officialName": "Roselia 10th Anniversary LIVE TOUR",
+    "shortName": "Roselia 10th Anniv. TOUR",
+    "franchise": "bangdream",
+    "groups": ["Roselia"],
+    "eventType": "tour",
+    "structure": "tour",
+    "lifecycle": "announced",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/events/roselia-10th-anniversary-live-tour/", "role": "tour", "adapter": "bangdream_event" },
+      { "url": "https://sp.bang-dream.com/roselia-10th-anniv/", "role": "anniversary_hub", "adapter": "official_news" }
+    ],
+    "relatedEntities": [
+      { "relation": "parent_hub", "kind": "hub_page", "name": "Roselia 10th Anniversary 特設サイト", "url": "https://sp.bang-dream.com/roselia-10th-anniv/", "note": "专题页用于发现与补充，其中每个日期不都是巡演场次" },
+      { "relation": "related_release", "kind": "album", "name": "Roselia 10周年アルバム（封入先行対象）", "note": "先行申请与专辑封入券相关；专辑发行日不是公演日" },
+      { "relation": "related_event", "kind": "event", "name": "Roselia「Lehre der Rose」発売記念ライブ", "entityId": "bd06-roselia-lehre-der-rose-live" }
+    ]
+  },
+  "stops": [
+    { "id": "bd05-stop-1", "eventId": "bd05-roselia-10th-anniversary-tour", "name": "2027.01.30 公演", "city": { "state": "not_fetched" }, "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd05-stop-2", "eventId": "bd05-roselia-10th-anniversary-tour", "name": "2027.02.28 公演", "city": { "state": "not_fetched" }, "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd05-stop-3", "eventId": "bd05-roselia-10th-anniversary-tour", "name": "2027.03.14 公演", "city": { "state": "not_fetched" }, "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" },
+    { "id": "bd05-stop-4", "eventId": "bd05-roselia-10th-anniversary-tour", "name": "2027.04.25 公演", "city": { "state": "not_fetched" }, "venue": { "state": "not_fetched" }, "country": "JP", "timeZone": "Asia/Tokyo", "localCurrency": "JPY" }
+  ],
+  "performances": [
+    { "id": "bd05-perf-1", "eventId": "bd05-roselia-10th-anniversary-tour", "stopId": "bd05-stop-1", "date": "2027-01-30", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo", "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": ["Roselia"] } },
+    { "id": "bd05-perf-2", "eventId": "bd05-roselia-10th-anniversary-tour", "stopId": "bd05-stop-2", "date": "2027-02-28", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo", "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": ["Roselia"] } },
+    { "id": "bd05-perf-3", "eventId": "bd05-roselia-10th-anniversary-tour", "stopId": "bd05-stop-3", "date": "2027-03-14", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo", "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": ["Roselia"] } },
+    { "id": "bd05-perf-4", "eventId": "bd05-roselia-10th-anniversary-tour", "stopId": "bd05-stop-4", "date": "2027-04-25", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo", "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": ["Roselia"] } }
+  ],
+  "salesRounds": [
+    { "id": "bd05-round-album-serial", "eventId": "bd05-roselia-10th-anniversary-tour",
+      "name": "アルバム封入先行", "method": "lottery", "channel": "ticket_platform",
+      "appliesTo": { "scope": "unknown" },
+      "applicationWindow": { "state": "not_fetched" },
+      "eligibility": { "kind": "release_serial", "releaseName": "Roselia 10周年アルバム", "note": "适用站点未确认" },
+      "platformStatus": { "state": "not_fetched" },
+      "entryUrl": { "state": "not_fetched" } }
+  ],
+  "images": [
+    { "id": "bd05-img-seatmap-stop-1", "eventId": "bd05-roselia-10th-anniversary-tour", "purpose": "event_seat_map",
+      "url": { "state": "not_fetched" }, "appliesTo": { "scope": "explicit", "stopIds": ["bd05-stop-1"] } }
+  ],
+  "evidence": [
+    { "id": "bd05-ev-dates", "field": "performances[*].date", "sourceUrl": "https://bang-dream.com/events/roselia-10th-anniversary-live-tour/",
+      "sourceSection": "公演日程", "sectionKind": "event_specific",
+      "rawEvidence": "2027年1月30日 / 2月28日 / 3月14日 / 4月25日",
+      "scope": { "scope": "explicit", "performanceIds": ["bd05-perf-1", "bd05-perf-2", "bd05-perf-3", "bd05-perf-4"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd05-ev-serial", "field": "salesRounds[bd05-round-album-serial].eligibility", "sourceUrl": "https://sp.bang-dream.com/roselia-10th-anniv/",
+      "sourceSection": "アルバム情報", "sectionKind": "event_specific",
+      "rawEvidence": "10周年アルバム封入 ライブ先行申込券",
+      "scope": { "scope": "unknown" },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "pending" }
+  ],
+  "acceptance": [
+    { "id": "bd05-a-tour", "scenario": "巡演卡切换城市",
+      "mustHold": ["首页摘要“2027.01—04｜多城市公演｜当前关注：某站”", "切换 stop 后场馆、日期、证据随之变化", "只有 evidenceIds 证明共通的说明进入 scope=all"],
+      "mustNotHold": ["周年专题页中的专辑发行日生成 performance", "某一站座位图继承给所有站", "scope=unknown 的封入先行显示在具体站点下"] }
+  ]
+}

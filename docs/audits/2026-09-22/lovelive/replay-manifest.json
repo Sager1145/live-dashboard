@@ -1,0 +1,203 @@
+[
+  {
+    "id": "LL01",
+    "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL01.html",
+    "title": "LoveLive! Series 15th Anniversary ラブライブ！フェス",
+    "franchise": "lovelive",
+    "groups": [
+      "series"
+    ]
+  },
+  {
+    "id": "LL02",
+    "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL02.html",
+    "title": "LoveLive! Series 15th Anniversary ラブライブ！フェス 前夜祭 FILM LIVE ～未来へ届けるタイムカプセル～",
+    "franchise": "lovelive",
+    "groups": [
+      "series"
+    ]
+  },
+  {
+    "id": "LL03",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream103",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL03.html",
+    "title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～103期卒業公演～",
+    "franchise": "lovelive",
+    "groups": [
+      "蓮ノ空女学院スクールアイドルクラブ"
+    ]
+  },
+  {
+    "id": "LL04",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream106",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL04.html",
+    "title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～106期新入生入部記念公演～",
+    "franchise": "lovelive",
+    "groups": [
+      "蓮ノ空女学院スクールアイドルクラブ"
+    ]
+  },
+  {
+    "id": "LL05",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL05.html",
+    "title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ Link Live Dream ～おいでよ！石川大観光Ⅱ～",
+    "franchise": "lovelive",
+    "groups": [
+      "蓮ノ空女学院スクールアイドルクラブ"
+    ]
+  },
+  {
+    "id": "LL06",
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=8thlivetour",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL06.html",
+    "title": "ラブライブ！スーパースター!! Liella! 8th LoveLive! Tour ～Our Song, Our Dreams～",
+    "franchise": "lovelive",
+    "groups": [
+      "Liella!"
+    ]
+  },
+  {
+    "id": "LL07",
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=3rdLIVE",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL07.html",
+    "title": "いきづらい部！3rd LIVE ～いつかみんなで叶いそう～",
+    "franchise": "lovelive",
+    "groups": [
+      "いきづらい部！"
+    ]
+  },
+  {
+    "id": "LL08",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=Wanted_Ghost",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL08.html",
+    "title": "Guilty Kiss Musical Performance 漆黒のWanted Ghost",
+    "franchise": "lovelive",
+    "groups": [
+      "Guilty Kiss"
+    ]
+  },
+  {
+    "id": "LL09",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai5th",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL09.html",
+    "title": "ラブライブ！サンシャイン!! 第５回沼津地元愛まつり",
+    "franchise": "lovelive",
+    "groups": [
+      "Aqours"
+    ]
+  },
+  {
+    "id": "LL10",
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=2ndLIVE",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL10.html",
+    "title": "いきづらい部！ 2nd LIVE Dou-Da? DOING! ～Reply to L～",
+    "franchise": "lovelive",
+    "groups": [
+      "いきづらい部！"
+    ]
+  },
+  {
+    "id": "LL11",
+    "url": "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=8thlive",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL11.html",
+    "title": "ラブライブ！虹ヶ咲学園スクールアイドル同好会 8th Live! TOKIMEKI Express",
+    "franchise": "lovelive",
+    "groups": [
+      "虹ヶ咲学園スクールアイドル同好会"
+    ]
+  },
+  {
+    "id": "LL12",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=6thBGP",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL12.html",
+    "title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ 6th Live Dream ～Bloom Garden Party～",
+    "franchise": "lovelive",
+    "groups": [
+      "蓮ノ空女学院スクールアイドルクラブ"
+    ]
+  },
+  {
+    "id": "LL13",
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=taiikusai",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL13.html",
+    "title": "ラブライブ！スーパースター!! Liella! 結女体育祭",
+    "franchise": "lovelive",
+    "groups": [
+      "Liella!"
+    ]
+  },
+  {
+    "id": "LL14",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=GKSS_TWO-MAN",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL14.html",
+    "title": "ラブライブ！サンシャイン!! Guilty Kiss × Saint Snow TWO-MAN LIVE \"VS\"",
+    "franchise": "lovelive",
+    "groups": [
+      "Guilty Kiss",
+      "Saint Snow"
+    ]
+  },
+  {
+    "id": "LL15",
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=WhatismyL",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL15.html",
+    "title": "いきづらい部！ 1st LIVE ～ What is my L ? ～",
+    "franchise": "lovelive",
+    "groups": [
+      "いきづらい部！"
+    ]
+  },
+  {
+    "id": "LL16",
+    "url": "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=flower_live",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL16.html",
+    "title": "ラブライブ！虹ヶ咲学園スクールアイドル同好会 FLOWER MUSIC LIVE『Boooooom Boooooom Bee!!』",
+    "franchise": "lovelive",
+    "groups": [
+      "虹ヶ咲学園スクールアイドル同好会"
+    ]
+  },
+  {
+    "id": "LL17",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=RTB",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL17.html",
+    "title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ 103-105th Fes×ReC：LIVE ～Road to Bloom～",
+    "franchise": "lovelive",
+    "groups": [
+      "蓮ノ空女学院スクールアイドルクラブ"
+    ]
+  },
+  {
+    "id": "LL18",
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=7thlive",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL18.html",
+    "title": "ラブライブ！スーパースター!! Liella! 7th LoveLive! ～Fly! MUSIC WORLD♪～",
+    "franchise": "lovelive",
+    "groups": [
+      "Liella!"
+    ]
+  },
+  {
+    "id": "LL19",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=4PPS",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL19.html",
+    "title": "ラブライブ！蓮ノ空女学院スクールアイドルクラブ 5th Live Tour ～4Pair Power Spread!!!!～",
+    "franchise": "lovelive",
+    "groups": [
+      "蓮ノ空女学院スクールアイドルクラブ"
+    ]
+  },
+  {
+    "id": "LL20",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai2025",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL20.html",
+    "title": "ラブライブ！サンシャイン!! 沼津地元愛まつり 2025",
+    "franchise": "lovelive",
+    "groups": [
+      "Aqours"
+    ]
+  }
+]

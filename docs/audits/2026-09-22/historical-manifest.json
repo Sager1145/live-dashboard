@@ -1,0 +1,65 @@
+[
+  {
+    "id": "BD02",
+    "url": "https://bang-dream.com/events/mygo_9th/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD02.html",
+    "title": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD03",
+    "url": "https://bang-dream.com/events/morfonica_live_2026/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD03.html",
+    "title": "Morfonica LIVE「Movement」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD04",
+    "url": "https://bang-dream.com/events/eleganza/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD04.html",
+    "title": "Morfonica LIVE「eleganza」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD05",
+    "url": "https://bang-dream.com/events/roselia-10th-anniversary-live-tour/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD05.html",
+    "title": "Roselia 10th Anniversary LIVE TOUR",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD06",
+    "url": "https://bang-dream.com/events/lehre-der-rose/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD06.html",
+    "title": "Roselia「Lehre der Rose」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD07",
+    "url": "https://bang-dream.com/avemujica_livetour_final/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD07.html",
+    "title": "Ave Mujica LIVE TOUR 2026「Exitus」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD08",
+    "url": "https://bang-dream.com/ras_2026_tokyo/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD08.html",
+    "title": "RAISE A SUILEN LIVE 2026「Boot IGNITION」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD09",
+    "url": "https://bang-dream.com/yumemita_superposition/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD09.html",
+    "title": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション」",
+    "franchise": "bangdream"
+  },
+  {
+    "id": "BD10",
+    "url": "https://bang-dream.com/events/ppp-roselia2026/",
+    "path": "/Users/sager/Documents/GitHub/live-dashboard/server/tests/fixtures/research/BD10.html",
+    "title": "Poppin’Party×Roselia 合同ライブ「DREAMS GO ON」",
+    "franchise": "bangdream"
+  }
+]

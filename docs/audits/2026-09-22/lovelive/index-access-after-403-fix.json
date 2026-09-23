@@ -1,0 +1,27 @@
+[
+  {
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live.php",
+    "status": 200,
+    "bytes": 18413
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/nijigasaki/live.php",
+    "status": 200,
+    "bytes": 21771
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/",
+    "status": 200,
+    "bytes": 20252
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/",
+    "status": 200,
+    "bytes": 24560
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/",
+    "status": 200,
+    "bytes": 69965
+  }
+]

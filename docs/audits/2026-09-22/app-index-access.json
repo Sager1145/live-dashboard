@@ -1,0 +1,44 @@
+[
+  {
+    "url": "https://bang-dream.com/events/",
+    "status": 200,
+    "bytes": 58372,
+    "capturedAt": "2026-09-23T00:42:10.050770+00:00"
+  },
+  {
+    "url": "https://bang-dream.com/events/page/2/",
+    "status": 200,
+    "bytes": 59908,
+    "capturedAt": "2026-09-23T00:42:10.584550+00:00"
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live.php",
+    "status": 403,
+    "bytes": 12395,
+    "capturedAt": "2026-09-23T00:42:10.631015+00:00"
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/nijigasaki/live.php",
+    "status": 403,
+    "bytes": 12395,
+    "capturedAt": "2026-09-23T00:42:10.668256+00:00"
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/",
+    "status": 403,
+    "bytes": 12395,
+    "capturedAt": "2026-09-23T00:42:10.711808+00:00"
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/",
+    "status": 403,
+    "bytes": 12395,
+    "capturedAt": "2026-09-23T00:42:10.752237+00:00"
+  },
+  {
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/",
+    "status": 403,
+    "bytes": 12395,
+    "capturedAt": "2026-09-23T00:42:10.793633+00:00"
+  }
+]

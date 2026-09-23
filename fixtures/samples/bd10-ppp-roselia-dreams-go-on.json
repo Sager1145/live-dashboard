@@ -1,0 +1,61 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd10-ppp-roselia-dreams-go-on",
+    "officialName": "Poppin'Party×Roselia 合同ライブ「DREAMS GO ON」",
+    "shortName": "PPP×Roselia「DREAMS GO ON」",
+    "franchise": "bangdream",
+    "groups": ["Poppin'Party", "Roselia"],
+    "eventType": "joint_live",
+    "structure": "single",
+    "lifecycle": "ended",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/events/ppp-roselia2026/", "role": "event", "adapter": "bangdream_event" }
+    ]
+  },
+  "performances": [
+    { "id": "bd10-main", "eventId": "bd10-ppp-roselia-dreams-go-on", "date": "2026-05-03", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": "有明アリーナ", "city": "東京", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["Poppin'Party", "Roselia"] } }
+  ],
+  "ticketTypes": [
+    { "id": "bd10-tt-standard", "eventId": "bd10-ppp-roselia-dreams-go-on", "name": "指定席", "kind": "reserved",
+      "price": { "state": "not_fetched" },
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd10-main"] } }
+  ],
+  "merchBatches": [
+    { "id": "bd10-merch-venue-cd", "eventId": "bd10-ppp-roselia-dreams-go-on", "officialName": "会場CD/Blu-ray販売 サイン特典抽選", "channel": "venue",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd10-main"] },
+      "salesWindow": { "state": "not_fetched" },
+      "venueHours": { "state": "not_fetched" },
+      "purchaseBonus": { "description": "CD/Blu-ray を合計 ¥2,000 以上購入でサイン入り特典の抽選に参加可能", "threshold": { "amount": 2000, "currency": "JPY" } },
+      "status": "closed",
+      "storeUrl": { "state": "not_applicable" },
+      "imageIds": ["bd10-img-merch-lineup"] }
+  ],
+  "images": [
+    { "id": "bd10-img-merch-lineup", "eventId": "bd10-ppp-roselia-dreams-go-on", "purpose": "merch_lineup",
+      "url": { "state": "not_fetched" }, "sourceUrl": "https://bang-dream.com/events/ppp-roselia2026/",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd10-main"] } }
+  ],
+  "evidence": [
+    { "id": "bd10-ev-date", "field": "performances[bd10-main].date,venue", "sourceUrl": "https://bang-dream.com/events/ppp-roselia2026/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific", "rawEvidence": "2026年5月3日 有明アリーナ",
+      "scope": { "scope": "explicit", "performanceIds": ["bd10-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd10-ev-bonus", "field": "merchBatches[bd10-merch-venue-cd].purchaseBonus.threshold", "sourceUrl": "https://bang-dream.com/events/ppp-roselia2026/",
+      "sourceSection": "会場CD/Blu-ray販売 特典", "sectionKind": "batch_specific",
+      "rawEvidence": "対象商品を税込2,000円以上お買い上げの方に、サイン入り特典抽選に参加いただけます",
+      "scope": { "scope": "explicit", "performanceIds": ["bd10-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "bd10-a7", "scenario": "物贩消费门槛与票价并存",
+      "mustHold": ["一张联合公演卡带两个 groups 标签", "¥2,000 只出现在 merchBatches[].purchaseBonus.threshold", "CD/BD 特典位于 周边 → 会场特典"],
+      "mustNotHold": ["¥2,000 出现在任一 TicketType.price 或首页最低票价", "两个团体列表各生成一条公演", "特典说明占据概要顶部"] }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd04-morfonica-eleganza",
+    "officialName": "Morfonica LIVE「eleganza」",
+    "shortName": "Morfonica「eleganza」",
+    "franchise": "bangdream",
+    "groups": ["Morfonica"],
+    "eventType": "live",
+    "structure": "single",
+    "lifecycle": "announced",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/events/eleganza/", "role": "event", "adapter": "bangdream_event" }
+    ],
+    "relatedEntities": [
+      { "relation": "predecessor", "kind": "event", "name": "Morfonica LIVE「Movement」", "entityId": "bd03-morfonica-movement", "note": "同艺人独立公演，不合并" }
+    ]
+  },
+  "performances": [
+    { "id": "bd04-main", "eventId": "bd04-morfonica-eleganza",
+      "date": "2027-01-09", "session": "single",
+      "doorsAt": "17:00", "startsAt": "18:00", "timeZone": "Asia/Tokyo",
+      "venue": "Kanadevia Hall", "city": "東京",
+      "performanceType": "live", "lifecycle": "announced",
+      "performers": { "onStage": ["Morfonica"], "guests": { "state": "not_fetched" } } }
+  ],
+  "ticketTypes": [],
+  "salesRounds": [
+    { "id": "bd04-round-playguide", "eventId": "bd04-morfonica-eleganza",
+      "name": "プレイガイド先行", "method": "unknown", "channel": "ticket_platform",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd04-main"] },
+      "applicationWindow": { "opensAt": "2026-09-22T21:00+09:00", "closesAt": { "state": "not_fetched", "note": "未读到截止时间，不补成开演前一天" }, "timeZone": "Asia/Tokyo" },
+      "platformStatus": { "state": "not_confirmed" },
+      "entryUrl": { "state": "not_fetched" } }
+  ],
+  "merchBatches": [],
+  "images": [
+    { "id": "bd04-img-seatmap", "eventId": "bd04-morfonica-eleganza", "purpose": "event_seat_map",
+      "url": { "state": "not_fetched" }, "appliesTo": { "scope": "explicit", "performanceIds": ["bd04-main"] } }
+  ],
+  "evidence": [
+    { "id": "bd04-ev-schedule", "field": "performances[bd04-main].date,venue,doorsAt,startsAt", "sourceUrl": "https://bang-dream.com/events/eleganza/",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "2027年1月9日(土) Kanadevia Hall 開場17:00 / 開演18:00",
+      "scope": { "scope": "explicit", "performanceIds": ["bd04-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd04-ev-playguide", "field": "salesRounds[bd04-round-playguide].applicationWindow.opensAt", "sourceUrl": "https://bang-dream.com/events/eleganza/",
+      "sourceSection": "チケット", "sectionKind": "event_specific",
+      "rawEvidence": "プレイガイド先行 2026年9月22日(火) 21:00〜",
+      "scope": { "scope": "explicit", "performanceIds": ["bd04-main"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "bd04-a15", "scenario": "资料稀疏",
+      "mustHold": ["详情保留四个 Tab，空 Tab 显示“已获取日程与受付开始时间。其他资料待核验。”", "ticketTypes、merchBatches 为空数组而不是虚构条目", "closesAt 为 Unknown(not_fetched)"],
+      "mustNotHold": ["与 bd03 合并为一张卡", "closesAt 被补成 2027-01-08", "Unknown 显示为“官方未公布”"] }
+  ]
+}

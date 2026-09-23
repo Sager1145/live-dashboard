@@ -1,0 +1,59 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "ll02-lovelive-fes-zenyasai-film-live",
+    "officialName": "LoveLive! Series 15th Anniversary ラブライブ！フェス 前夜祭 FILM LIVE ～未来へ届けるタイムカプセル～",
+    "shortName": "15th 前夜祭 FILM LIVE",
+    "franchise": "lovelive",
+    "groups": ["ラブライブ！シリーズ"],
+    "eventType": "film_live",
+    "structure": "multi_day",
+    "lifecycle": "upcoming",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai", "role": "event", "identityParams": { "p": "15thzenyasai" }, "adapter": "lovelive_detail" },
+      { "url": "https://sayuridate.jp/live/gs0o3o78l9m3", "role": "performer_official", "adapter": "performer_site" },
+      { "url": "https://www.jp-r.co.jp/event/2389b024c63853e65c4719febb4174d188dea5a2b4e8e2788a35f7e81d847899/", "role": "performer_agency", "adapter": "performer_site" }
+    ],
+    "relatedEntities": [
+      { "relation": "related_event", "kind": "event", "name": "ラブライブ！フェス 15th", "entityId": "ll01-lovelive-fes-15th", "note": "“前夜祭”是名称，本活动日期为 10 月，不是 11 月 Fes 前一天" }
+    ]
+  },
+  "performances": [
+    { "id": "ll02-1010-matinee", "eventId": "ll02-lovelive-fes-zenyasai-film-live", "date": "2026-10-10", "dayLabel": "10/10 昼公演", "session": "matinee",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": "14:30", "timeZone": "Asia/Tokyo", "venue": "Shibuya LOVEZ", "city": "東京",
+      "performanceType": "film_live", "lifecycle": "upcoming",
+      "performers": { "onStage": { "state": "not_confirmed", "note": "现场环节出演者需按场提取" }, "openingAct": { "state": "not_fetched" }, "onScreen": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } } },
+    { "id": "ll02-1010-evening", "eventId": "ll02-lovelive-fes-zenyasai-film-live", "date": "2026-10-10", "dayLabel": "10/10 夜公演", "session": "evening",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": "18:30", "timeZone": "Asia/Tokyo", "venue": "Shibuya LOVEZ", "city": "東京",
+      "performanceType": "film_live", "lifecycle": "upcoming",
+      "performers": { "onStage": { "state": "not_confirmed" }, "openingAct": { "state": "not_fetched" }, "onScreen": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } } },
+    { "id": "ll02-1011-matinee", "eventId": "ll02-lovelive-fes-zenyasai-film-live", "date": "2026-10-11", "dayLabel": "10/11 昼公演", "session": "matinee",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": "14:00", "timeZone": "Asia/Tokyo", "venue": "Shibuya LOVEZ", "city": "東京",
+      "performanceType": "film_live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["伊達さゆり"], "openingAct": { "state": "not_fetched" }, "onScreen": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } } },
+    { "id": "ll02-1011-evening", "eventId": "ll02-lovelive-fes-zenyasai-film-live", "date": "2026-10-11", "dayLabel": "10/11 夜公演", "session": "evening",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": "18:00", "timeZone": "Asia/Tokyo", "venue": "Shibuya LOVEZ", "city": "東京",
+      "performanceType": "film_live", "lifecycle": "upcoming",
+      "performers": { "onStage": ["伊達さゆり"], "openingAct": { "state": "not_fetched" }, "onScreen": { "state": "not_fetched" }, "guests": { "state": "not_fetched" } } }
+  ],
+  "evidence": [
+    { "id": "ll02-ev-schedule", "field": "performances[*].date,startsAt,venue", "sourceUrl": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai",
+      "sourceSection": "公演概要", "sectionKind": "event_specific",
+      "rawEvidence": "2026年10月10日(土) 昼公演14:30 / 夜公演18:30、10月11日(日) 昼公演14:00 / 夜公演18:00 Shibuya LOVEZ / Opening Act・Film Live・Talk",
+      "scope": { "scope": "explicit", "performanceIds": ["ll02-1010-matinee", "ll02-1010-evening", "ll02-1011-matinee", "ll02-1011-evening"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "ll02-ev-date-only-1011", "field": "performances[ll02-1011-*].performers.onStage", "sourceUrl": "https://sayuridate.jp/live/gs0o3o78l9m3",
+      "sourceSection": "LIVE / EVENT", "sectionKind": "event_specific",
+      "rawEvidence": "伊達さゆり 出演 ※10月11日(日)のみ",
+      "scope": { "scope": "explicit", "performanceIds": ["ll02-1011-matinee", "ll02-1011-evening"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "ll02-a3", "scenario": "两日各有昼夜场",
+      "mustHold": ["首页类型标签 “FILM LIVE／含现场环节”", "详情两个维度：[10/10 | 10/11] × [昼 | 夜]，四个 performanceId", "onStage / onScreen / guests 分开保存"],
+      "mustNotHold": ["伊達さゆり 出现在 10/10 任一场 onStage", "由“前夜祭”把日期算成 11-13", "与纯现场演唱会同一类型标签"] }
+  ]
+}

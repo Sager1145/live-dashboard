@@ -1,0 +1,29 @@
+[project]
+name = "livedash"
+version = "0.1.0"
+description = "Live Dashboard server-side collection pipeline (fetch, parse, publish LiveEventBundle)"
+authors = [
+    { name = "Sager1145", email = "sagerxjp@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "selectolax>=0.3.21",
+    "pydantic>=2.7",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+livedash = "livedash.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.12.9,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv_build]
+module-name = "livedash"

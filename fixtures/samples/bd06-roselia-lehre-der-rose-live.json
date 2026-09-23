@@ -1,0 +1,67 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "bd06-roselia-lehre-der-rose-live",
+    "officialName": "Roselia「Lehre der Rose」発売記念ライブ",
+    "shortName": "Roselia「Lehre der Rose」Live",
+    "franchise": "bangdream",
+    "groups": ["Roselia"],
+    "eventType": "release_commemoration_live",
+    "structure": "multi_day",
+    "lifecycle": "ended",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://bang-dream.com/events/lehre-der-rose/", "role": "event", "adapter": "bangdream_event" },
+      { "url": "https://www.goodsmile.com/en/product/1146053", "role": "licensed_goods", "adapter": "store_media" }
+    ],
+    "relatedEntities": [
+      { "relation": "related_release", "kind": "album", "name": "Roselia「Lehre der Rose」（周年ベストアルバム）", "entityId": "bd06-album-lehre-der-rose", "note": "同名专辑，独立实体" },
+      { "relation": "successor", "kind": "event", "name": "Roselia 10th Anniversary LIVE TOUR", "entityId": "bd05-roselia-10th-anniversary-tour" }
+    ]
+  },
+  "performances": [
+    { "id": "bd06-day1", "eventId": "bd06-roselia-lehre-der-rose-live", "date": "2026-08-29", "dayLabel": "Day1", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": "有明アリーナ", "city": "東京", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["Roselia"] } },
+    { "id": "bd06-day2", "eventId": "bd06-roselia-lehre-der-rose-live", "date": "2026-08-30", "dayLabel": "Day2", "session": "single",
+      "doorsAt": { "state": "not_fetched" }, "startsAt": { "state": "not_fetched" }, "timeZone": "Asia/Tokyo",
+      "venue": "有明アリーナ", "city": "東京", "performanceType": "live", "lifecycle": "ended",
+      "performers": { "onStage": ["Roselia"] } }
+  ],
+  "merchBatches": [
+    { "id": "bd06-merch-venue-gsc", "eventId": "bd06-roselia-lehre-der-rose-live",
+      "officialName": "会場物販（グッドスマイルカンパニー ライセンス商品）", "channel": "licensed_third_party",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["bd06-day1", "bd06-day2"] },
+      "salesWindow": { "opensAt": "2026-08-29T00:00+09:00", "closesAt": "2026-08-30T23:59+09:00", "timeZone": "Asia/Tokyo" },
+      "venueHours": { "state": "not_fetched" },
+      "status": "closed",
+      "storeUrl": "https://www.goodsmile.com/en/product/1146053" },
+    { "id": "bd06-merch-online", "eventId": "bd06-roselia-lehre-der-rose-live",
+      "officialName": "新商品 通販", "channel": "online_post",
+      "appliesTo": { "scope": "unknown" },
+      "salesWindow": { "state": "not_fetched" },
+      "shippingEstimate": { "state": "not_fetched" },
+      "status": { "state": "not_confirmed" },
+      "storeUrl": { "state": "not_fetched" } }
+  ],
+  "evidence": [
+    { "id": "bd06-ev-gsc", "field": "merchBatches[bd06-merch-venue-gsc].salesWindow,performances[*].date,venue", "sourceUrl": "https://www.goodsmile.com/en/product/1146053",
+      "sourceSection": "Product description", "sectionKind": "product_specific",
+      "rawEvidence": "Sold at the merchandise area of Roselia「Lehre der Rose」 at Ariake Arena, August 29–30, 2026",
+      "scope": { "scope": "explicit", "performanceIds": ["bd06-day1", "bd06-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "bd06-ev-online", "field": "merchBatches[bd06-merch-online]", "sourceUrl": "https://bang-dream.com/events/lehre-der-rose/",
+      "sourceSection": "GOODS", "sectionKind": "event_specific",
+      "rawEvidence": "新商品 通販情報",
+      "scope": { "scope": "unknown" },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "pending" }
+  ],
+  "acceptance": [
+    { "id": "bd06-a16", "scenario": "同名实体去重",
+      "mustHold": ["专辑 bd06-album-lehre-der-rose、本 Live、bd05 巡演三个独立 ID 并互相关联", "公演结束后概要折叠，通贩与发货信息保留"],
+      "mustNotHold": ["按标题相似度将专辑与 Live 合并", "商品销售日写成专辑发行日"] }
+  ]
+}

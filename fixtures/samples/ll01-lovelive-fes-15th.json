@@ -1,0 +1,72 @@
+{
+  "bundleVersion": "fixture-2026-09-22",
+  "asOf": "2026-09-22T00:00:00+09:00",
+  "event": {
+    "id": "ll01-lovelive-fes-15th",
+    "officialName": "LoveLive! Series 15th Anniversary ラブライブ！フェス",
+    "shortName": "ラブライブ！フェス 15th",
+    "franchise": "lovelive",
+    "groups": ["μ's", "Aqours", "虹ヶ咲学園スクールアイドル同好会", "Liella!", "蓮ノ空女学院スクールアイドルクラブ", "いきづらい部！"],
+    "eventType": "fes",
+    "structure": "multi_day",
+    "lifecycle": "upcoming",
+    "majorStatusBanner": { "state": "not_applicable" },
+    "keyVisualImageId": { "state": "not_fetched" },
+    "sources": [
+      { "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest", "role": "event", "identityParams": { "p": "15th_lovelivefest" }, "adapter": "lovelive_detail" },
+      { "url": "https://lovelive.fannect.jp/products/lamd84829", "role": "after_pamphlet", "adapter": "store_media" },
+      { "url": "https://nearly-equal-joy.jp/news/detail/3511", "role": "performer_official", "adapter": "performer_site" }
+    ],
+    "relatedEntities": [
+      { "relation": "related_event", "kind": "event", "name": "15周年前夜祭 FILM LIVE", "entityId": "ll02-lovelive-fes-zenyasai-film-live", "note": "独立活动，日期不由“前夜祭”推算" }
+    ]
+  },
+  "performances": [
+    { "id": "ll01-day1", "eventId": "ll01-lovelive-fes-15th", "date": "2026-11-14", "dayLabel": "Day1", "session": "single",
+      "doorsAt": { "state": "not_confirmed", "note": "两日开场时间不同，数值未读取" }, "startsAt": { "state": "not_confirmed" }, "timeZone": "Asia/Tokyo",
+      "venue": "バンテリンドーム ナゴヤ", "city": "名古屋", "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": { "state": "not_confirmed", "note": "按日出演团体及嘉宾需从本场公告提取；不默认全团体两日全出" }, "guests": { "state": "not_confirmed" } } },
+    { "id": "ll01-day2", "eventId": "ll01-lovelive-fes-15th", "date": "2026-11-15", "dayLabel": "Day2", "session": "single",
+      "doorsAt": { "state": "not_confirmed" }, "startsAt": { "state": "not_confirmed" }, "timeZone": "Asia/Tokyo",
+      "venue": "バンテリンドーム ナゴヤ", "city": "名古屋", "performanceType": "live", "lifecycle": "upcoming",
+      "performers": { "onStage": { "state": "not_confirmed" }, "guests": { "state": "not_confirmed" } } }
+  ],
+  "ticketTypes": [
+    { "id": "ll01-tt-reserved", "eventId": "ll01-lovelive-fes-15th", "name": "全席指定", "kind": "reserved",
+      "price": { "amount": 15000, "currency": "JPY", "taxIncluded": true },
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll01-day1", "ll01-day2"] } }
+  ],
+  "merchBatches": [
+    { "id": "ll01-merch-pre", "eventId": "ll01-lovelive-fes-15th", "officialName": "事前通販", "channel": "online_pre",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll01-day1", "ll01-day2"] },
+      "salesWindow": { "state": "not_fetched" }, "status": { "state": "not_fetched" }, "storeUrl": { "state": "not_fetched" } },
+    { "id": "ll01-merch-after-pamphlet", "eventId": "ll01-lovelive-fes-15th", "officialName": "After Pamphlet 予約", "channel": "online_post",
+      "appliesTo": { "scope": "explicit", "performanceIds": ["ll01-day1", "ll01-day2"] },
+      "salesWindow": { "closesAt": "2026-11-30T23:59+09:00", "timeZone": "Asia/Tokyo" },
+      "shippingEstimate": "2027年6月以降発送予定",
+      "status": "accepting",
+      "storeUrl": "https://lovelive.fannect.jp/products/lamd84829" }
+  ],
+  "products": [
+    { "id": "ll01-prod-after-pamphlet", "eventId": "ll01-lovelive-fes-15th", "batchId": "ll01-merch-after-pamphlet",
+      "name": "After Pamphlet", "price": { "state": "not_fetched" }, "orderType": "made_to_order", "stockStatus": "preorder",
+      "shippingEstimate": "2027年6月以降発送予定", "productUrl": "https://lovelive.fannect.jp/products/lamd84829" }
+  ],
+  "evidence": [
+    { "id": "ll01-ev-schedule", "field": "performances[*].date,venue;ticketTypes[ll01-tt-reserved].price", "sourceUrl": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest",
+      "sourceSection": "公演概要 / チケット", "sectionKind": "event_specific",
+      "rawEvidence": "2026年11月14日(土)・15日(日) バンテリンドーム ナゴヤ / 全席指定 ¥15,000 / 開場・開演時間は日により異なる",
+      "scope": { "scope": "explicit", "performanceIds": ["ll01-day1", "ll01-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" },
+    { "id": "ll01-ev-after-pamphlet", "field": "merchBatches[ll01-merch-after-pamphlet].salesWindow,shippingEstimate", "sourceUrl": "https://lovelive.fannect.jp/products/lamd84829",
+      "sourceSection": "商品説明", "sectionKind": "product_specific",
+      "rawEvidence": "受付締切 11月30日 / 2027年6月以降お届け予定",
+      "scope": { "scope": "explicit", "performanceIds": ["ll01-day1", "ll01-day2"] },
+      "publishedAt": { "state": "not_fetched" }, "observedAt": "2026-09-22T00:00:00+09:00", "verificationStatus": "verified" }
+  ],
+  "acceptance": [
+    { "id": "ll01-a10", "scenario": "公演结束但商品期限有效",
+      "mustHold": ["公演日期、商品受付截止（11-30）、预计发货（2027-06 以降）为三个独立字段", "详情按日显示出演团体及嘉宾", "After Pamphlet 与普通事前通贩为两个 merchBatch"],
+      "mustNotHold": ["默认所有团体两日全员出场", "因商品名含 After Pamphlet 而推断其在演出后才开售", "公演 ended 后隐藏 After Pamphlet 预订卡"] }
+  ]
+}

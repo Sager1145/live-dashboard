@@ -1,0 +1,88 @@
+[
+  {
+    "publicationRank": 41,
+    "uniqueLiveRank": 40,
+    "wordpressID": 13874,
+    "publishedAtLocal": "2025-08-14T22:00:00",
+    "url": "https://bang-dream.com/events/morfonica_live_2025/",
+    "officialTitle": "Morfonica 5th Anniversary LIVE「Maestoso」",
+    "cachedHTMLSHA256": "c448900176bd45b0184964c64e92154118f7ab5012ab5bf302fa0ac31b3ce273",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2025-12-30",
+        "venue": "大宮ソニックシティ 大ホール",
+        "performers": ["Morfonica"],
+        "doorsLocal": "17:00",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "プレミアムシート(前方エリア・特製グッズ付き)",
+        "displayAmount": 22000,
+        "amountMinorUnits": 22000,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 14300,
+        "amountMinorUnits": 14300,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      }
+    ],
+    "streamPrice": {
+      "displayAmount": 5500,
+      "amountMinorUnits": 5500,
+      "currency": "JPY"
+    },
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "url": "https://bang-dream.com/2025/renew/82cba3d1-336f-4f37-a681-ef4c5e397288.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/c24b7d44-2931-42a2-a03c-34e360831b16.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/36bc35ea-ffd1-4cc2-82bf-1654bd8717de.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/48e1b6cf-d93d-40c4-b636-26d52ce5ccfa.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/f9b7a818-49fb-45e8-9f3a-678e61efa800.jpg"
+      }
+    ],
+    "evidence": {
+      "title": "h1.p-live-event-detail__header-title",
+      "summary": ".p-live-event-detail__table",
+      "schedule": "#toc-1 + p",
+      "venue": "#toc-2 + p",
+      "performers": "#toc-3 + p",
+      "tickets": "#Ticket",
+      "goods": "#Goods_online, #Goods_onsite"
+    },
+    "notes": [
+      "This is publication rank 41 and becomes unique-live rank 40 after the byte-identical Taipei DAY1/DAY2 publication pages at ranks 27 and 28 are collapsed."
+    ]
+  }
+]

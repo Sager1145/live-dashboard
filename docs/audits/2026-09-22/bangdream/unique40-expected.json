@@ -1,0 +1,2122 @@
+[
+  {
+    "publicationRank": 1,
+    "wordpressID": 26960,
+    "url": "https://bang-dream.com/events/eleganza/",
+    "officialTitle": "Morfonica LIVE「eleganza」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2027-01-09",
+        "venue": "Kanadevia Hall",
+        "performers": [
+          "Morfonica"
+        ],
+        "doorsLocal": "17:00",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "アリーナスタンディング Sエリア(特製グッズ付き)",
+        "displayAmount": 22000,
+        "amountMinorUnits": 22000,
+        "currency": "JPY"
+      },
+      {
+        "name": "アリーナスタンディング Aエリア(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "スタンド指定席(特製グッズ付き)",
+        "displayAmount": 14300,
+        "amountMinorUnits": 14300,
+        "currency": "JPY"
+      },
+      {
+        "name": "スタンド指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "プレイガイド先行"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 1
+  },
+  {
+    "publicationRank": 2,
+    "wordpressID": 27889,
+    "url": "https://bang-dream.com/events/roselia-10th-anniversary-live-tour/",
+    "officialTitle": "Roselia 10th Anniversary LIVE TOUR",
+    "expectedPerformanceCount": 4,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2027-01-30",
+        "venue": "TOYOTA ARENA TOKYO",
+        "performers": [
+          "Roselia"
+        ],
+        "dayLabel": "東京公演"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2027-02-28",
+        "venue": "愛知県芸術劇場 大ホール",
+        "performers": [
+          "Roselia"
+        ],
+        "dayLabel": "愛知公演"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2027-03-14",
+        "venue": "仙台サンプラザホール",
+        "performers": [
+          "Roselia"
+        ],
+        "dayLabel": "宮城公演"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2027-04-25",
+        "venue": "福岡サンパレス",
+        "performers": [
+          "Roselia"
+        ],
+        "dayLabel": "福岡公演"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [
+      "最速先行抽選"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 2
+  },
+  {
+    "publicationRank": 3,
+    "wordpressID": 27833,
+    "url": "https://bang-dream.com/events/wonderlivet-2026/",
+    "officialTitle": "WONDERLIVET 2026",
+    "expectedPerformanceCount": 3,
+    "performances": [
+      {
+        "timeZone": "Asia/Seoul",
+        "localDate": "2026-11-20",
+        "venue": "KINTEX HALL 7·8·9·10（韓国）",
+        "performers": [],
+        "excludedPerformers": [
+          "Roselia",
+          "MyGO!!!!!"
+        ]
+      },
+      {
+        "timeZone": "Asia/Seoul",
+        "localDate": "2026-11-21",
+        "venue": "KINTEX HALL 7·8·9·10（韓国）",
+        "performers": [
+          "Roselia",
+          "MyGO!!!!!"
+        ]
+      },
+      {
+        "timeZone": "Asia/Seoul",
+        "localDate": "2026-11-22",
+        "venue": "KINTEX HALL 7·8·9·10（韓国）",
+        "performers": [],
+        "excludedPerformers": [
+          "Roselia",
+          "MyGO!!!!!"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 3
+  },
+  {
+    "publicationRank": 4,
+    "wordpressID": 27484,
+    "url": "https://bang-dream.com/events/nakamachiarale_live2026/",
+    "officialTitle": "NAKAMACHI ARALE LIVE 2026「RESONEXT」",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-24",
+        "venue": "大手町三井ホール",
+        "performers": [
+          "仲町あられ（夢限大みゅーたいぷ）"
+        ],
+        "dayLabel": "昼の部",
+        "doorsLocal": "13:15",
+        "startLocal": "14:00"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-24",
+        "venue": "大手町三井ホール",
+        "performers": [
+          "仲町あられ（夢限大みゅーたいぷ）"
+        ],
+        "dayLabel": "夜の部",
+        "doorsLocal": "18:30",
+        "startLocal": "19:15"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "特典付き指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 6600,
+        "amountMinorUnits": 6600,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "プレイガイド先行"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 4
+  },
+  {
+    "publicationRank": 5,
+    "wordpressID": 27204,
+    "url": "https://bang-dream.com/events/bushiroad-fashion-journey/",
+    "officialTitle": "Bushiroad Fashion Journey",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-10-25",
+        "venue": "Shibuya Hikarie",
+        "performers": [
+          "立石凛（千早愛音 役）",
+          "夢限大みゅーたいぷ"
+        ],
+        "doorsLocal": "17:00",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "指定席チケット",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      },
+      {
+        "name": "女性限定エリア指定席チケット",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      },
+      {
+        "name": "立見チケット（ブロック指定/整理番号有り/スタンディング）",
+        "displayAmount": 7700,
+        "amountMinorUnits": 7700,
+        "currency": "JPY"
+      },
+      {
+        "name": "女性限定エリア立見チケット（ブロック指定/整理番号有り/スタンディング）",
+        "displayAmount": 7700,
+        "amountMinorUnits": 7700,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "先行受付期間"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 5
+  },
+  {
+    "publicationRank": 6,
+    "wordpressID": 27075,
+    "url": "https://bang-dream.com/events/mygo_9th_hyogo/",
+    "officialTitle": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」- 神戸再景編 -",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-11-14",
+        "venue": "ワールド記念ホール（神戸ポートアイランドホール）",
+        "performers": [
+          "MyGO!!!!!"
+        ],
+        "dayLabel": "DAY1",
+        "doorsLocal": "16:30",
+        "startLocal": "18:00"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-11-15",
+        "venue": "ワールド記念ホール（神戸ポートアイランドホール）",
+        "performers": [
+          "MyGO!!!!!"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "15:30",
+        "startLocal": "17:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "S席(特製グッズ付き)",
+        "displayAmount": 25300,
+        "amountMinorUnits": 25300,
+        "currency": "JPY"
+      },
+      {
+        "name": "A席(特製グッズ付き)",
+        "displayAmount": 17600,
+        "amountMinorUnits": 17600,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 13200,
+        "amountMinorUnits": 13200,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "プレイガイド先行",
+      "最速先行抽選"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 6
+  },
+  {
+    "publicationRank": 7,
+    "wordpressID": 26979,
+    "url": "https://bang-dream.com/events/evanescence_avemujica/",
+    "officialTitle": "EVANESCENCE 2026 JAPAN",
+    "expectedPerformanceCount": 3,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-01",
+        "venue": "SGC HALL ARIAKE",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "dayLabel": "東京公演"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-02",
+        "venue": "SGC HALL ARIAKE",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "dayLabel": "東京公演"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-04",
+        "venue": "Zepp Osaka Bayside",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "dayLabel": "大阪公演"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 7
+  },
+  {
+    "publicationRank": 8,
+    "wordpressID": 26574,
+    "url": "https://bang-dream.com/events/ikka-dumb-rock_1st/",
+    "officialTitle": "一家Dumb Rock! 1st GIG「ピース＆グルーヴ」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-12",
+        "venue": "duo MUSIC EXCHANGE",
+        "performers": [
+          "一家Dumb Rock!"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [
+      "最速先行抽選"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 8
+  },
+  {
+    "publicationRank": 9,
+    "wordpressID": 26573,
+    "url": "https://bang-dream.com/events/millsage_1st/",
+    "officialTitle": "millsage LIVE 001「極夜」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-12-25",
+        "venue": "Spotify O-WEST",
+        "performers": [
+          "millsage"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [
+      "最速先行抽選"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 9
+  },
+  {
+    "publicationRank": 10,
+    "wordpressID": 25272,
+    "url": "https://bang-dream.com/events/yumemita_2026free/",
+    "officialTitle": "TVアニメ「バンドリ！ ゆめ∞みた」放送記念フリーライブ「新宿着陸計画」DAY2",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-25",
+        "venue": "Zepp Shinjuku (TOKYO)",
+        "performers": [
+          "夢限大みゅーたいぷ"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "18:30",
+        "startLocal": "19:30"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "チケット代",
+        "displayAmount": 0,
+        "amountMinorUnits": 0,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般受付",
+      "最速先行抽選（受付終了）"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/22160420/7c529290-749f5483-0ff2cbb1-33edb3b5.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "会場グッズ販売について",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/09/17011810/4429c023-4778798e-0d6fc68b-4caac28e.png"
+      }
+    ],
+    "notes": [
+      "REST title omits DAY2; current HTML h1 is authoritative and says DAY2."
+    ],
+    "uniqueLiveRank": 10
+  },
+  {
+    "publicationRank": 11,
+    "wordpressID": 26395,
+    "url": "https://bang-dream.com/events/avemujica_7th/",
+    "officialTitle": "Ave Mujica 7th LIVE「Virtus」",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-10-24",
+        "venue": "京王アリーナ TOKYO",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "dayLabel": "DAY1",
+        "doorsLocal": "17:00",
+        "startLocal": "18:30"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-10-25",
+        "venue": "京王アリーナ TOKYO",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "16:00",
+        "startLocal": "17:30"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "S席(特製グッズ付き)",
+        "displayAmount": 24200,
+        "amountMinorUnits": 24200,
+        "currency": "JPY"
+      },
+      {
+        "name": "A席(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド先行",
+      "最速先行抽選"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 11
+  },
+  {
+    "publicationRank": 12,
+    "wordpressID": 26143,
+    "url": "https://bang-dream.com/events/kimchikura-fes-26/",
+    "officialTitle": "KIMCHIKURA Fes '26",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Seoul",
+        "localDate": "2026-08-08",
+        "venue": "Seoul, Grand Peace Palace (at Kyung Hee University)",
+        "performers": [
+          "Morfonica",
+          "千石ユノ（夢限大みゅーたいぷ）"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 12
+  },
+  {
+    "publicationRank": 13,
+    "wordpressID": 26072,
+    "url": "https://bang-dream.com/events/bm-echoes-festival-2026/",
+    "officialTitle": "BM-ECHOES FESTIVAL 2026",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-05",
+        "venue": "Zepp Osaka Bayside",
+        "performers": [
+          "青木陽菜",
+          "夢限大みゅーたいぷ",
+          "RealRomantic（オープニングアクト）"
+        ],
+        "doorsLocal": "17:00",
+        "startLocal": "18:00"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-06",
+        "venue": "Zepp Nagoya",
+        "performers": [
+          "青木陽菜",
+          "夢限大みゅーたいぷ"
+        ],
+        "doorsLocal": "16:30",
+        "startLocal": "17:30"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 13
+  },
+  {
+    "publicationRank": 14,
+    "wordpressID": 25941,
+    "url": "https://bang-dream.com/events/25941/",
+    "officialTitle": "BEAT AX -SUMMER EDITION 2026-",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-12",
+        "venue": "Kアリーナ横浜",
+        "performers": [
+          "RAISE A SUILEN",
+          "Ave Mujica"
+        ],
+        "doorsLocal": "15:30",
+        "startLocal": "17:00"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 14
+  },
+  {
+    "publicationRank": 15,
+    "wordpressID": 25900,
+    "url": "https://bang-dream.com/events/anierafesta2026/",
+    "officialTitle": "ナガノアニエラフェスタ2026",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-19",
+        "venue": "長野県佐久市 駒場公園",
+        "performers": [],
+        "startLocal": "12:00",
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-20",
+        "venue": "長野県佐久市 駒場公園",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "startLocal": "12:00",
+        "appearanceStartLocal": "17:55"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 15
+  },
+  {
+    "publicationRank": 16,
+    "wordpressID": 25753,
+    "url": "https://bang-dream.com/events/fest-inazuma2026/",
+    "officialTitle": "FEST. INAZUMA 2026",
+    "expectedPerformanceCount": 3,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-19",
+        "venue": "滋賀県草津市 烏丸半島芝生広場 (滋賀県琵琶湖博物館西隣 多目的広場)",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "doorsLocal": "10:00",
+        "startLocal": "11:30",
+        "appearanceStartLocal": "12:50"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-20",
+        "venue": "滋賀県草津市 烏丸半島芝生広場 (滋賀県琵琶湖博物館西隣 多目的広場)",
+        "performers": [],
+        "doorsLocal": "10:00",
+        "startLocal": "11:30",
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-21",
+        "venue": "滋賀県草津市 烏丸半島芝生広場 (滋賀県琵琶湖博物館西隣 多目的広場)",
+        "performers": [],
+        "doorsLocal": "10:00",
+        "startLocal": "11:30",
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 16
+  },
+  {
+    "publicationRank": 17,
+    "wordpressID": 25616,
+    "url": "https://bang-dream.com/events/13th-live-day2/",
+    "officialTitle": "BanG Dream! 13th☆LIVE DAY2 : 夢限大みゅーたいぷ「DIMENSIONAL OVERLAP」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-10-11",
+        "venue": "東京ガーデンシアター",
+        "performers": [
+          "夢限大みゅーたいぷ"
+        ],
+        "doorsLocal": "16:30",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "3DAYS通しチケット",
+        "displayAmount": 23100,
+        "amountMinorUnits": 23100,
+        "currency": "JPY"
+      },
+      {
+        "name": "プレミアムシート(特製グッズ付き)",
+        "displayAmount": 23100,
+        "amountMinorUnits": 23100,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド先行（終了）",
+      "最速先行抽選（終了）"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/09172928/ec13a5cf-1dea5a02-1bb605fa-cd5309c7.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 17
+  },
+  {
+    "publicationRank": 18,
+    "wordpressID": 25013,
+    "url": "https://bang-dream.com/events/13th-live-day1/",
+    "officialTitle": "BanG Dream! 13th☆LIVE DAY1 : Poppin'Party「Now Roading♪♪」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-10-10",
+        "venue": "東京ガーデンシアター",
+        "performers": [
+          "Poppin'Party"
+        ],
+        "doorsLocal": "16:30",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "3DAYS通しチケット",
+        "displayAmount": 23100,
+        "amountMinorUnits": 23100,
+        "currency": "JPY"
+      },
+      {
+        "name": "プレミアムシート(特製グッズ付き)",
+        "displayAmount": 23100,
+        "amountMinorUnits": 23100,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/10/07173010/67144cdd-c1157a53-0c15dd0a-de6af61e.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 18
+  },
+  {
+    "publicationRank": 19,
+    "wordpressID": 25617,
+    "url": "https://bang-dream.com/events/13th-live-day3/",
+    "officialTitle": "BanG Dream! 13th☆LIVE DAY3 : RAISE A SUILEN「EXTREME EXPRESS」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-10-12",
+        "venue": "東京ガーデンシアター",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "doorsLocal": "16:30",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "3DAYS通しチケット",
+        "displayAmount": 23100,
+        "amountMinorUnits": 23100,
+        "currency": "JPY"
+      },
+      {
+        "name": "プレミアムシート(特製グッズ付き)",
+        "displayAmount": 23100,
+        "amountMinorUnits": 23100,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/10/07173017/bcab2509-bb42272c-38c5a9a7-ea158f14.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 19
+  },
+  {
+    "publicationRank": 20,
+    "wordpressID": 25535,
+    "url": "https://bang-dream.com/events/jsc2026/",
+    "officialTitle": "Anime Expo 2026「J-POP SOUND CAPSULE」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "America/Los_Angeles",
+        "localDate": "2026-07-02",
+        "venue": "Crypto.com Arena",
+        "performers": [
+          "Roselia"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 20
+  },
+  {
+    "publicationRank": 21,
+    "wordpressID": 24872,
+    "url": "https://bang-dream.com/events/maj_lisani2026/",
+    "officialTitle": "MUSIC AWARDS JAPAN WEEK SPECIAL LIVE リスアニ！LIVE on TOKYO ANIME MUSIC HIGHLIGHTS",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-06-09",
+        "venue": "TOYOTA ARENA TOKYO",
+        "performers": [
+          "MyGO!!!!!"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 21
+  },
+  {
+    "publicationRank": 22,
+    "wordpressID": 24777,
+    "url": "https://bang-dream.com/events/summer-sonic-2026/",
+    "officialTitle": "SUMMER SONIC 2026",
+    "expectedPerformanceCount": 3,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-14",
+        "venue": "万博記念公園",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "appearanceStartLocal": "15:20"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-15",
+        "venue": null,
+        "performers": [],
+        "excludedPerformers": [
+          "Ave Mujica"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-16",
+        "venue": "ZOZOマリンスタジアム＆幕張メッセ",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "appearanceStartLocal": "14:50"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 22
+  },
+  {
+    "publicationRank": 23,
+    "wordpressID": 24587,
+    "url": "https://bang-dream.com/events/asl2026/",
+    "officialTitle": "Animelo Summer Live 2026 -Messenger-",
+    "expectedPerformanceCount": 3,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-10",
+        "venue": "幕張メッセ",
+        "performers": [
+          "RAISE A SUILEN"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-11",
+        "venue": "幕張メッセ",
+        "performers": [],
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-12",
+        "venue": "幕張メッセ",
+        "performers": [],
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 23
+  },
+  {
+    "publicationRank": 24,
+    "wordpressID": 24390,
+    "url": "https://bang-dream.com/events/luckyfes2026/",
+    "officialTitle": "LuckyFes'26",
+    "expectedPerformanceCount": 4,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-08",
+        "venue": "国営ひたち海浜公園（茨城県ひたちなか市）",
+        "performers": [],
+        "excludedPerformers": [
+          "RAISE A SUILEN",
+          "MyGO!!!!!"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-09",
+        "venue": "国営ひたち海浜公園（茨城県ひたちなか市）",
+        "performers": [
+          "RAISE A SUILEN",
+          "MyGO!!!!!"
+        ],
+        "appearanceTimes": [
+          {
+            "performer": "RAISE A SUILEN",
+            "startLocal": "12:35"
+          },
+          {
+            "performer": "MyGO!!!!!",
+            "startLocal": "14:05"
+          }
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-10",
+        "venue": "国営ひたち海浜公園（茨城県ひたちなか市）",
+        "performers": [],
+        "excludedPerformers": [
+          "RAISE A SUILEN",
+          "MyGO!!!!!"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-11",
+        "venue": "国営ひたち海浜公園（茨城県ひたちなか市）",
+        "performers": [],
+        "excludedPerformers": [
+          "RAISE A SUILEN",
+          "MyGO!!!!!"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ販売",
+        "caption": "新商品",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/07155151/aae40729-731b5f66-4f5e542c-853311c4.jpg"
+      },
+      {
+        "section": "グッズ販売",
+        "caption": "新商品",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/07155153/8a9dc8fc-880f610c-a7f60015-6e470d6f.jpg"
+      },
+      {
+        "section": "グッズ販売",
+        "caption": "準新商品",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/07155203/7f5fef70-7414024b-52bba9ca-a4c99d10.jpg"
+      },
+      {
+        "section": "グッズ販売",
+        "caption": "準新商品",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/07155207/cf639c27-a477de71-4fd77b41-a5ef3c4c.jpg"
+      },
+      {
+        "section": "グッズ販売",
+        "caption": "準新商品",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/07155210/6a7238d8-8a7c2136-7368ff36-a705aae0.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 24
+  },
+  {
+    "publicationRank": 25,
+    "wordpressID": 13971,
+    "url": "https://bang-dream.com/events/lehre-der-rose/",
+    "officialTitle": "Roselia「Lehre der Rose」 - Roselia 10th Anniversary Best Album「Lehre der Rose」リリース記念ライブ",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-29",
+        "venue": "有明アリーナ",
+        "performers": [
+          "Roselia"
+        ],
+        "dayLabel": "DAY1",
+        "doorsLocal": "16:30",
+        "startLocal": "18:00"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-08-30",
+        "venue": "有明アリーナ",
+        "performers": [
+          "Roselia"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "15:30",
+        "startLocal": "17:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "プレミアムシート(特製グッズ付き)",
+        "displayAmount": 22000,
+        "amountMinorUnits": 22000,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 15400,
+        "amountMinorUnits": 15400,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)(当日券)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(当日券)",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "当日券",
+      "一般発売",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/08/29111251/6a13e96d-87ca5b9c-ae521417-2556891e.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/08/17193456/4d2e0b1d-6cdfa010-5e1b2d2f-aaff1706.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/08/24212224/2976e1e6-57296fa4-300cd9d2-5d34d9f1.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 25
+  },
+  {
+    "publicationRank": 26,
+    "wordpressID": 13997,
+    "url": "https://bang-dream.com/events/central_music_entertainment_festival_2026/",
+    "officialTitle": "CENTRAL MUSIC & ENTERTAINMENT FESTIVAL 2026",
+    "expectedPerformanceCount": 3,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-04-03",
+        "venue": null,
+        "performers": [],
+        "excludedPerformers": [
+          "Ave Mujica"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-04-04",
+        "venue": "KT Zepp Yokohama",
+        "performers": [
+          "Ave Mujica"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-04-05",
+        "venue": null,
+        "performers": [],
+        "excludedPerformers": [
+          "Ave Mujica"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 26
+  },
+  {
+    "publicationRank": 27,
+    "wordpressID": 13991,
+    "url": "https://bang-dream.com/events/bsl-taipei2026-day1/",
+    "officialTitle": "BanG Dream! Special LIVE in TAIPEI",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Taipei",
+        "localDate": "2026-04-11",
+        "venue": "台北・大佳河濱公園",
+        "performers": [
+          "MyGO!!!!!",
+          "Ave Mujica"
+        ],
+        "dayLabel": "DAY1",
+        "doorsLocal": "16:30",
+        "startLocal": "18:30",
+        "excludedPerformers": [
+          "Poppin'Party",
+          "Roselia"
+        ]
+      },
+      {
+        "timeZone": "Asia/Taipei",
+        "localDate": "2026-04-12",
+        "venue": "台北・大佳河濱公園",
+        "performers": [
+          "Poppin'Party",
+          "Roselia"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "16:00",
+        "startLocal": "18:00",
+        "excludedPerformers": [
+          "MyGO!!!!!",
+          "Ave Mujica"
+        ]
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "VIP A/B（特製グッズ付き）",
+        "displayAmount": 5880,
+        "amountMinorUnits": 588000,
+        "currency": "TWD"
+      },
+      {
+        "name": "ZONE C/D/E（特製グッズ付き）",
+        "displayAmount": 3880,
+        "amountMinorUnits": 388000,
+        "currency": "TWD"
+      },
+      {
+        "name": "ZONE F",
+        "displayAmount": 2880,
+        "amountMinorUnits": 288000,
+        "currency": "TWD"
+      },
+      {
+        "name": "VIP A/B（特製グッズ無し）",
+        "displayAmount": 5850,
+        "amountMinorUnits": 585000,
+        "currency": "TWD"
+      },
+      {
+        "name": "ZONE C/D/E（特製グッズ無し）",
+        "displayAmount": 3850,
+        "amountMinorUnits": 385000,
+        "currency": "TWD"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売",
+      "抽選受付（受付終了）",
+      "KKTIXでの抽選および購入について"
+    ],
+    "eventGoodsImages": [],
+    "notes": [
+      "Distinct DAY1 publication URL currently serves the merged two-day Taipei page; duplicate content group taipei-2026."
+    ],
+    "uniqueLiveRank": 27
+  },
+  {
+    "publicationRank": 29,
+    "wordpressID": 13984,
+    "url": "https://bang-dream.com/events/flowthefestival2026/",
+    "officialTitle": "FLOW THE FESTIVAL 2026",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-06-06",
+        "venue": "ぴあアリーナMM",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "doorsLocal": "10:00",
+        "startLocal": "12:00",
+        "appearanceStartLocal": "16:40"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-06-07",
+        "venue": "ぴあアリーナMM",
+        "performers": [],
+        "doorsLocal": "10:00",
+        "startLocal": "12:00",
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 28
+  },
+  {
+    "publicationRank": 30,
+    "wordpressID": 13975,
+    "url": "https://bang-dream.com/events/yumemita_superposition_spinup_tokyo_final/",
+    "officialTitle": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション 〜スピンアップ編〜」東京公演",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-06-21",
+        "venue": "SGC HALL ARIAKE",
+        "performers": [
+          "夢限大みゅーたいぷ",
+          "millsage（オープニングアクト）",
+          "一家Dumb Rock!（オープニングアクト）"
+        ],
+        "dayLabel": "東京公演",
+        "doorsLocal": "15:00",
+        "startLocal": "16:30"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "1Fアリーナ指定席(特製グッズ付き)",
+        "displayAmount": 13200,
+        "amountMinorUnits": 13200,
+        "currency": "JPY"
+      },
+      {
+        "name": "1Fアリーナ指定席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      },
+      {
+        "name": "2F指定席(特製グッズ付き)",
+        "displayAmount": 13200,
+        "amountMinorUnits": 13200,
+        "currency": "JPY"
+      },
+      {
+        "name": "2F指定席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      },
+      {
+        "name": "3F・4F指定席(特製グッズ付き)",
+        "displayAmount": 13200,
+        "amountMinorUnits": 13200,
+        "currency": "JPY"
+      },
+      {
+        "name": "3F・4F指定席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "東京公演　当日券",
+      "東京公演　一般発売",
+      "東京公演　プレイガイド二次先行（受付終了）",
+      "東京公演　プレイガイド先行（受付終了）",
+      "東京公演　最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/2025/renew/6bf091fe-d874-4e1c-b4b0-9427cf744531.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/11142241/991240a6-dc3876c0-5b5c346e-4a6f1e1d.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/11142245/68865296-d08887b7-9b7139b9-1cbcc244.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/06/11142252/c6d2d919-85614f80-0ffdad3b-ef06162f.png"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 29
+  },
+  {
+    "publicationRank": 31,
+    "wordpressID": 13979,
+    "url": "https://bang-dream.com/events/yumemita_superposition_yumensore_okinawa/",
+    "officialTitle": "夢限大みゅーたいぷ 47都道府県制覇の旅 「スーパーポジション ～ゆめんそーれ沖縄～」",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-04",
+        "venue": "沖縄県",
+        "performers": [
+          "夢限大みゅーたいぷ"
+        ],
+        "dayLabel": "ツアー1日目"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-05",
+        "venue": "沖縄県",
+        "performers": [
+          "夢限大みゅーたいぷ"
+        ],
+        "dayLabel": "ツアー2日目"
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [
+      "抽選申込期間"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 30
+  },
+  {
+    "publicationRank": 32,
+    "wordpressID": 13967,
+    "url": "https://bang-dream.com/events/ras_2026/",
+    "officialTitle": "RAISE A SUILEN LIVE 2026「Boot IGNITION」香港公演",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Hong_Kong",
+        "localDate": "2026-08-14",
+        "venue": "AsiaWorld-Expo, Hall 10",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "dayLabel": "DAY1",
+        "doorsLocal": "18:00",
+        "startLocal": "20:00"
+      },
+      {
+        "timeZone": "Asia/Hong_Kong",
+        "localDate": "2026-08-15",
+        "venue": "AsiaWorld-Expo, Hall 10",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "17:00",
+        "startLocal": "19:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "A",
+        "displayAmount": 1688,
+        "amountMinorUnits": 168800,
+        "currency": "HKD"
+      },
+      {
+        "name": "B",
+        "displayAmount": 1488,
+        "amountMinorUnits": 148800,
+        "currency": "HKD"
+      },
+      {
+        "name": "C",
+        "displayAmount": 988,
+        "amountMinorUnits": 98800,
+        "currency": "HKD"
+      },
+      {
+        "name": "D",
+        "displayAmount": 788,
+        "amountMinorUnits": 78800,
+        "currency": "HKD"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売 (先着)",
+      "抽選受付（受付終了）"
+    ],
+    "eventGoodsImages": [],
+    "notes": [
+      "REST title is tour-wide; current linked HTML is the Hong Kong landing page."
+    ],
+    "uniqueLiveRank": 31
+  },
+  {
+    "publicationRank": 33,
+    "wordpressID": 13963,
+    "url": "https://bang-dream.com/events/morfonica_live_2026/",
+    "officialTitle": "Morfonica LIVE「Movement」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-09-22",
+        "venue": "TACHIKAWA STAGE GARDEN",
+        "performers": [
+          "Morfonica"
+        ],
+        "doorsLocal": "17:00",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "アリーナスタンディング Sエリア(特製グッズ付き)",
+        "displayAmount": 22000,
+        "amountMinorUnits": 22000,
+        "currency": "JPY"
+      },
+      {
+        "name": "アリーナスタンディング Aエリア(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "スタンド指定席(特製グッズ付き)",
+        "displayAmount": 14300,
+        "amountMinorUnits": 14300,
+        "currency": "JPY"
+      },
+      {
+        "name": "スタンド指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      },
+      {
+        "name": "注釈付きスタンド指定席(特製グッズ付き)",
+        "displayAmount": 13200,
+        "amountMinorUnits": 13200,
+        "currency": "JPY"
+      },
+      {
+        "name": "注釈付きスタンド指定席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売（受付終了）",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/09/18185148/fb00023f-ba508dc3-9006f6c5-4ddb8c51.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/09/11175024/beac7944-97c9047b-8d76b9bb-0a40aea3.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/09/11175034/3f7da29b-7000ec24-28d32bf1-bb51d110.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 32
+  },
+  {
+    "publicationRank": 34,
+    "wordpressID": 13954,
+    "url": "https://bang-dream.com/events/mygo_9th/",
+    "officialTitle": "MyGO!!!!! 9th LIVE「つなぎ目の向こうに」",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-18",
+        "venue": "ぴあアリーナMM",
+        "performers": [
+          "MyGO!!!!!",
+          "millsage（オープニングアクト）"
+        ],
+        "dayLabel": "DAY1",
+        "doorsLocal": "16:30",
+        "startLocal": "18:00",
+        "excludedPerformers": [
+          "一家Dumb Rock!"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-07-19",
+        "venue": "ぴあアリーナMM",
+        "performers": [
+          "MyGO!!!!!",
+          "一家Dumb Rock!（オープニングアクト）"
+        ],
+        "dayLabel": "DAY2",
+        "doorsLocal": "16:30",
+        "startLocal": "18:00",
+        "excludedPerformers": [
+          "millsage"
+        ]
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "S席(特製グッズ付き)",
+        "displayAmount": 24200,
+        "amountMinorUnits": 24200,
+        "currency": "JPY"
+      },
+      {
+        "name": "A席(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 13200,
+        "amountMinorUnits": 13200,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      },
+      {
+        "name": "見切れ席",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      },
+      {
+        "name": "2F後方立ち見エリア",
+        "displayAmount": 8800,
+        "amountMinorUnits": 8800,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "見切れ席・2F後方立ち見エリア発売（DAY1のみ）（受付終了）",
+      "一般発売（受付終了）",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/01/16193611/0826f3a2-bc05bfdb-8eed84ea-5adcdad1-1024x576.jpg"
+      },
+      {
+        "section": "グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2025/12/16162907/968d5f6c-81c60cfb-c97d63bb-725e7bc5.jpg"
+      },
+      {
+        "section": "グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/09162043/10b4997d-7fe84084-2b653d91-ad2cdcb5.jpg"
+      },
+      {
+        "section": "グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/09162052/1d2f8ecd-bcb97e46-3b2ee81f-f945341b.jpg"
+      },
+      {
+        "section": "グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/09162146/97ff5a43-8c7812ea-0ba7dcab-4ec6271a-1024x724.jpg"
+      },
+      {
+        "section": "グッズ販売について",
+        "caption": "DRAIVE＆カプセルトイブース",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/17163751/b8528db6-d2cfd438-7c93defe-d71daef4.jpg"
+      },
+      {
+        "section": "グッズ販売について",
+        "caption": "DRAIVE＆カプセルトイブース",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/07/17163801/db5e0bba-308edaa8-9cf547be-c4d96497.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 33
+  },
+  {
+    "publicationRank": 35,
+    "wordpressID": 13930,
+    "url": "https://bang-dream.com/events/ppp-roselia2026/",
+    "officialTitle": "Poppin'Party×Roselia 合同ライブ「DREAMS GO ON」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-05-03",
+        "venue": "有明アリーナ",
+        "performers": [
+          "Poppin'Party",
+          "Roselia"
+        ],
+        "doorsLocal": "16:30",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "プレミアムシート(特製グッズ付き)",
+        "displayAmount": 24200,
+        "amountMinorUnits": 24200,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 16500,
+        "amountMinorUnits": 16500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      },
+      {
+        "name": "注釈付き指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      },
+      {
+        "name": "注釈付き指定席(当日券)",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "注釈付き指定席 当日券",
+      "一般発売・注釈付き指定席発売",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2025/12/30192439/07eb3418-dfe1451a-3e8af586-d13a3d94.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2025/12/22153305/d651d4bc-f92c0e95-e8c2362b-15fcd513.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2025/12/22153315/f65a51c8-bce4ce13-8cca06e2-018c4011.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2025/12/22153324/6a5da89e-485bb76e-3fa2fcee-ed3bc6c9.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "caption": "販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2025/12/24175306/1da27d84-3cd3a402-2869fc67-ba5519a0.png"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 34
+  },
+  {
+    "publicationRank": 36,
+    "wordpressID": 13926,
+    "url": "https://bang-dream.com/events/megavegas2026/",
+    "officialTitle": "MEGA VEGAS 2026",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-03-20",
+        "venue": "神戸ワールド記念ホール",
+        "performers": [
+          "Ave Mujica"
+        ],
+        "appearanceStartLocal": "13:05",
+        "excludedPerformers": [
+          "RAISE A SUILEN"
+        ]
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-03-21",
+        "venue": "神戸ワールド記念ホール",
+        "performers": [
+          "RAISE A SUILEN"
+        ],
+        "appearanceStartLocal": "13:10",
+        "excludedPerformers": [
+          "Ave Mujica"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 35
+  },
+  {
+    "publicationRank": 37,
+    "wordpressID": 13918,
+    "url": "https://bang-dream.com/events/lisani2026/",
+    "officialTitle": "リスアニ！LIVE 2026",
+    "expectedPerformanceCount": 2,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-01-31",
+        "venue": "幕張メッセ イベントホール",
+        "performers": [
+          "夢限大みゅーたいぷ"
+        ],
+        "dayLabel": "SATURDAY STAGE"
+      },
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-02-01",
+        "venue": "幕張メッセ イベントホール",
+        "performers": [],
+        "excludedPerformers": [
+          "夢限大みゅーたいぷ"
+        ]
+      }
+    ],
+    "ticketTiers": [],
+    "ticketRoundNames": [],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 36
+  },
+  {
+    "publicationRank": 38,
+    "wordpressID": 13876,
+    "url": "https://bang-dream.com/events/yumemita_superposition_spinup/",
+    "officialTitle": "夢限大みゅーたいぷ 47都道府県制覇の旅「スーパーポジション 〜スピンアップ編〜」福岡公演",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-05-31",
+        "venue": "BEAT STATION",
+        "performers": [
+          "夢限大みゅーたいぷ"
+        ],
+        "dayLabel": "福岡公演",
+        "doorsLocal": "16:00",
+        "startLocal": "17:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "スタンディング(特製グッズ付き)",
+        "displayAmount": 11000,
+        "amountMinorUnits": 11000,
+        "currency": "JPY"
+      },
+      {
+        "name": "スタンディング(特製グッズ無し)",
+        "displayAmount": 6600,
+        "amountMinorUnits": 6600,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "大阪・宮城・福岡公演　一般発売(受付終了)",
+      "大阪・宮城・福岡公演　プレイガイド先行(受付終了)",
+      "大阪・宮城・福岡公演　最速先行抽選(受付終了)"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/2025/renew/6bf091fe-d874-4e1c-b4b0-9427cf744531.jpg"
+      },
+      {
+        "section": "グッズ / CD・Blu-ray販売",
+        "caption": "福岡公演 販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/05/21154619/8c742830-d28bb201-597d4472-b77a7831.png"
+      },
+      {
+        "section": "グッズ / CD・Blu-ray販売",
+        "caption": "福岡公演 販売商品一覧",
+        "url": "https://bang-dream.com/wordpress/wp-content/uploads/2026/05/22132057/e84cfc58-78bc9199-e534f2af-bb94ed97.png"
+      }
+    ],
+    "notes": [
+      "REST title is tour-wide; current linked HTML is the Fukuoka landing page."
+    ],
+    "uniqueLiveRank": 37
+  },
+  {
+    "publicationRank": 39,
+    "wordpressID": 13884,
+    "url": "https://bang-dream.com/events/arale_acousticlive2025/",
+    "officialTitle": "ARALE Acoustic LIVE ～Copal～",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2025-10-24",
+        "venue": "代官山UNIT",
+        "performers": [
+          "仲町あられ（夢限大みゅーたいぷ）",
+          "堀江晶太（ゲスト）"
+        ],
+        "doorsLocal": "18:00",
+        "startLocal": "19:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "特典付きスタンディング",
+        "displayAmount": 6500,
+        "amountMinorUnits": 6500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般スタンディング",
+        "displayAmount": 5000,
+        "amountMinorUnits": 5000,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド最速先行（受付終了）"
+    ],
+    "eventGoodsImages": [],
+    "notes": [],
+    "uniqueLiveRank": 38
+  },
+  {
+    "publicationRank": 40,
+    "wordpressID": 13870,
+    "url": "https://bang-dream.com/events/mygo-avemujica2026/",
+    "officialTitle": "MyGO!!!!!×Ave Mujica ツーマンライブ「“moment / memory”」",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2026-03-01",
+        "venue": "Kアリーナ横浜",
+        "performers": [
+          "MyGO!!!!!",
+          "Ave Mujica",
+          "millsage（オープニングアクト）",
+          "一家Dumb Rock!（オープニングアクト）"
+        ],
+        "doorsLocal": "15:30",
+        "startLocal": "17:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "アリーナ席(特製グッズ付き)",
+        "displayAmount": 27500,
+        "amountMinorUnits": 27500,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 14300,
+        "amountMinorUnits": 14300,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      }
+    ],
+    "ticketRoundNames": [
+      "一般発売（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "caption": "グッズ通販",
+        "url": "https://bang-dream.com/2025/renew/046372b2-ba0e-47ea-9927-36c7a5b13cdd.jpg"
+      }
+    ],
+    "notes": [],
+    "uniqueLiveRank": 39
+  },
+  {
+    "publicationRank": 41,
+    "uniqueLiveRank": 40,
+    "wordpressID": 13874,
+    "publishedAtLocal": "2025-08-14T22:00:00",
+    "url": "https://bang-dream.com/events/morfonica_live_2025/",
+    "officialTitle": "Morfonica 5th Anniversary LIVE「Maestoso」",
+    "cachedHTMLSHA256": "c448900176bd45b0184964c64e92154118f7ab5012ab5bf302fa0ac31b3ce273",
+    "expectedPerformanceCount": 1,
+    "performances": [
+      {
+        "timeZone": "Asia/Tokyo",
+        "localDate": "2025-12-30",
+        "venue": "大宮ソニックシティ 大ホール",
+        "performers": [
+          "Morfonica"
+        ],
+        "doorsLocal": "17:00",
+        "startLocal": "18:00"
+      }
+    ],
+    "ticketTiers": [
+      {
+        "name": "プレミアムシート(前方エリア・特製グッズ付き)",
+        "displayAmount": 22000,
+        "amountMinorUnits": 22000,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席(特製グッズ付き)",
+        "displayAmount": 14300,
+        "amountMinorUnits": 14300,
+        "currency": "JPY"
+      },
+      {
+        "name": "一般指定席",
+        "displayAmount": 9900,
+        "amountMinorUnits": 9900,
+        "currency": "JPY"
+      }
+    ],
+    "streamPrice": {
+      "displayAmount": 5500,
+      "amountMinorUnits": 5500,
+      "currency": "JPY"
+    },
+    "ticketRoundNames": [
+      "一般発売",
+      "プレイガイド二次先行（受付終了）",
+      "プレイガイド先行（受付終了）",
+      "最速先行抽選（受付終了）",
+      "トレード受付期間"
+    ],
+    "eventGoodsImages": [
+      {
+        "section": "グッズ通販",
+        "url": "https://bang-dream.com/2025/renew/82cba3d1-336f-4f37-a681-ef4c5e397288.jpg"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/c24b7d44-2931-42a2-a03c-34e360831b16.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/36bc35ea-ffd1-4cc2-82bf-1654bd8717de.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/48e1b6cf-d93d-40c4-b636-26d52ce5ccfa.png"
+      },
+      {
+        "section": "会場グッズ販売について",
+        "url": "https://bang-dream.com/2025/renew/f9b7a818-49fb-45e8-9f3a-678e61efa800.jpg"
+      }
+    ],
+    "evidence": {
+      "title": "h1.p-live-event-detail__header-title",
+      "summary": ".p-live-event-detail__table",
+      "schedule": "#toc-1 + p",
+      "venue": "#toc-2 + p",
+      "performers": "#toc-3 + p",
+      "tickets": "#Ticket",
+      "goods": "#Goods_online, #Goods_onsite"
+    },
+    "notes": [
+      "This is publication rank 41 and becomes unique-live rank 40 after the byte-identical Taipei DAY1/DAY2 publication pages at ranks 27 and 28 are collapsed."
+    ]
+  }
+]

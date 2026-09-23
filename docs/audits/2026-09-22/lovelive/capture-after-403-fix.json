@@ -1,0 +1,162 @@
+[
+  {
+    "id": "LL01",
+    "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15th_lovelivefest",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL01.html",
+    "status": 200,
+    "bytes": 61784,
+    "sha256": "6020ddea0f796ec9296c810bd8996c2cec785cc489775167dfc89390cfa1947c"
+  },
+  {
+    "id": "LL02",
+    "url": "https://www.lovelive-anime.jp/special/live/live_detail.php?p=15thzenyasai",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL02.html",
+    "status": 200,
+    "bytes": 25042,
+    "sha256": "e154c903836859470bc4c1d4c8be1756457a8fb7b561cd8995f421dac80b8a23"
+  },
+  {
+    "id": "LL03",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream103",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL03.html",
+    "status": 200,
+    "bytes": 30737,
+    "sha256": "1bf1c92dbbabb5e3276f18ad6d5843610cf627a3b14b07a97ddf043da615d928"
+  },
+  {
+    "id": "LL04",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream106",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL04.html",
+    "status": 200,
+    "bytes": 23181,
+    "sha256": "de19f1dff2d7ad9132f532b3ca41fa3c6cc13a380e444c3ec205e630342fd20d"
+  },
+  {
+    "id": "LL05",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=LLDream",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL05.html",
+    "status": 200,
+    "bytes": 36670,
+    "sha256": "bd2d447273ea9575326959c55f047ef9ce53e0580653921c9eb6e3af55437284"
+  },
+  {
+    "id": "LL06",
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=8thlivetour",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL06.html",
+    "status": 200,
+    "bytes": 22313,
+    "sha256": "7cc94c252d94856e8c34f3ba2a346b6a49755a19b867c7fdbc6830b43f66a081"
+  },
+  {
+    "id": "LL07",
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=3rdLIVE",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL07.html",
+    "status": 200,
+    "bytes": 104799,
+    "sha256": "7f4f30f952423d7769516694b46a0f44fbd14537c3e3e2c5a7903c2aad236cfa"
+  },
+  {
+    "id": "LL08",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=Wanted_Ghost",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL08.html",
+    "status": 200,
+    "bytes": 55064,
+    "sha256": "d8da2c0b038acd6e9ec0fae1ac27c12a66284e17f50b0f8099083758591202d9"
+  },
+  {
+    "id": "LL09",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai5th",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL09.html",
+    "status": 200,
+    "bytes": 22400,
+    "sha256": "ecfc81b6ed3c5789ea31f128f9cd0d5f418da530635a9176db43d0f990a8ce66"
+  },
+  {
+    "id": "LL10",
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=2ndLIVE",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL10.html",
+    "status": 200,
+    "bytes": 153708,
+    "sha256": "7e1f5559410ecb048ef8d6239129888f50eade729d2014f7a8df33959dddc2ca"
+  },
+  {
+    "id": "LL11",
+    "url": "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=8thlive",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL11.html",
+    "status": 200,
+    "bytes": 125344,
+    "sha256": "18629ad2e717710cbba56abb0dbe38ac496165f2ebb4fdc4d1ed6c977b2a6a33"
+  },
+  {
+    "id": "LL12",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=6thBGP",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL12.html",
+    "status": 200,
+    "bytes": 108295,
+    "sha256": "65585a600d9c8a63b1545925795b096550647f90f930d744721449531cba51aa"
+  },
+  {
+    "id": "LL13",
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=taiikusai",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL13.html",
+    "status": 200,
+    "bytes": 97920,
+    "sha256": "2e080e85a2aaae7300a657d9b0c570733eb30b3fe84a89e821842092c41db65e"
+  },
+  {
+    "id": "LL14",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=GKSS_TWO-MAN",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL14.html",
+    "status": 200,
+    "bytes": 84281,
+    "sha256": "796c5abc7049e317d33019e61b7af635ba1d6b1af7e831030161c17ee083ca68"
+  },
+  {
+    "id": "LL15",
+    "url": "https://www.lovelive-anime.jp/lovehigh/live/live_detail.php?_id=WhatismyL",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL15.html",
+    "status": 200,
+    "bytes": 151247,
+    "sha256": "d72759a10023115f9af66278c058e182ab1111e575e77691e1742d6b99c8969c"
+  },
+  {
+    "id": "LL16",
+    "url": "https://www.lovelive-anime.jp/nijigasaki/live/live_detail.php?p=flower_live",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL16.html",
+    "status": 200,
+    "bytes": 100514,
+    "sha256": "95ee9dc0a351705220beea1584ba47bc0f1a5cb130eb5874ef5e1182bcd90e38"
+  },
+  {
+    "id": "LL17",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=RTB",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL17.html",
+    "status": 200,
+    "bytes": 47897,
+    "sha256": "c02a4ef0af566c37c580ace2d65298fe511ddfaaf0db7f4fcdb059b0b573ae14"
+  },
+  {
+    "id": "LL18",
+    "url": "https://www.lovelive-anime.jp/yuigaoka/live/live_detail.php?p=7thlive",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL18.html",
+    "status": 200,
+    "bytes": 93689,
+    "sha256": "c11b15679a2fd502f978cfc74732183cf8d695b40763be0642ca7d738e951c4d"
+  },
+  {
+    "id": "LL19",
+    "url": "https://www.lovelive-anime.jp/hasunosora/live-event/live_detail.php?p=4PPS",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL19.html",
+    "status": 200,
+    "bytes": 103962,
+    "sha256": "8514d459c935c6977de42658bd9818b3430ab308545c6ad418b58553875f1961"
+  },
+  {
+    "id": "LL20",
+    "url": "https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=jimoai2025",
+    "path": "docs/audits/2026-09-22/lovelive/fixtures/LL20.html",
+    "status": 200,
+    "bytes": 84553,
+    "sha256": "ef0a11caf842eb44275ac703998e42f37e6a0e7e242e80bdb73df7b45fae4e7e"
+  }
+]
