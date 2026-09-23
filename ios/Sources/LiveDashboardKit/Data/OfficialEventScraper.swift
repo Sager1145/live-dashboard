@@ -946,7 +946,7 @@ private extension OfficialEventScraper {
         for line in raw.components(separatedBy: "\n") {
             for marker in markers {
                 guard let markerRange = line.range(of: marker) else { continue }
-                let rest = line[markerRange.upperBound...].drop { $0 == "：" || $0 == ":" || $0 == " " || $0 == "\u{00a0}" }
+                let rest = line[markerRange.upperBound...].drop { $0 == "：" || $0 == ":" || $0 == " " || $0 == "\u{00a0}" || $0 == "】" || $0 == "　" }
                 let value = String(rest).trimmingCharacters(in: .whitespaces)
                 guard !value.isEmpty else { continue }
                 return value
@@ -1196,8 +1196,15 @@ private extension OfficialEventScraper {
         let rounds: [TicketRound] = headings.enumerated().compactMap { index, section in
             let raw = HTML.text(section.html)
             guard candidates[index].isRound else { return nil }
-            let kind: TicketRoundKind = raw.contains("先着") || section.heading.contains("一般発売") ? .firstComeFirstServed
-                : (raw + section.heading).contains("トレード") ? .resale : section.heading.contains("アップグレード") ? .upgrade : .lottery
+            // The heading names the round; body text only decides when the
+            // heading is silent (a 先行抽選 block that mentions トレード is still a lottery).
+            let heading = section.heading
+            let kind: TicketRoundKind = heading.contains("抽選") ? .lottery
+                : heading.contains("一般発売") || heading.contains("先着") ? .firstComeFirstServed
+                : heading.contains("トレード") || heading.contains("リセール") ? .resale
+                : heading.contains("アップグレード") ? .upgrade
+                : raw.contains("先着") ? .firstComeFirstServed
+                : raw.contains("トレード") ? .resale : .lottery
             var period = markedText(raw, markers: ["受付期間", "申込期間"])
                 ?? (section.heading.contains("受付期間") ? raw : nil)
             if let value = period, !value.contains("年"), let referenceDate,
@@ -1495,7 +1502,9 @@ private extension OfficialEventScraper {
 
             if let match = regex(fieldRE, text).first, let label = group(match, 1, in: text) {
                 inProductRegion = false
-                var value = (group(match, 2, in: text) ?? "").trimmingCharacters(in: .whitespaces)
+                // "【受付期間】2026年…" keeps its closing bracket in the capture.
+                var value = (group(match, 2, in: text) ?? "").replacingOccurrences(of: #"^[】\]：:\s　]+"#, with: "", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespaces)
                 if value.isEmpty {
                     var gathered: [String] = []
                     var lookahead = index + 1
@@ -2730,10 +2739,10 @@ private extension OfficialEventScraper {
     /// Venue-name fragments that identify the prefecture (or overseas city)
     /// when the official page prints no "都道府県・" prefix.
     static let venueCityHints: [(city: String, fragments: [String])] = [
-        ("東京", ["東京", "TOKYO", "Tokyo", "渋谷", "Shibuya", "新宿", "Shinjuku", "有明", "Ariake", "ARIAKE", "武道館", "立川", "TACHIKAWA", "豊洲", "羽田", "Haneda", "代々木", "Yoyogi", "両国", "国立競技場", "お台場", "池袋", "中野", "品川", "DiverCity", "日比谷", "六本木", "秋葉原", "Zepp Shinjuku", "LOVEZ", "大手町", "代官山", "duo MUSIC EXCHANGE", "O-WEST", "O-EAST", "O-Crest", "O-nest", "WWW", "LIQUIDROOM", "恵比寿", "吉祥寺", "下北沢", "赤坂", "汐留", "神田", "上野"]),
+        ("東京", ["東京", "TOKYO", "Tokyo", "渋谷", "Shibuya", "新宿", "Shinjuku", "有明", "Ariake", "ARIAKE", "武道館", "立川", "TACHIKAWA", "豊洲", "羽田", "Haneda", "代々木", "Yoyogi", "両国", "国立競技場", "お台場", "池袋", "中野", "品川", "DiverCity", "日比谷", "六本木", "秋葉原", "Zepp Shinjuku", "LOVEZ", "大手町", "代官山", "duo MUSIC EXCHANGE", "O-WEST", "O-EAST", "O-Crest", "O-nest", "WWW", "LIQUIDROOM", "恵比寿", "吉祥寺", "下北沢", "赤坂", "汐留", "神田", "上野", "新木場", "蒲田", "片柳記念ホール", "豊島", "文京"]),
         ("神奈川", ["神奈川", "横浜", "Yokohama", "YOKOHAMA", "ぴあアリーナMM", "Kアリーナ", "パシフィコ", "川崎", "Kawasaki", "相模", "藤沢", "横須賀"]),
         ("大阪", ["大阪", "Osaka", "OSAKA", "京セラドーム", "インテックス", "なんば", "Namba", "Kanadevia", "万博記念公園", "梅田", "心斎橋"]),
-        ("愛知", ["愛知", "名古屋", "Nagoya", "NAGOYA", "日本ガイシ", "ポートメッセ", "豊田", "Aichi"]),
+        ("愛知", ["愛知", "名古屋", "ナゴヤ", "Nagoya", "NAGOYA", "日本ガイシ", "ポートメッセ", "バンテリンドーム", "豊田", "Aichi"]),
         ("福岡", ["福岡", "Fukuoka", "FUKUOKA", "マリンメッセ", "PayPayドーム", "BEAT STATION", "北九州"]),
         ("兵庫", ["兵庫", "神戸", "Kobe", "KOBE", "ワールド記念ホール", "GLION", "西宮"]),
         ("埼玉", ["埼玉", "さいたま", "Saitama", "SAITAMA", "大宮", "ベルーナドーム", "所沢", "メットライフ"]),
