@@ -510,6 +510,7 @@ private extension OfficialEventScraper {
             return ResolvedPerformance(index: index, item: item, label: label, prior: prior)
         }
         var usedPerformanceIDs: Set<String> = []
+        let hasDistinctScheduleVenues = Set(schedules.compactMap(\.venue).filter { !$0.isEmpty }).count > 1
         let parsedPerformances = resolved.map { resolvedItem -> Performance in
             let index = resolvedItem.index
             let item = resolvedItem.item
@@ -528,7 +529,8 @@ private extension OfficialEventScraper {
             let associatedVenue = isLoveLive && item.venue != nil ? nil : scopedVenue(venueRaw ?? "", note: overviewNote, date: item.localDate)
             let associatedPerformers = notedPerformers(overviewNote, groups: officialGroups, date: item.localDate, singleDate: Set(schedules.map(\.localDate)).count == 1)
             let loveLiveCast = loveLivePerformers(loveLiveCastBlocks, dayLabel: label, localDate: item.localDate, stop: loveLiveStopByDate[item.localDate])
-            let resolvedVenue = associatedVenue ?? item.venue ?? (venue.isEmpty ? (prior?.venueName ?? "") : venue)
+            let resolvedVenue = item.venue ?? associatedVenue
+                ?? (hasDistinctScheduleVenues ? (prior?.venueName ?? "") : (venue.isEmpty ? (prior?.venueName ?? "") : venue))
             return Performance(
                 id: performanceID, eventID: eventID, stopID: prior?.stopID,
                 dayLabel: label, subtitle: item.subtitle ?? prior?.subtitle, localDate: item.localDate,

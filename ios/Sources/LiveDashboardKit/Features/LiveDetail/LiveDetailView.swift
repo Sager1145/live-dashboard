@@ -51,6 +51,10 @@ public struct LiveDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
 
+                if let poster = detailPoster {
+                    OfficialMediaView(asset: poster)
+                }
+
                 if translationStore.isTranslating(.page(eventID: eventID)) {
                     Label {
                         Text(translationStore.phase == .downloading ? String(localized: "正在下载翻译语言", bundle: .kit) : String(localized: "正在翻译", bundle: .kit))
@@ -250,6 +254,13 @@ public struct LiveDetailView: View {
     }
 
     private var pageCardKey: String { "" }
+
+    private var detailPoster: MediaAsset? {
+        let media = store.applicableMediaAssets()
+        let images = (media.applicable + media.unconfirmed).filter(\.isImage)
+        return images.filter { $0.kind == .keyVisual }.max { $0.version < $1.version }
+            ?? images.filter { $0.kind == .eventCover }.max { $0.version < $1.version }
+    }
 
     private var translationTarget: TranslationTargetLanguage {
         TranslationTargetLanguage(rawValue: translationTargetRaw) ?? .followApp

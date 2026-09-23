@@ -96,6 +96,10 @@ public struct PerformanceSelector: View {
         if hasMultipleStops, let stopName = bundle.stops.first(where: { $0.id == performance.stopID })?.name {
             parts.append(stopName)
         }
+        let venues = Set(bundle.performances.map(\.venueName).filter { !$0.isEmpty })
+        if venues.count > 1, !performance.venueName.isEmpty {
+            parts.append(performance.venueName)
+        }
 
         return parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }

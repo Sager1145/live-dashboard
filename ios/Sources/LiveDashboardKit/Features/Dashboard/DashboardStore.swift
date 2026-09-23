@@ -432,7 +432,8 @@ public final class DashboardStore {
             isFollowed: userState.isFollowed,
             dayLabels: sortedPerformances.map(\.dayLabel),
             stopCount: bundle.stops.count,
-            venueSummary: sortedPerformances.first?.venueCity ?? "",
+            venueSummary: Array(NSOrderedSet(array: sortedPerformances.map(\.venueCity).filter { !$0.isEmpty }))
+                .compactMap { $0 as? String }.joined(separator: " · "),
             firstLocalDate: sortedPerformances.first?.localDate,
             lastLocalDate: sortedPerformances.compactMap(\.localDate).max(),
             firstStartAt: sortedPerformances.first?.startAt,

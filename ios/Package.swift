@@ -12,6 +12,12 @@ let package = Package(
         .target(
             name: "LiveDashboardKit",
             path: "Sources/LiveDashboardKit",
+            // Older local copies must not redeclare the active view types.
+            exclude: [
+                "Features/CardSettings/CardSettingsView 2.swift",
+                "Features/LiveDetail/OfficialMediaView 2.swift",
+                "Features/Settings/SettingsView 2.swift"
+            ],
             resources: [.process("Resources")]
         ),
         .testTarget(
