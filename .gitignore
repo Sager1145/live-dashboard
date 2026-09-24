@@ -9,3 +9,4 @@ __pycache__/
 .runtime/
 server/data/
 *.log
+.DS_Store
