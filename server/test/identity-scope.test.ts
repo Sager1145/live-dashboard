@@ -220,6 +220,25 @@ test("deadline without timezone throws", () => {
       }),
     /timezone required/,
   );
+  for (const timeZone of ["JST", "Japan", "EST", "+09:00", "asia/tokyo"]) {
+    assert.throws(
+      () =>
+        ticketDeadline({
+          localDate: "2026-05-01",
+          localTime: "23:59",
+          timeZone,
+        }),
+      /timezone required/,
+    );
+  }
+  assert.equal(
+    ticketDeadline({
+      localDate: "2026-05-01",
+      localTime: "23:59",
+      timeZone: "UTC",
+    }).timeZone,
+    "UTC",
+  );
   assert.deepEqual(
     ticketDeadline({
       localDate: "2026-05-01",

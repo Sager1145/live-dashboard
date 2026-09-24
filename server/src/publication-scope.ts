@@ -113,13 +113,10 @@ export type TicketDeadline = {
   timeZone: string;
 };
 
+const ianaTimeZones = new Set(Intl.supportedValuesOf("timeZone"));
+
 function isIanaTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone }).format(0);
-    return true;
-  } catch {
-    return false;
-  }
+  return timeZone === "UTC" || ianaTimeZones.has(timeZone);
 }
 
 /**
