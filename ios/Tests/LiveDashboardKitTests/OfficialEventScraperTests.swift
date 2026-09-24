@@ -726,6 +726,62 @@ final class OfficialEventScraperTests: XCTestCase {
         XCTAssertEqual(multi.ticketRounds.first { $0.officialName == "初日券" }?.scope, .performances(performanceIDs: [day1.id]))
     }
 
+    func testNamedDaysAndSameHallRecordsLeaveTheUnconfirmedBucket() async throws {
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Two Days</h1>
+          <div class="p-live-event-detail__content">
+            <h2>日程・会場</h2>
+            <h6>DAY1</h6><p>日程：2026年7月18日(土)<br>会場：ぴあアリーナMM</p>
+            <h6>DAY2</h6><p>日程：2026年7月19日(日)<br>会場：ぴあアリーナMM</p>
+            <h2>チケット</h2>
+            <h6>グッズ付きチケット特典</h6><p>特製Tシャツ</p>
+            <h6>会場座席イメージ</h6><p><img src="https://bang-dream.com/images/seat.jpg"></p>
+            <h6>一般発売</h6>
+            <p>受付期間：2026年6月6日(土) 12:00～</p>
+            <p>DAY1：S席<br>DAY2：S席</p>
+            <h6>二次先行</h6>
+            <p>受付期間：2026年4月29日(水) 12:00～</p>
+            <p>※DAY1のS席の受付はございません。</p>
+            <h2>配信チケット</h2>
+            <h6>各公演視聴チケット</h6>
+            <p>○DAY1<br>販売期間：2026年7月11日(土) 12:00～</p>
+            <p>○DAY2<br>販売期間：2026年7月11日(土) 12:00～</p>
+            <h6>2DAYS通し視聴チケット</h6>
+            <p>販売期間：2026年7月11日(土) 12:00～</p>
+            <h2>グッズ通販</h2>
+            <p>Two Daysにて販売する新商品の通販を実施いたします。<br>
+            <a href="https://example.com/goods">通販</a></p>
+            <p>先行通販開始</p>
+            <p>2026年6月22日(月) 15:00～</p>
+            <h2>グッズ販売について</h2>
+            <p>販売場所：ぴあアリーナMM</p>
+            <p>販売日時</p>
+            <p>2026年7月18日(土) 10:00～18:00<br>2026年7月19日(日) 10:30～18:00</p>
+            <a href="https://example.com/venue-goods">販売</a>
+          </div>
+        </article>
+        """
+        let refreshed = try await refresh(html: html, bundle: Self.bundle(url: "https://bang-dream.com/events/two-days/", title: "Two Days"))
+        func ids(_ scope: Scope?) -> Set<String> {
+            if case .performances(let performanceIDs) = scope { return Set(performanceIDs) }
+            return []
+        }
+        let day1 = try XCTUnwrap(refreshed.performances.first { $0.localDate == "2026-07-18" })
+        let day2 = try XCTUnwrap(refreshed.performances.first { $0.localDate == "2026-07-19" })
+        let both: Set<String> = [day1.id, day2.id]
+        XCTAssertEqual(ids(refreshed.ticketRounds.first { $0.officialName == "一般発売" }?.scope), both)
+        XCTAssertEqual(refreshed.ticketRounds.first { $0.officialName == "二次先行" }?.scope, .unconfirmed)
+        XCTAssertEqual(ids(refreshed.ticketBenefits.first?.scope), both)
+        XCTAssertEqual(ids(refreshed.mediaAssets.first { $0.kind == .eventSeatingMap }?.scope), both)
+        let dayStream = try XCTUnwrap(refreshed.streamOffers.first { $0.officialName.contains("DAY1") })
+        let dayStream2 = try XCTUnwrap(refreshed.streamOffers.first { $0.officialName.contains("DAY2") })
+        XCTAssertEqual(dayStream.scope, .performances(performanceIDs: [day1.id]))
+        XCTAssertEqual(dayStream2.scope, .performances(performanceIDs: [day2.id]))
+        XCTAssertEqual(ids(refreshed.goodsCampaigns.first { $0.officialName == "グッズ通販" }?.scope), both)
+        XCTAssertEqual(ids(refreshed.goodsCampaigns.first { $0.officialName == "グッズ販売について" }?.scope), both)
+    }
+
     func testPricedGoodsLineAndDistinctImageEndpoints() async throws {
         let html = """
         <article class="p-live-event-detail">

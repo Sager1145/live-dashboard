@@ -268,8 +268,12 @@ final class OfficialCorrectnessTests: XCTestCase {
         """
         let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/unclosed/", title: "Unclosed")
         XCTAssertEqual(refreshed.ticketRounds.first?.officialName, "一般発売")
-        let slices = OfficialPageBlocks.slices(in: html)
-        XCTAssertTrue(slices.contains { $0.heading == "一般発売" })
+        let slices = OfficialPageBlocks.sourceBlocks(
+            html: html,
+            baseURL: URL(string: "https://bang-dream.com/events/unclosed/")!,
+            snapshotID: "unclosed"
+        )
+        XCTAssertTrue(slices.contains { $0.headingPath.contains("一般発売") })
     }
 
     func testWholeEventHeadingBindsEveryPerformance() async throws {

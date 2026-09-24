@@ -121,9 +121,13 @@ private final class FakeOnDeviceOrganizer: OnDeviceOrganizing, @unchecked Sendab
     }
 
     func organize(bundle: LiveEventBundle, force: Bool) async throws -> OnDeviceOrganizeResult {
-        lock.lock()
-        recorded.append(bundle.event.id)
-        lock.unlock()
+        remember(bundle.event.id)
         return OnDeviceOrganizeResult(blockCount: 1, draftCount: 1)
+    }
+
+    private func remember(_ eventID: String) {
+        lock.lock()
+        recorded.append(eventID)
+        lock.unlock()
     }
 }

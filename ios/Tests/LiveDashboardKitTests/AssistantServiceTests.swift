@@ -184,6 +184,34 @@ final class AssistantServiceTests: XCTestCase {
         XCTAssertEqual(summary.sourceFingerprint, AssistantSummarizer.fingerprint(of: bundle))
     }
 
+    func testSummarizerProgressLogRecordsOfflineRunFacts() async throws {
+        let bundle = Self.fixtureBundle(sourceText: "官网原文全文测试 https://eplus.jp/round1")
+        let output = #"{"overview":{"segments":[]},"keyPoints":[],"performances":[],"ticketLinks":[],"goodsLinks":[],"warnings":[]}"#
+        let sseBody = Self.sseCompletedEvent(outputText: output)
+        AssistantStubURLProtocol.handler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream"])!
+            return (response, Data(sseBody.utf8))
+        }
+
+        let client = OpenAIResponsesClient(session: Self.stubbedSession())
+        let summarizer = AssistantSummarizer(client: client)
+        let lines = LockedLines()
+        _ = try await summarizer.summarize(
+            bundle: bundle,
+            model: "gpt-5-mini",
+            transport: .openAIAPI(apiKey: "sk-test"),
+            progress: { line in lines.append(line) }
+        )
+
+        let collected = lines.all()
+        XCTAssertTrue(collected.contains { $0.contains("使用已保存官网原文") })
+        XCTAssertTrue(collected.contains { $0.contains("gpt-5-mini") })
+        XCTAssertTrue(collected.contains { $0.contains("已收到结果") })
+        XCTAssertTrue(collected.contains { $0.contains("模型未返回完整演出结构") })
+        XCTAssertTrue(collected.contains { $0.contains("字段") })
+    }
+
     func testSummarizerDowngradesLinkSegmentNotOnPageAndWarns() async throws {
         let bundle = Self.fixtureBundle(sourceText: "官网原文全文测试 https://eplus.jp/round1")
         let modelJSON: [String: Any] = [
@@ -1088,6 +1116,23 @@ final class AssistantServiceTests: XCTestCase {
             ticketTiers: [], ticketRounds: [round], ticketOffers: [], goodsCampaigns: [], mediaAssets: [],
             notices: [], evidence: [], sourceText: sourceText
         )
+    }
+}
+
+private final class LockedLines: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lines: [String] = []
+
+    func append(_ line: String) {
+        lock.lock()
+        lines.append(line)
+        lock.unlock()
+    }
+
+    func all() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return lines
     }
 }
 

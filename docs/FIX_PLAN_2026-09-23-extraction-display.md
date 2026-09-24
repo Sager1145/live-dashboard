@@ -8,7 +8,7 @@
 
 | 用户问题 | 最近提交有没有修完 |
 |---|---|
-| 选日期必须对上该日场馆 | 没有。`244f8b6` 只加了城市名提示。`parseCombinedSchedules` 在只有一个场馆片段时丢掉日期映射，再把整页场馆或缓存场馆写到每一天。 |
+| 选日期必须对上该日场馆 | 没有。日期和场馆仍是两份清单：`parseSchedules` 扫出全部日期，`venueFromOverview` 再取场馆（常常是整段最后一个 `■会場`），选择器再把会期展开成每一天。对不上时就把全部场馆摊到全部日期上。 |
 | 周边信息显示不对 | 没有。`d83ad0d` 解析了 campaign / product / session，但每条 `scope` 都是 `.unconfirmed`，商品页把它们放进「适用场次待确认」，购买动作关闭。 |
 | 周边页显示全部图片 | 没有。抓取可以有多张 `mediaAssetIDs`。`GoodsView` 只画第一张，其余藏在「查看全部 N 张图片」。 |
 | 出演卡片分行，不要堆在一起 | 没有。出演是一条用「、」拼起来的 `Text`。`FlowLayout` 只用于票务徽章。 |
@@ -26,56 +26,65 @@ iOS 详情页走 `ios/Sources/LiveIngestionCore/OfficialEventScraper.swift`。`s
 5. 不要改 `PerformanceScopeResolver`：`.unconfirmed` 继续单独成桶，不并进当前场次。修的是写入 scope 的地方，不是把未确认偷偷显示成已确认。
 6. 不要改仪表盘日期筛选（`DashboardStore` 用 `firstLocalDate`）。本次只修详情里选中的场次。
 
-## 任务 1 — 日期和场馆按本次页面配对
+## 任务 1 — 每场演出只带自己的日期和场馆
 
-文件：`ios/Sources/LiveIngestionCore/OfficialEventScraper.swift`
+不要再产出「全部日期」和「全部场馆」两份清单，然后用下标、最后一个 `■会場` 或缓存去交叉配对。提取单位是一条演出记录：这一场的日期（或会期起止）加上这一场自己的场馆。对不上的场馆留空，不把页面上出现过的其他馆填进来。
 
-### 1.1 `parseCombinedSchedules`（约 763–816 行）
+文件：
 
-现在的错误：
+- `ios/Sources/LiveIngestionCore/OfficialEventScraper.swift`：`parseCombinedSchedules`、`venuesPairedWithDates`、`loveLiveStopVenues`、`scopedVenue`、`parsedPerformances` 里的 `resolvedVenue`
+- `ios/Sources/LiveDashboardKit/Features/LiveDetail/PerformanceSelector.swift` 与 `LiveDetailStore.swift`：日期菜单和场馆菜单
+- `ios/Sources/LiveDashboardKit/Services/Assistant/AssistantSummarizer.swift`：`instructions` 与 `organizedFields` 的「日期」「场馆名称」
 
-- 多个日期正则与 `distinctDates` 数量必须相等才建映射。同一天两场（昼/夜）会让 match 数大于日期数，映射被跳过。
-- `Set(venuesByDate.values).count < 2` 时清空映射，于是单场馆或多日期同一馆的页面丢失配对。
-- 映射为空时 `venueFromOverview(raw)` 把**整段最后一个** `■会場` 贴到每个日期。
+### 1.1 按阅读顺序切块，块内才写场馆
 
-改成：
+`parseCombinedSchedules` 对一段 overview 文本按下面顺序决定每一场的 `venue`。先切块，再在块里读日期。禁止先 `parseSchedules` 得到全部日期、再 `venueFromOverview` 得到一个馆，然后贴到每个日期上。
 
-- 对每个日期 match，切片从该 match 起到下一个日期 match。场馆取这个切片里的 `venueFromOverview`。若切片里没有，再看该 match **之前、上一个日期之后**的前缀（场馆写在日期前面的版式）。
-- 用切片里 `parseSchedules` 得到的 `localDate` 做 key，不要用 `distinctDates[index]` 去对齐另一条列表。
-- 保留只有一个场馆值的映射。禁止 `count < 2` 时清空。
-- 某个日期已经有自己的场馆时，禁止再用整段 `venueFromOverview(raw)` 覆盖其他日期。只有**所有**日期都没有切片场馆时，才允许整段一个场馆作为共享场馆。
+1. **站标题块。** 整行 `＜東京公演＞` 这类标题切开。块里每个日期只使用本块的场馆行。本块没有场馆行就留空，不借上一站或下一站。全巡演只有一个馆时也要写下这个配对，不要因为「不同场馆少于两个」就丢掉。
+2. **场馆标记在日期后面。** 从该日期起到下一个日期之前的切片里取场馆。切片里没有场馆，这一场留空。
+3. **场馆标记在日期前面。** 场馆属于它后面、下一个场馆标记之前的那些日期。不要把这个馆算到它前面那场上。
+4. **整段恰好一个场馆标记，且没有被切成多站。** 这个馆是这些日期的共享场馆，每一场都写入同一个馆名。
+5. **同一天昼/夜。** 两条记录，日期相同，各自写自己的场馆。match 数大于不同日期数时仍然配对，不要因此跳过整张映射。
+6. **两个及以上场馆标记时，** 禁止再用 `venueFromOverview`（它取的是整段最后一个 `■会場`）去填没有自己场馆的日期。
 
-### 1.2 `scopedVenue`（约 2617–2630 行）
+`scopedVenue` 城市对不上时返回 `nil`，不要返回 `""`。空字符串会挡住后面的共享场馆，界面变成「会场尚未获取」。只有一个带城市标注的馆时也返回 `nil`，交给第 4 条的共享场馆。
 
-城市对不上时现在 `return ""`。调用方 `item.venue ?? associatedVenue` 不会跳过空字符串，共享场馆被挡掉，UI 变成「会场尚未获取」。
+`loveLiveStopVenues` 同样按站块写：块内日期 → 块内场馆。不要要求至少两个不同场馆才返回映射。
 
-对不上时 `return nil`。`venues.count <= 1` 时也返回 `nil`（保持现状，交给后面的共享场馆）。
+### 1.2 写入 performance 时不再回填旧馆
 
-### 1.3 `loveLiveStopVenues`（约 883–919 行）
-
-现在少于两个不同场馆就 `return [:]`。改成：每个 `＜站名＞` 区块里解析出的日期都写入该区块的场馆，哪怕全巡演只有一个馆。区块没有场馆行则跳过该区块，不要把别的站的馆写进来。
-
-`loveLiveStopDates` 已有站名。在 `parsedPerformances` 里，`stopID` 不要只抄 `prior?.stopID`。若本次 overview 有该日期的站名，用站名生成稳定 id：`stableID(prefix: "\(eventID)-stop", seed: stopName)`，并在 bundle 的 `stops` 里放对应 `Stop`（名称=站名）。没有站名则 `stopID = nil`。不要从 `cached?.stops` 复制。
-
-### 1.4 `resolvedVenue`（约 529–554 行）
-
-删除对 `prior?.venueName`、`prior?.venueCity`、`prior?.doorsAt`、`prior?.startAt`、`prior?.subtitle`、`prior?.editionID` 的回填。
+成功抓到本次 HTML 后，这一场的场馆只来自 1.1 写在该场上的值：
 
 ```text
-venueName = item.venue（非空）
-  ?? scopedVenue(...)（非空）
-  ?? loveLiveStopVenues[date]
-  ?? 仅当本次 schedules 里没有任何一个非空 venue 时，使用 cleanedVenue 的共享场馆
+venueName = 该场切片/站块里的 venue（非空）
+  ?? 仅当本次所有场都没有自己的 venue 时，整页那一个共享场馆
   ?? ""
 ```
 
-`hasDistinctScheduleVenues` 为 true 时，共享 `venue` 和任何 prior 场馆都不得写入缺少场馆的那一天。该天 `venueName` 留空。
+已经有任何一场带了自己的场馆时，缺场馆的那一场留空。不要用 `prior?.venueName`、`prior?.venueCity`，也不要用整页最后一个馆补上。`doorsAt`、`startAt`、`subtitle` 同样只用来自本次该场的值。`venueCity` 用本次该场馆名解析出的城市，否则用本次该日期的站名城市，再否则 `""`。
 
-`doorsAt` / `startAt` 只用本次 `reinterpretJapanWallTime`。解析不到就是 `nil`。
-`subtitle` 只用 `item.subtitle`。
-`venueCity` 只用本次 `venueCity(resolvedVenue)`，空则用本次 `stopCity(loveLiveStopByDate[date])`，再空则 `""`。
+有站名时用站名生成稳定 `stopID`：`stableID(prefix: "\(eventID)-stop", seed: stopName)`，并写入本次 `stops`。没有站名则 `stopID = nil`。不要从 `cached?.stops` 复制。
 
-`PerformanceSelector.shortLabel` 在场馆集合 `count > 1` 时才把 `venueName` 放进菜单。配对修好后这个条件会生效。不要为了单馆页面强行改菜单。
+### 1.3 选择器只显示这一天这一场的馆
+
+`PerformanceSelector` 的日期菜单列出演出记录的 `localDate`。会期（`localDate`–`localEndDate`）在菜单里显示成一个区间，不要展开成中间每一天、再给每一天挂上一份场馆列表。
+
+选中一个日期之后：
+
+- 这一天只有一场：直接显示该场的 `venueName`，不出现场馆菜单。
+- 这一天有多场（昼/夜，或同一天两个馆）：场馆菜单的每一项只显示该场自己的馆，加上昼/夜或副标题。不列出其他日期的馆。
+
+`shortLabel` 仍只在本公演存在多个不同场馆时把馆名放进日期标签。单馆页面不要为了展示强行改菜单。
+
+### 1.4 AI 整理按场输出，不写两份总表
+
+`instructions` 里删掉「日期」「场馆名称」各写一条总表的读法。改成：
+
+- `performances[]` 的每一条必须带该场的 `localDate` 和该场的 `venueName`。页面没写这一场的馆时，`venueName` 为空字符串，不能把其他场的馆写进来。
+- `organizedFields` 的「日期」和「场馆名称」按场各写一条，`performanceIDs` 只含这一场。整场同一个馆时，场馆可以只写一条且 `performanceIDs` 留空，但 `value` 只能是这一个馆名。
+- 禁止把巡演全部日期拼进一条「日期」，或把全部场馆拼进一条「场馆名称」。
+
+规则抓取和 AI 整理互不回填。AI 没写出某一场的馆时，不要用规则抓取的馆去补那条 `organizedFields`。
 
 ## 任务 2 — 成功抓取不再回填已存字段
 
@@ -216,6 +225,8 @@ swift test --filter 'OfficialEventScraperTests|OfficialAuditRegressionTests|Offi
 2. 场馆行写在日期前面。日期对上该馆，而不是上一个日期。
 3. 只有一个场馆、多个日期，且页面没有把馆拆开。每个日期的 `venueName` 相同且等于该馆。缓存里的另一馆不得出现。
 4. `scopedVenue` 城市不匹配时，不把场馆写成空字符串挡住共享场馆。
+4a. 两站各有自己的日期和场馆。第一站的日期不得带上第二站的馆，结果里也不存在一份「全部日期」加一份「全部场馆」。某一站没有场馆行时，该站日期的 `venueName` 为空。
+4b. 会期是一个起止区间。日期菜单是这一条区间，不是区间里的每一天各挂全部场馆。同一天只有一场时不出现场馆菜单。
 5. 成功 HTML 里没有票轮、没有周边。结果的 `ticketRounds` 与 `goodsCampaigns` 为空，即使 cached 里有。
 6. 详情请求抛错或非成功。bundle 仍是上次那份（失败路径）。
 7. 周边区块正文含 `全公演` 或仅一场。`GoodsCampaign.scope` 为 `.performances` 且包含该场 id。多场且正文没有任何日期/全公演/`DAY n`。scope 仍是 `.unconfirmed`。
@@ -236,7 +247,7 @@ cd server && npx vitest run test/proposal-details.test.ts test/publisher.test.ts
 
 ## 完成标准
 
-- 选中一个日期，时间与会场卡片的场馆是该日期在本次官方 HTML 里的场馆。另一天换馆时，菜单或卡片跟着变。
+- 选中一个日期，时间与会场卡片只显示这一场在本次官方 HTML 里的场馆。另一天换馆时跟着变。日期菜单和场馆菜单都不列出其他日期的馆。
 - 页面写了适用全部场次或具体日期的周边，出现在对应分区，而不是「适用场次待确认」。页面没写的多场记录仍在待确认桶。
 - 周边卡片上，该 campaign 的每一张图都直接可见。
 - 出演者每人一块，宽度不够就换行，不合成一条、不叠在同一个 Text 里。

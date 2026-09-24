@@ -450,10 +450,9 @@ public final class AssistantCoordinator {
         let task = Task { [weak self] () -> AssistantEventSummary? in
             guard let self else { return nil }
             do {
-                self.appendGenerationLog("读取已保存的官网原文", eventID: eventID, token: generationToken)
-                self.appendGenerationLog("按区块整理日期角色", eventID: eventID, token: generationToken)
-                self.appendGenerationLog("正在核对候选", eventID: eventID, token: generationToken)
-                let organized = try await self.onDeviceOrganizer.organize(bundle: bundle, force: force)
+                let organized = try await self.onDeviceOrganizer.organize(bundle: bundle, force: force) { [weak self] entry in
+                    self?.appendGenerationLog(entry, eventID: eventID, token: generationToken)
+                }
                 guard !Task.isCancelled else { return nil }
                 self.appendGenerationLog("正在保存本地草稿", eventID: eventID, token: generationToken)
                 guard !Task.isCancelled else { return nil }

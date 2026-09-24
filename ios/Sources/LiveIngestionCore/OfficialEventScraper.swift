@@ -641,9 +641,10 @@ private extension OfficialEventScraper {
             ticketHTML, sourceURL: finalURL, eventID: eventID, tiers: baseTiers, scope: .unconfirmed,
             cached: cached?.ticketBenefits ?? [], cachedMedia: cached?.mediaAssets ?? []
         )
+        let recordScope = sharedVenueScope(performances) ?? ticketScope
         let ticketBenefits = parsedBenefitsResult.benefits.map { benefit in
             let text = [benefit.officialName, benefit.detail, benefit.notes, benefit.redemptionNote].compactMap { $0 }.joined(separator: "\n")
-            return benefit.replacingScope(resolvedScope(.unconfirmed, text: text, performances: performances, fallback: ticketScope))
+            return benefit.replacingScope(resolvedScope(.unconfirmed, text: text, performances: performances, fallback: recordScope))
         }
         let tiers = tiersWithBenefitContents(baseTiers, benefits: ticketBenefits)
         let richContentHTML: String
@@ -681,11 +682,11 @@ private extension OfficialEventScraper {
         }
         let loveLiveStreams = parseLoveLiveStreams(loveLiveStreamBlocks, sourceURL: finalURL, eventID: eventID, performances: performances, timeZone: eventTimeZone, referenceDate: schedules.first?.localDate)
             .map { offer -> StreamOffer in
-                offer.replacingScope(resolvedScope(offer.scope, text: offer.officialName, performances: performances, fallback: ticketScope))
+                offer.replacingScope(resolvedScope(offer.scope, text: offer.officialName, performances: performances, fallback: recordScope))
             }
         let parsedStreams = parseStreams(
             richContentHTML, sourceURL: finalURL, eventID: eventID,
-            performances: performances, ticketScope: ticketScope
+            performances: performances, ticketScope: recordScope
         ) + loveLiveStreams
         let parsedGoodsResult = parseGoods(
             richContentHTML, sourceURL: finalURL, eventID: eventID,
@@ -2168,9 +2169,13 @@ private extension OfficialEventScraper {
         assets.append(contentsOf: sections.flatMap { section in
             let sectionHTML = HTML.sectionHTML(html, heading: section.heading) ?? section.html
             let genericVenueMap = section.heading.contains("汎用")
+            let seatingText = section.heading + "\n" + HTML.text(sectionHTML)
+            let resolvedSeating = resolvedScope(.unconfirmed, text: seatingText, performances: performances, fallback: ticketScope)
+            // One chart for every date at the same hall is that hall's chart.
+            // A generic venue diagram, or days at different halls, stays unconfirmed.
             let seatingScope: Scope = genericVenueMap
                 ? .unconfirmed
-                : resolvedScope(.unconfirmed, text: section.heading + "\n" + HTML.text(sectionHTML), performances: performances, fallback: ticketScope)
+                : (resolvedSeating == .unconfirmed ? (sharedVenueScope(performances) ?? resolvedSeating) : resolvedSeating)
             return extractImages(sectionHTML, relativeTo: sourceURL).map { image in
                 let prior = cached.first { canonicalURL($0.originalURL) == canonicalURL(image.original.absoluteString) }
                 return MediaAsset(
@@ -2471,7 +2476,7 @@ private extension OfficialEventScraper {
     /// "■事前通販受付" / "■事後通販受付" / "第2回事前通販受付" marker lines inside a
     /// goods section, each with the lines that follow it up to the next marker.
     static func goodsSubCampaigns(in lines: [String]) -> [(name: String, lines: [String])] {
-        let markerPattern = #"^[■●◆□]?\s*((?:第\d+回)?(?:事前|事後|先行|会場)?(?:グッズ)?(?:通販|物販)(?:受付)?)\s*[：:]?$"#
+        let markerPattern = #"^[■●◆□]?\s*((?:第\d+回)?(?:事前|事後|先行|会場)(?:グッズ)?(?:通販|物販)(?:受付)?)\s*[：:]?$"#
         var result: [(name: String, lines: [String])] = []
         for line in lines {
             if let match = regex(markerPattern, line).first, let name = group(match, 1, in: line) {
@@ -3114,15 +3119,33 @@ private extension OfficialEventScraper {
         return scope
     }
 
+    /// Every performance at one non-empty hall. Different halls stay unresolved.
+    static func sharedVenueScope(_ performances: [Performance]) -> Scope? {
+        guard performances.count > 1 else { return nil }
+        let names = Set(performances.map { clean($0.venueName) }.filter { !$0.isEmpty })
+        guard names.count == 1 else { return nil }
+        return .performances(performanceIDs: performances.map(\.id))
+    }
+
     /// `text` is the record heading, a newline, then that record's section body.
-    /// Bare `DAY n` is read only from the heading line and lines that contain 対象.
-    /// A date and a venue in the same text must both match. Sale, payment,
-    /// distribution and archive dates are not performance dates. The same
-    /// calendar day at two halls, with no hall named, stays unresolved.
+    /// A positive `DAY n` anywhere in that text selects those performances.
+    /// A day mentioned only to say it is excluded does not. `各公演` does not
+    /// override a day the same text already named. A date and a venue in the
+    /// same text must both match. Sale, payment, distribution and archive
+    /// dates are not performance dates. The same calendar day at two halls,
+    /// with no hall named, stays unresolved.
     static func explicitScope(text: String, performances: [Performance]) -> Scope? {
         let normalized = text.precomposedStringWithCompatibilityMapping
-        if normalized.contains("全公演") || normalized.contains("通し") || normalized.contains("全日程")
-            || normalized.contains("各公演") || normalized.contains("全日") || normalized.contains("両日共通") {
+        let heading = normalized.components(separatedBy: "\n").first ?? ""
+        // The heading names this record. A later 通し in the same slice is
+        // another product, not this record's range.
+        if containsAllPerformancesCue(heading) {
+            let ids = performances.map(\.id)
+            return ids.isEmpty ? nil : .performances(performanceIDs: ids)
+        }
+        let headingDays = performanceIDs(forDays: positiveDayNumbers(in: heading), performances: performances)
+        if !headingDays.isEmpty { return .performances(performanceIDs: headingDays) }
+        if containsAllPerformancesCue(normalized) {
             let ids = performances.map(\.id)
             return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         }
@@ -3134,30 +3157,25 @@ private extension OfficialEventScraper {
             let ids = performances.filter { performanceMatchesDay($0, day: day) }.map(\.id)
             return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         }
-        let lines = normalized.components(separatedBy: "\n")
-        let dayScope = lines.enumerated().compactMap { index, line -> String? in
-            index == 0 || line.contains("対象") ? line : nil
-        }.joined(separator: "\n")
-        let dayNumbers = regex(#"DAY\.?\s*(\d+)"#, dayScope).compactMap { group($0, 1, in: dayScope).flatMap(Int.init) }
-        if !dayNumbers.isEmpty {
-            var matched: Set<String> = []
-            for day in dayNumbers {
-                for id in performances.filter({ performanceMatchesDay($0, day: day) }).map(\.id) {
-                    matched.insert(id)
-                }
-            }
-            let ids = performances.map(\.id).filter { matched.contains($0) }
-            if !ids.isEmpty { return .performances(performanceIDs: ids) }
-        }
+        let dayIDs = performanceIDs(forDays: positiveDayNumbers(in: normalized), performances: performances)
+        if !dayIDs.isEmpty { return .performances(performanceIDs: dayIDs) }
         let dateSource = performanceDateSource(normalized)
         let dateEvidence = performanceDateEvidence(dateSource, performances: performances)
         let placeIDs = placePerformanceIDs(in: normalized, performances: performances)
         switch dateEvidence {
         case .absent:
+            if containsEventWideCue(normalized) {
+                let ids = performances.map(\.id)
+                return ids.isEmpty ? nil : .performances(performanceIDs: ids)
+            }
             guard let placeIDs, !placeIDs.isEmpty else { return nil }
             return .performances(performanceIDs: placeIDs)
         case .unmatched:
-            return nil
+            // The only dates are sale or shipping dates. An explicit event-wide
+            // statement still applies; a date that matches nothing does not.
+            guard containsEventWideCue(normalized) else { return nil }
+            let ids = performances.map(\.id)
+            return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         case .matched(let dateIDs):
             var ids = dateIDs
             if let placeIDs {
@@ -3169,6 +3187,42 @@ private extension OfficialEventScraper {
             }
             return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         }
+    }
+
+    /// 全公演 / 通し name every performance. 各公演 does not: the per-show
+    /// ticket "各公演視聴チケット DAY1" is only DAY1.
+    private static func containsAllPerformancesCue(_ text: String) -> Bool {
+        text.contains("全公演") || text.contains("通し") || text.contains("全日程")
+            || text.contains("全日") || text.contains("両日共通")
+    }
+
+    /// The record names the event's own shows and no single day.
+    private static func containsEventWideCue(_ text: String) -> Bool {
+        text.contains("各公演") || text.contains("本公演") || text.contains("この公演") || text.contains("にて販売")
+    }
+
+    /// Day numbers on lines that are not cancelling that day.
+    private static func positiveDayNumbers(in text: String) -> [Int] {
+        var numbers: [Int] = []
+        var seen: Set<Int> = []
+        for line in text.components(separatedBy: "\n") {
+            if line.range(of: "ございません|ありません|いたしません|対象外|除く|除き", options: .regularExpression) != nil { continue }
+            for match in regex(#"DAY\.?\s*(\d+)"#, line) {
+                guard let day = group(match, 1, in: line).flatMap(Int.init), seen.insert(day).inserted else { continue }
+                numbers.append(day)
+            }
+        }
+        return numbers
+    }
+
+    private static func performanceIDs(forDays days: [Int], performances: [Performance]) -> [String] {
+        var matched: Set<String> = []
+        for day in days {
+            for id in performances.filter({ performanceMatchesDay($0, day: day) }).map(\.id) {
+                matched.insert(id)
+            }
+        }
+        return performances.map(\.id).filter { matched.contains($0) }
     }
 
     /// Drops clauses whose date is a sale, application, result, payment,

@@ -21,18 +21,22 @@ public struct AssistantSummarizer: Sendable {
         now: Date = Date(),
         progress: (@MainActor @Sendable (String) -> Void)? = nil
     ) async throws -> AssistantEventSummary {
-        await progress?(String(localized: "正在读取官网页面…", bundle: .kit))
+        await progress?(String(localized: "正在读取官网页面 \(bundle.event.primarySourceURL)…", bundle: .kit))
         let source: OfficialPageSource
         if let officialPageSession {
             source = try await Self.fetchOfficialPage(for: bundle, session: officialPageSession)
+            let finalURL = source.finalURL?.absoluteString ?? bundle.event.primarySourceURL
+            let htmlCount = source.rawHTML?.count ?? 0
+            let textCount = source.text.count
+            await progress?(String(localized: "已读取官网 HTTP \(source.httpStatus) · \(finalURL) · HTML \(htmlCount) 字 · 正文 \(textCount) 字", bundle: .kit))
         } else {
             guard let sourceText = bundle.sourceText, !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw AssistantError.missingSourceText
             }
             let sourceURL = URL(string: bundle.event.primarySourceURL)
-            source = OfficialPageSource(text: sourceText, finalURL: sourceURL, rawHTML: nil)
+            source = OfficialPageSource(text: sourceText, finalURL: sourceURL, rawHTML: nil, httpStatus: 0)
+            await progress?(String(localized: "使用已保存官网原文 · \(source.text.count) 字", bundle: .kit))
         }
-        await progress?(String(localized: "正在整理官网资料…", bundle: .kit))
         let input = Self.buildInput(bundle: bundle, officialPageText: source.text, officialPageURL: source.finalURL)
         var allowedURLs = Self.allowedURLs(
             sourceText: source.rawHTML ?? source.text,
@@ -40,7 +44,8 @@ public struct AssistantSummarizer: Sendable {
         )
         allowedURLs.insert(bundle.event.primarySourceURL)
 
-        await progress?(String(localized: "已提交给 AI，正在等待结果…", bundle: .kit))
+        await progress?(String(localized: "准备提交 · 模型 \(model) · 场次 \(bundle.performances.count) · 售票轮次 \(bundle.ticketRounds.count) · 允许链接 \(allowedURLs.count) · 输入 \(input.count) 字", bundle: .kit))
+        await progress?(String(localized: "已提交给 \(model)，正在等待结果…", bundle: .kit))
         let jsonText = try await client.generateStructured(
             model: model,
             instructions: Self.instructions,
@@ -50,7 +55,7 @@ public struct AssistantSummarizer: Sendable {
             transport: transport
         )
 
-        await progress?(String(localized: "正在校验 AI 返回的资料…", bundle: .kit))
+        await progress?(String(localized: "已收到结果 · \(jsonText.count) 字，正在校验…", bundle: .kit))
         guard let jsonData = jsonText.data(using: .utf8) else {
             throw AssistantError.invalidOutput("output is not UTF-8")
         }
@@ -192,6 +197,18 @@ public struct AssistantSummarizer: Sendable {
             warnings.append(String(localized: "已忽略摘要正文中 \(downgradedLinkCount) 个未在官网出现的链接", bundle: .kit))
         }
 
+        if let organizedBundle {
+            await progress?(String(localized: "结构校验通过 · 场次 \(organizedBundle.performances.count) · 票种 \(organizedBundle.ticketTiers.count) · 售票轮次 \(organizedBundle.ticketRounds.count) · 周边活动 \(organizedBundle.goodsCampaigns.count) · 商品 \(organizedBundle.products.count) · 配信 \(organizedBundle.streamOffers.count)", bundle: .kit))
+        } else {
+            await progress?(String(localized: "模型未返回完整演出结构，仅保留摘要", bundle: .kit))
+        }
+        let filledFieldCount = organizedFields.filter { $0.value != "官网未说明" }.count
+        let missingFieldCount = organizedFields.count - filledFieldCount
+        await progress?(String(localized: "字段 · 已填写 \(filledFieldCount) · 官网未说明 \(missingFieldCount) · 要点 \(keyPoints.count) · 票务链接 \(ticketLinks.count) · 周边链接 \(goodsLinks.count)", bundle: .kit))
+        for warning in warnings {
+            await progress?(warning)
+        }
+
         return AssistantEventSummary(
             eventID: bundle.event.id,
             generatedAt: now,
@@ -212,6 +229,7 @@ public struct AssistantSummarizer: Sendable {
         let text: String
         let finalURL: URL?
         let rawHTML: String?
+        let httpStatus: Int
     }
 
     private static func fetchOfficialPage(for bundle: LiveEventBundle, session: URLSession) async throws -> OfficialPageSource {
@@ -245,7 +263,8 @@ public struct AssistantSummarizer: Sendable {
         return OfficialPageSource(
             text: officialPageText(from: html, baseURL: finalURL),
             finalURL: finalURL,
-            rawHTML: html
+            rawHTML: html,
+            httpStatus: http.statusCode
         )
     }
 

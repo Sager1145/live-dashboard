@@ -261,11 +261,12 @@ final class DashboardPresentationTests: XCTestCase {
 
     func testCardListsEachDayAndParticipationStaysOnThatDay() throws {
         let userData = UserDataStore(container: UserDataStore.makeContainer(inMemory: true))
+        let pinnedNow = Self.today
         let store = DashboardStore(
             repository: LocalLiveRepository(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
             userDataStore: userData,
             timeZone: TimeZone(identifier: "Asia/Tokyo")!,
-            now: { today }
+            now: { pinnedNow }
         )
         let zone = TimeZone(identifier: "Asia/Tokyo")!
         let morning = ISO8601DateFormatter().date(from: "2027-03-01T02:00:00Z")!

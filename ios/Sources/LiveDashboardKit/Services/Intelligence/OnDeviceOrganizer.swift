@@ -14,12 +14,35 @@ public struct OnDeviceOrganizeResult: Sendable, Equatable {
 
 public protocol OnDeviceOrganizing: Sendable {
     func organize(bundle: LiveEventBundle, force: Bool) async throws -> OnDeviceOrganizeResult
+    func organize(
+        bundle: LiveEventBundle,
+        force: Bool,
+        progress: @escaping @MainActor @Sendable (String) -> Void
+    ) async throws -> OnDeviceOrganizeResult
+}
+
+extension OnDeviceOrganizing {
+    public func organize(
+        bundle: LiveEventBundle,
+        force: Bool,
+        progress: @escaping @MainActor @Sendable (String) -> Void
+    ) async throws -> OnDeviceOrganizeResult {
+        try await organize(bundle: bundle, force: force)
+    }
 }
 
 public struct SystemOnDeviceOrganizer: OnDeviceOrganizing {
     public init() {}
 
     public func organize(bundle: LiveEventBundle, force: Bool) async throws -> OnDeviceOrganizeResult {
+        try await organize(bundle: bundle, force: force, progress: { _ in })
+    }
+
+    public func organize(
+        bundle: LiveEventBundle,
+        force: Bool,
+        progress: @escaping @MainActor @Sendable (String) -> Void
+    ) async throws -> OnDeviceOrganizeResult {
         switch AppleIntelligenceStatus.current() {
         case .ready:
             break
@@ -42,6 +65,7 @@ public struct SystemOnDeviceOrganizer: OnDeviceOrganizing {
 
         let snapshotID = Self.sha256Hex(Data(sourceText.utf8))
         let requests = SourceBlockBuilder.requests(eventID: bundle.event.id, snapshotID: snapshotID, sourceText: sourceText)
+        await progress(String(localized: "读取原文 \(sourceText.count) 字，拆成 \(requests.count) 个日期区块", bundle: .kit))
         if requests.isEmpty {
             return OnDeviceOrganizeResult(blockCount: 0, draftCount: 0)
         }
@@ -52,7 +76,9 @@ public struct SystemOnDeviceOrganizer: OnDeviceOrganizing {
         var draftCount = 0
         var savedKeys: [String] = []
         do {
-            for request in requests {
+            for (offset, request) in requests.enumerated() {
+                let index = offset + 1
+                let heading = Self.progressHeading(request.headingPath)
                 let blockHash = Self.sha256Hex(try JSONEncoder().encode(request))
                 let key = ExtractionCacheKey.hex(
                     snapshotHash: snapshotID,
@@ -66,17 +92,20 @@ public struct SystemOnDeviceOrganizer: OnDeviceOrganizing {
                 )
                 if !force, let existing = try await store.proposal(forKey: key) {
                     let cached = ExtractedFieldValidator.validate(existing, input: request, timeZone: timeZone)
-                    draftCount += cached.filter { $0.role != .unknown && $0.rejection == nil }.count
+                    let tally = Self.validationTally(cached)
+                    draftCount += tally.accepted
+                    await progress(String(localized: "区块 \(index)/\(requests.count) · \(heading) · 日期 \(request.mentions.count) 个 · 缓存 · 采纳 \(tally.accepted) · 未采纳 \(tally.rejected) · 未知 \(tally.unknown)", bundle: .kit))
                     continue
                 }
                 try Task.checkCancellation()
                 let proposal = try await scheduler.classify(request)
                 let validations = ExtractedFieldValidator.validate(proposal, input: request, timeZone: timeZone)
-                let accepted = validations.filter { $0.role != .unknown && $0.rejection == nil }.count
+                let tally = Self.validationTally(validations)
+                await progress(String(localized: "区块 \(index)/\(requests.count) · \(heading) · 日期 \(request.mentions.count) 个 · 本地模型 · 采纳 \(tally.accepted) · 未采纳 \(tally.rejected) · 未知 \(tally.unknown)", bundle: .kit))
                 try Task.checkCancellation()
                 try await store.save(proposal, forKey: key)
                 savedKeys.append(key)
-                draftCount += accepted
+                draftCount += tally.accepted
                 try Task.checkCancellation()
             }
             return OnDeviceOrganizeResult(blockCount: requests.count, draftCount: draftCount)
@@ -86,6 +115,29 @@ public struct SystemOnDeviceOrganizer: OnDeviceOrganizing {
             }
             throw CancellationError()
         }
+    }
+
+    private static func progressHeading(_ headingPath: [String]) -> String {
+        let joined = headingPath.joined(separator: " / ")
+        if joined.isEmpty { return "无标题" }
+        if joined.count > 40 { return String(joined.prefix(40)) + "…" }
+        return joined
+    }
+
+    private static func validationTally(_ validations: [DateRoleValidation]) -> (accepted: Int, rejected: Int, unknown: Int) {
+        var accepted = 0
+        var rejected = 0
+        var unknown = 0
+        for validation in validations {
+            if validation.rejection != nil {
+                rejected += 1
+            } else if validation.role == .unknown {
+                unknown += 1
+            } else {
+                accepted += 1
+            }
+        }
+        return (accepted, rejected, unknown)
     }
 
     private static func sha256Hex(_ data: Data) -> String {

@@ -11,6 +11,7 @@ public struct AssistantSummaryCard: View {
     let userDataStore: UserDataStore
     @State private var showsAllPoints = false
     @State private var showsDeleteConfirmation = false
+    @State private var logExpanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(bundle: LiveEventBundle, selectedPerformanceID: String, coordinator: AssistantCoordinator, userDataStore: UserDataStore) {
@@ -94,8 +95,10 @@ public struct AssistantSummaryCard: View {
                 generatingView(previous: previous)
             case .ready(let summary):
                 summaryContent(summary)
+                completedGenerationLog
             case .failed(let previous, let message):
                 failedView(previous: previous, message: message)
+                completedGenerationLog
             }
             if !isGenerating, let note = coordinator.localDraftNote(for: bundle.event.id) {
                 Text(verbatim: note)
@@ -104,6 +107,13 @@ public struct AssistantSummaryCard: View {
             }
         }
         .motionAnimation(phaseIdentity)
+        .onChange(of: phaseIdentity) { _, identity in
+            if identity == "generating" || identity.hasPrefix("failed") {
+                logExpanded = true
+            } else if identity.hasPrefix("ready") {
+                logExpanded = false
+            }
+        }
         .transition(.opacity)
     }
 
@@ -195,24 +205,59 @@ public struct AssistantSummaryCard: View {
                 Text("处理日志", bundle: .kit)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
-                    HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        Image(systemName: index == entries.indices.last ? "circle.dotted" : "checkmark.circle.fill")
-                            .foregroundStyle(index == entries.indices.last ? Color.secondary : Color.statusPositive)
-                            .accessibilityHidden(true)
-                        Text(verbatim: entry)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
+                generationLogRows(entries, markLastIncomplete: true)
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text("处理日志", bundle: .kit))
+        }
+    }
+
+    @ViewBuilder
+    private var completedGenerationLog: some View {
+        let entries = coordinator.generationLog(for: bundle.event.id)
+        if !entries.isEmpty {
+            DisclosureGroup(isExpanded: $logExpanded) {
+                generationLogRows(entries, markLastIncomplete: false)
+                    .padding(.top, 4)
+            } label: {
+                Text("处理日志", bundle: .kit)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func generationLogRows(_ entries: [String], markLastIncomplete: Bool) -> some View {
+        if entries.count > 6 {
+            ScrollView {
+                generationLogRowStack(entries, markLastIncomplete: markLastIncomplete)
+            }
+            .frame(maxHeight: 240)
+        } else {
+            generationLogRowStack(entries, markLastIncomplete: markLastIncomplete)
+        }
+    }
+
+    @ViewBuilder
+    private func generationLogRowStack(_ entries: [String], markLastIncomplete: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                let isCurrent = markLastIncomplete && index == entries.count - 1
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Image(systemName: isCurrent ? "circle.dotted" : "checkmark.circle.fill")
+                        .foregroundStyle(isCurrent ? Color.secondary : Color.statusPositive)
+                        .accessibilityHidden(true)
+                    Text(verbatim: entry)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 
