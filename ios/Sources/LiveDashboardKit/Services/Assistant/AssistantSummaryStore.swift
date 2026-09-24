@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// On-disk store for `AssistantEventSummary` records, keyed by event ID.
 /// Stored beside, never inside, the official catalog cache.

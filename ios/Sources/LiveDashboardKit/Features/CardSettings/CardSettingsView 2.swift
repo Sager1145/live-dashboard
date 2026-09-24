@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// Global (cross-event) card layout settings, grouped by the tab each card
 /// type belongs to. Only the Overview tab's cards are true singletons (one

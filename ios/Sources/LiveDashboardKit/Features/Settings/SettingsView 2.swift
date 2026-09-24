@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import LiveIngestionCore
 
 public struct SettingsView: View {
     @Bindable var dashboardStore: DashboardStore

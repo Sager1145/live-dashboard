@@ -1,7 +1,8 @@
 import Foundation
+import LiveIngestionCore
 
-// Runs the app's production parser against independently captured official responses.
-// swiftc sources listed in docs/audits/2026-09-22/README.md; no server dependency.
+// Runs the production parser against independently captured official responses.
+// Built with SwiftPM (`swift build --product OfficialAuditCLI`); no server dependency.
 private final class AuditURLProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var responses: [String: Data] = [:]
     override class func canInit(with request: URLRequest) -> Bool { true }

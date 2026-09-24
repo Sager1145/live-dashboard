@@ -29,15 +29,18 @@ final class AppDependencies {
     let dashboardStore: DashboardStore
     let assistant = AssistantCoordinator()
     let router = AppRouter()
+    let externalStore = ExternalDataStore()
 
     init() {
-        repository = LocalLiveRepository()
-        userDataStore = UserDataStore()
-        reminderService = ReminderService()
+        let center = LiveActionCenter.shared
+        repository = center.repository
+        userDataStore = center.userDataStore
+        reminderService = center.reminderService
         installationService = InstallationService()
         PushAppDelegate.router = router
         dashboardStore = DashboardStore(repository: repository, userDataStore: userDataStore)
         dashboardStore.assistant = assistant
+        center.configure(router: router, assistant: assistant, dashboard: dashboardStore)
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         func argument(after flag: String) -> String? {
@@ -101,26 +104,29 @@ struct AppShell: View {
         @Bindable var router = dependencies.router
         TabView(selection: $router.selectedRootTab) {
             Tab(value: RootTab.dashboard) {
-                DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant)
+                DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant, externalStore: dependencies.externalStore)
             } label: {
                 Label { Text("演出", bundle: .kit) } icon: { Image(systemName: "calendar") }
             }
             Tab(value: RootTab.pastLives) {
-                DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant, scope: .past)
+                DashboardView(store: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, router: dependencies.router, installationService: dependencies.installationService, assistant: dependencies.assistant, externalStore: dependencies.externalStore, scope: .past)
             } label: {
                 Label { Text("往期", bundle: .kit) } icon: { Image(systemName: "clock.arrow.circlepath") }
             }
             Tab(value: RootTab.myLives) {
-                MyLivesView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, installationService: dependencies.installationService, assistant: dependencies.assistant, router: dependencies.router)
+                MyLivesView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, reminderService: dependencies.reminderService, repository: dependencies.repository, installationService: dependencies.installationService, assistant: dependencies.assistant, externalStore: dependencies.externalStore, router: dependencies.router)
             } label: {
                 Label { Text("我的", bundle: .kit) } icon: { Image(systemName: "star") }
             }
             Tab(value: RootTab.settings) {
-                SettingsView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, assistant: dependencies.assistant)
+                SettingsView(dashboardStore: dependencies.dashboardStore, userDataStore: dependencies.userDataStore, assistant: dependencies.assistant, externalStore: dependencies.externalStore)
             } label: {
                 Label { Text("设置", bundle: .kit) } icon: { Image(systemName: "gearshape") }
             }
         }
-        .task { await dependencies.assistant.load() }
+        .task {
+            await dependencies.assistant.load()
+            await dependencies.assistant.consumePendingOrganize()
+        }
     }
 }

@@ -79,13 +79,14 @@ final class DashboardPresentationTests: XCTestCase {
         XCTAssertTrue(later.visibleSummaries(in: .upcoming).isEmpty)
     }
 
-    private func bundle(_ id: String, dates: [String?], starts: [Date?] = [], media: [MediaAsset] = [], rounds: [TicketRound] = []) -> LiveEventBundle {
+    private func bundle(_ id: String, dates: [String?], starts: [Date?] = [], media: [MediaAsset] = [], rounds: [TicketRound] = [], venues: [String] = []) -> LiveEventBundle {
         let event = LiveEvent(id: id, franchise: .lovelive, officialTitle: id, groups: [], eventType: .live,
             status: .scheduled, primarySourceURL: "https://www.lovelive-anime.jp/", timeZone: "Asia/Tokyo")
         let performances = dates.enumerated().map { index, date in
             Performance(id: "\(id)-\(index)", eventID: id, stopID: nil, dayLabel: "Day \(index + 1)", subtitle: nil,
                 localDate: date, doorsAt: nil, startAt: starts.indices.contains(index) ? starts[index] : nil,
-                venueName: "Tokyo", venueCity: "Tokyo", performers: [], order: index)
+                venueName: venues.indices.contains(index) ? venues[index] : "Tokyo",
+                venueCity: venues.indices.contains(index) ? venues[index] : "Tokyo", performers: [], order: index)
         }
         return LiveEventBundle(schemaVersion: 1, publishedAt: .distantPast, event: event, stops: [], performances: performances,
             ticketTiers: [], ticketRounds: rounds, ticketOffers: [], goodsCampaigns: [], mediaAssets: media, notices: [], evidence: [])
@@ -114,6 +115,15 @@ final class DashboardPresentationTests: XCTestCase {
         let summary = try XCTUnwrap(store.visibleSummaries.first)
         XCTAssertEqual(summary.firstLocalDate, "2027-02-01")
         XCTAssertEqual(summary.lastLocalDate, "2027-04-01")
+    }
+
+    func testMultiVenueCardAndPerformancePickerNameEachLocation() throws {
+        let store = store()
+        let tour = bundle("tour", dates: ["2027-03-01", "2027-04-01", "2027-05-01"],
+            venues: ["東京", "大阪", "東京"])
+        store.acceptRefreshedBundle(tour)
+        XCTAssertEqual(store.visibleSummaries.first?.venueSummary, "東京 · 大阪")
+        XCTAssertTrue(PerformanceSelector.shortLabel(for: tour.performances[1], in: tour).contains("大阪"))
     }
 
     func testThumbnailOnlyUsesOfficialKeyVisualAndUpdatesWithRefreshedBundle() throws {
@@ -249,6 +259,52 @@ final class DashboardPresentationTests: XCTestCase {
         XCTAssertFalse(store.isRefreshing)
     }
 
+    func testCardListsEachDayAndParticipationStaysOnThatDay() throws {
+        let userData = UserDataStore(container: UserDataStore.makeContainer(inMemory: true))
+        let store = DashboardStore(
+            repository: LocalLiveRepository(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
+            userDataStore: userData,
+            timeZone: TimeZone(identifier: "Asia/Tokyo")!,
+            now: { today }
+        )
+        let zone = TimeZone(identifier: "Asia/Tokyo")!
+        let morning = ISO8601DateFormatter().date(from: "2027-03-01T02:00:00Z")!
+        let evening = ISO8601DateFormatter().date(from: "2027-03-02T09:00:00Z")!
+        let event = LiveEvent(id: "live", franchise: .lovelive, officialTitle: "Link Live", groups: [], eventType: .live,
+            status: .scheduled, primarySourceURL: "https://www.lovelive-anime.jp/", timeZone: "Asia/Tokyo")
+        let first = Performance(id: "live-0", eventID: "live", stopID: nil, dayLabel: "Day 1", subtitle: "昼",
+            localDate: "2027-03-01", doorsAt: nil, startAt: morning, venueName: "Tokyo Dome", venueCity: "Tokyo",
+            performers: [], order: 0, precision: .minute, timeZone: "Asia/Tokyo")
+        let second = Performance(id: "live-1", eventID: "live", stopID: nil, dayLabel: "Day 2", subtitle: nil,
+            localDate: "2027-03-02", doorsAt: nil, startAt: evening, venueName: "K-Arena", venueCity: "Yokohama",
+            performers: [], order: 1, precision: .minute, timeZone: "Asia/Tokyo")
+        store.acceptRefreshedBundle(LiveEventBundle(schemaVersion: 1, publishedAt: .distantPast, event: event, stops: [],
+            performances: [first, second], ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [],
+            mediaAssets: [], notices: [], evidence: []))
+
+        let summary = try XCTUnwrap(store.visibleSummaries.first)
+        XCTAssertEqual(summary.days.map(\.id), ["live-0", "live-1"])
+        XCTAssertTrue(summary.days[0].primaryText.contains("Day 1"))
+        XCTAssertTrue(summary.days[0].primaryText.contains(EventFormatting.clockTime(morning, in: zone)))
+        XCTAssertEqual(summary.days[0].secondaryText, "昼 · Tokyo Dome · Tokyo")
+        XCTAssertTrue(summary.days[1].secondaryText.contains("K-Arena"))
+        XCTAssertTrue(summary.days[1].secondaryText.contains("Yokohama"))
+        XCTAssertFalse(summary.days[0].isParticipating)
+        XCTAssertTrue(LiveEventCard(summary: summary).accessibilitySummary.contains(summary.days[0].primaryText))
+
+        store.toggleDayParticipation(eventID: "live", performanceID: "live-0")
+        let marked = try XCTUnwrap(store.visibleSummaries.first)
+        XCTAssertEqual(marked.days.map(\.isParticipating), [true, false])
+
+        userData.setPlanningToAttend(true, eventID: "live")
+        let everyone = try XCTUnwrap(store.visibleSummaries.first)
+        XCTAssertEqual(everyone.days.map(\.isParticipating), [true, true])
+
+        store.toggleDayParticipation(eventID: "live", performanceID: "live-1")
+        let partial = try XCTUnwrap(store.visibleSummaries.first)
+        XCTAssertEqual(partial.days.map(\.isParticipating), [true, false])
+    }
+
     func testAccessibilitySummaryContainsTitleAndZoneLabel() {
         let deadline = ISO8601DateFormatter().date(from: "2026-10-01T05:00:00Z")!
         let summary = DashboardEventSummary(
@@ -257,13 +313,19 @@ final class DashboardPresentationTests: XCTestCase {
             isFollowed: false, dayLabels: ["Day 1"], stopCount: 1, venueSummary: "Tokyo Dome",
             firstLocalDate: "2026-10-01", lastLocalDate: "2026-10-01", firstStartAt: deadline,
             officialThumbnail: nil, minimumPriceJPY: 8800, currentRoundLabel: "一般",
-            ticketBadges: [], nextDeadline: deadline, hasPendingAction: true, hasImportantUpdate: false,
-            timeZoneIdentifier: "Asia/Tokyo"
+            ticketBadges: [
+                TicketPhaseBadge(text: String(localized: "一般贩售中", bundle: .kit), tone: .open),
+                TicketPhaseBadge(text: String(localized: "已售罄", bundle: .kit), tone: .soldOut),
+            ],
+            nextDeadline: deadline, hasPendingAction: true, hasImportantUpdate: false,
+            timeZoneIdentifier: "Asia/Tokyo", days: []
         )
         let card = LiveEventCard(summary: summary)
         let text = card.accessibilitySummary
 
         XCTAssertTrue(text.contains("Poppin'Party 10th LIVE"))
+        XCTAssertTrue(text.contains(String(localized: "一般贩售中", bundle: .kit)), "summary should include the on-sale badge; got: \(text)")
+        XCTAssertTrue(text.contains(String(localized: "已售罄", bundle: .kit)), "summary should include the sold-out badge; got: \(text)")
         // The zone name depends on the test locale ("JST" vs "GMT+9"), so compare against the
         // same helper the card uses instead of a literal.
         let zoneLabel = EventFormatting.zoneLabel(TimeZone(identifier: "Asia/Tokyo")!)

@@ -1,11 +1,13 @@
 import Foundation
 import Observation
+import LiveIngestionCore
 
 public enum DetailTab: String, CaseIterable, Hashable, Sendable {
     case overview
     case tickets
     case seating
     case goods
+    case community
 
     public var titleZH: String {
         switch self {
@@ -13,6 +15,7 @@ public enum DetailTab: String, CaseIterable, Hashable, Sendable {
         case .tickets: return String(localized: "售票", bundle: .kit)
         case .seating: return String(localized: "座位", bundle: .kit)
         case .goods: return String(localized: "周边", bundle: .kit)
+        case .community: return String(localized: "补充", bundle: .kit)
         }
     }
 }

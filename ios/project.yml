@@ -10,6 +10,27 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: ""
 targets:
+  SwiftSoup:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: Vendor/SwiftSoup
+    settings:
+      base:
+        PRODUCT_NAME: SwiftSoup
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_STRICT_CONCURRENCY: minimal
+  LiveIngestionCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: Sources/LiveIngestionCore
+    dependencies:
+      - target: SwiftSoup
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard.ingestion
+        GENERATE_INFOPLIST_FILE: YES
   LiveDashboardKit:
     type: framework
     platform: iOS
@@ -17,6 +38,11 @@ targets:
       - path: Sources/LiveDashboardKit
         excludes:
           - "**/* 2.swift"
+    dependencies:
+      - target: LiveIngestionCore
+        link: true
+      - target: SwiftSoup
+        link: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard.kit
@@ -66,6 +92,7 @@ targets:
       - path: Tests/LiveDashboardKitTests
     dependencies:
       - target: LiveDashboardKit
+      - target: LiveIngestionCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.live-dashboard.tests

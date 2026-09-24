@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// Overview singleton card: the assistant's organised reading of the whole
 /// event, scoped down to the selected performance where relevant. Never a
@@ -37,7 +38,8 @@ public struct AssistantSummaryCard: View {
         if isGenerating { return .generating(previous: summary) }
         if let message = coordinator.error(for: bundle.event.id) { return .failed(previous: summary, message: message) }
         if let summary { return .ready(summary) }
-        return coordinator.account.isSignedIn ? .empty : .notSignedIn
+        if coordinator.engine == .openAI && !coordinator.account.isSignedIn { return .notSignedIn }
+        return .empty
     }
 
     /// Cheap `Equatable` identity for `phase`, used to drive `.motionAnimation`
@@ -95,6 +97,11 @@ public struct AssistantSummaryCard: View {
             case .failed(let previous, let message):
                 failedView(previous: previous, message: message)
             }
+            if !isGenerating, let note = coordinator.localDraftNote(for: bundle.event.id) {
+                Text(verbatim: note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .motionAnimation(phaseIdentity)
         .transition(.opacity)
@@ -127,11 +134,16 @@ public struct AssistantSummaryCard: View {
                 Task { await coordinator.generate(for: bundle, force: false) }
             } label: {
                 Label {
-                    Text("用 AI 整理本公演", bundle: .kit)
+                    if coordinator.engine == .appleOnDevice {
+                        Text("用 Apple 本地整理本公演", bundle: .kit)
+                    } else {
+                        Text("用 AI 整理本公演", bundle: .kit)
+                    }
                 } icon: {
                     Image(systemName: "sparkles")
                 }
             }
+            .disabled(coordinator.engine == .rules || (coordinator.engine != .appleOnDevice && !coordinator.account.isSignedIn))
         }
     }
 
@@ -162,6 +174,11 @@ public struct AssistantSummaryCard: View {
                 .frame(minHeight: 44)
             }
             generationLog
+            if let note = coordinator.localDraftNote(for: bundle.event.id) {
+                Text(verbatim: note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             if let previous {
                 summaryContent(previous)
                     .opacity(0.5)
@@ -300,7 +317,7 @@ public struct AssistantSummaryCard: View {
     @ViewBuilder
     private func highlightRow(_ highlight: AssistantRichText) -> some View {
         HStack(alignment: .top, spacing: 4) {
-            Text("•").accessibilityHidden(true)
+            Text(verbatim: "•").accessibilityHidden(true)
             AssistantRichTextView(text: highlight)
         }
         .accessibilityElement(children: .combine)
@@ -499,6 +516,13 @@ public struct AssistantSummaryCard: View {
         .frame(minHeight: 44)
     }
 
+    private var regenerateTitle: String {
+        if coordinator.engine == .appleOnDevice && summary == nil {
+            return "用 Apple 本地整理本公演"
+        }
+        return summary == nil ? "用 AI 整理本公演" : "重新整理"
+    }
+
     @ViewBuilder
     private func regenerateButton(prominent: Bool) -> some View {
         if prominent {
@@ -506,13 +530,13 @@ public struct AssistantSummaryCard: View {
                 Task { await coordinator.generate(for: bundle, force: true) }
             } label: {
                 Label {
-                    Text(summary == nil ? "用 AI 整理本公演" : "重新整理", bundle: .kit)
+                    Text(verbatim: regenerateTitle)
                 } icon: {
                     Image(systemName: "sparkles")
                 }
                 .contentShape(.rect)
             }
-            .disabled(isGenerating || !coordinator.account.isSignedIn)
+            .disabled(isGenerating || coordinator.engine == .rules || (coordinator.engine != .appleOnDevice && !coordinator.account.isSignedIn))
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .frame(minHeight: 44)
@@ -521,13 +545,13 @@ public struct AssistantSummaryCard: View {
                 Task { await coordinator.generate(for: bundle, force: true) }
             } label: {
                 Label {
-                    Text(summary == nil ? "用 AI 整理本公演" : "重新整理", bundle: .kit)
+                    Text(verbatim: regenerateTitle)
                 } icon: {
                     Image(systemName: "sparkles")
                 }
                 .contentShape(.rect)
             }
-            .disabled(isGenerating || !coordinator.account.isSignedIn)
+            .disabled(isGenerating || coordinator.engine == .rules || (coordinator.engine != .appleOnDevice && !coordinator.account.isSignedIn))
             .frame(minHeight: 44)
         }
     }

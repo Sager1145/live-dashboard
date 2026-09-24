@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// Session selection: a menu picker for a handful of performances, or a
 /// pushed list page once there are too many to fit comfortably in a menu.

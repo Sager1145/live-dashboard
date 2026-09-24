@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import LiveIngestionCore
 
 /// Schedules local notifications for deadlines the user chose (e.g. "remind
 /// me a day before applyEndAt"). Per DESIGN.md 七.3, a changed deadline must

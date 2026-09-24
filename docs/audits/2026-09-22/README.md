@@ -48,7 +48,7 @@
 
 ## 复现
 
-从仓库根目录运行，脚本直接编译并调用 app 的生产 Swift 抓取器，无需后端：
+从仓库根目录运行。脚本用 SwiftPM 编译 `OfficialAuditCLI`，调用和 App 相同的解析模块，无需后端：
 
 ```sh
 scripts/audit/run-official-audit.sh \

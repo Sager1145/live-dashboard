@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// Shows the links the assistant recognised on the official page for the
 /// selected performance, e.g. ticket vendors or mail-order stores. Renders

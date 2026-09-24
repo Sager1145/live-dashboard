@@ -2,6 +2,7 @@ import ImageIO
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import LiveIngestionCore
 
 public struct OfficialMediaResponse: Sendable {
     public let data: Data
@@ -66,6 +67,9 @@ public enum OfficialMediaError: Error, LocalizedError, Sendable {
 public struct OfficialMediaView: View {
     public let asset: MediaAsset
     public let compact: Bool
+    /// When true, the preview uses the available width and grows in height so the
+    /// whole image stays visible. Key visuals and seating charts keep the bounded height.
+    public let fitsWidth: Bool
 
     @State private var previewImage: UIImage?
     /// The `previewTaskID` that `previewImage` was loaded for, so a stale load from a
@@ -75,9 +79,10 @@ public struct OfficialMediaView: View {
     @State private var showsZoom = false
     @State private var copyFeedback = false
 
-    public init(asset: MediaAsset, compact: Bool = false) {
+    public init(asset: MediaAsset, compact: Bool = false, fitsWidth: Bool = false) {
         self.asset = asset
         self.compact = compact
+        self.fitsWidth = fitsWidth
     }
 
     public var body: some View {
@@ -126,9 +131,10 @@ public struct OfficialMediaView: View {
                             PreviewLoadingIndicator()
                         }
                     }
-                    .aspectRatio(displayedPreviewImage.map { $0.size.width / max($0.size.height, 1) } ?? (16.0 / 9.0), contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-                    .frame(maxHeight: compact ? 160 : 340)
+                    .modifier(OfficialMediaPreviewFrame(
+                        widthOverHeight: displayedPreviewImage.map { $0.size.width / max($0.size.height, 1) } ?? (16.0 / 9.0),
+                        maxHeight: fitsWidth ? nil : CGFloat(compact ? 160 : 340)
+                    ))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -156,7 +162,7 @@ public struct OfficialMediaView: View {
                     }
                     .padding(.horizontal, 8)
                     .frame(maxWidth: .infinity)
-                    .frame(maxHeight: compact ? 160 : 340)
+                    .frame(maxHeight: fitsWidth ? nil : CGFloat(compact ? 160 : 340))
                     .allowsHitTesting(true)
                 }
             }
@@ -443,6 +449,51 @@ public struct ZoomableImageViewer: View {
             }
             .accessibilityLabel(Text("复制", bundle: .kit))
         }
+    }
+}
+
+/// Preview box for an official image. A nil `maxHeight` locks the width and
+/// derives the height from the image, so a tall goods or benefit sheet stays
+/// fully visible. A set `maxHeight` keeps the bounded box used by key visuals
+/// and seating charts.
+private struct OfficialMediaPreviewFrame: ViewModifier {
+    var widthOverHeight: CGFloat
+    var maxHeight: CGFloat?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let maxHeight {
+            content
+                .aspectRatio(widthOverHeight, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .frame(maxHeight: maxHeight)
+        } else {
+            WidthFitFrame(widthOverHeight: widthOverHeight) {
+                content
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+/// Reports `height = width / widthOverHeight` and ignores a proposed height,
+/// so a vertical scroll view cannot squash the image back into a short box.
+private struct WidthFitFrame: Layout {
+    var widthOverHeight: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? subviews.first?.sizeThatFits(.unspecified).width ?? 0
+        let ratio = max(widthOverHeight, 0.01)
+        return CGSize(width: width, height: width / ratio)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let subview = subviews.first else { return }
+        subview.place(
+            at: CGPoint(x: bounds.minX, y: bounds.minY),
+            anchor: .topLeading,
+            proposal: ProposedViewSize(width: bounds.width, height: bounds.height)
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import LiveIngestionCore
 
 /// The single entry point the UI talks to for the assistant feature: sign
 /// in/out, generating summaries, and reading cached results.
@@ -8,6 +9,12 @@ import Observation
 public enum AssistantSignInPhase: Equatable, Sendable {
     case idle
     case waitingForOAuth
+}
+
+public enum AssistantEngine: String, CaseIterable, Sendable {
+    case rules
+    case appleOnDevice
+    case openAI
 }
 
 @MainActor
@@ -21,6 +28,13 @@ public final class AssistantCoordinator {
     public var autoSummarizeAfterRefresh: Bool {
         didSet {
             defaults.set(autoSummarizeAfterRefresh, forKey: Self.autoSummarizeDefaultsKey)
+        }
+    }
+    /// Missing `assistant.engine` means the cloud assistant. Changing it does not delete cloud summaries.
+    public var engine: AssistantEngine {
+        didSet {
+            guard engine != oldValue else { return }
+            defaults.set(engine.rawValue, forKey: Self.engineDefaultsKey)
         }
     }
     public var model: String {
@@ -41,8 +55,10 @@ public final class AssistantCoordinator {
     /// global error.
     public private(set) var errors: [String: String] = [:]
     public private(set) var isLoaded = false
+    public private(set) var localDraftNotes: [String: String] = [:]
 
     private let defaults: UserDefaults
+    private let onDeviceOrganizer: any OnDeviceOrganizing
     private let accountStore: AssistantAccountStore
     private let summaryStore: AssistantSummaryStore
     private let client: OpenAIResponsesClient
@@ -59,6 +75,7 @@ public final class AssistantCoordinator {
     }
 
     private static let autoSummarizeDefaultsKey = "assistant.autoSummarize"
+    private static let engineDefaultsKey = "assistant.engine"
     public static let defaultAPIModel = "gpt-5-mini"
     public static let defaultChatGPTModel = "gpt-6-luna"
     public static let suggestedChatGPTModels = ["gpt-6-luna", "gpt-6-sol", "gpt-5.6-luna"]
@@ -92,16 +109,23 @@ public final class AssistantCoordinator {
         client: OpenAIResponsesClient = OpenAIResponsesClient(),
         urlSession: URLSession = .shared,
         signInFlow: ChatGPTSignInFlow? = nil,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        onDeviceOrganizer: any OnDeviceOrganizing = SystemOnDeviceOrganizer()
     ) {
         self.officialPageSession = officialPageSession
         self.defaults = defaults
+        self.onDeviceOrganizer = onDeviceOrganizer
         self.accountStore = accountStore
         self.summaryStore = summaryStore
         self.client = client
         self.urlSession = urlSession
         self.signInFlowBox = signInFlow
         self.autoSummarizeAfterRefresh = defaults.bool(forKey: Self.autoSummarizeDefaultsKey)
+        if let raw = defaults.string(forKey: Self.engineDefaultsKey), let stored = AssistantEngine(rawValue: raw) {
+            self.engine = stored
+        } else {
+            self.engine = .openAI
+        }
         self.model = Self.defaultAPIModel
     }
 
@@ -134,6 +158,10 @@ public final class AssistantCoordinator {
         generationLogs[eventID] ?? []
     }
 
+    public func localDraftNote(for eventID: String) -> String? {
+        localDraftNotes[eventID]
+    }
+
     /// Cached per (event, summary generation, bundle content) so repeated
     /// `body` evaluations for an unchanged bundle never re-hash the source
     /// text. Keyed on `bundle.hashValue` — Swift's synthesized `Hashable`
@@ -160,6 +188,13 @@ public final class AssistantCoordinator {
     public func generate(for bundle: LiveEventBundle, force: Bool = false) async -> AssistantEventSummary? {
         let eventID = bundle.event.id
         guard !isRemovingAllSummaries, !deletingEventIDs.contains(eventID) else { return nil }
+        if engine == .rules {
+            localDraftNotes[eventID] = "当前使用规则解析，不会调用模型。"
+            return nil
+        }
+        if engine == .appleOnDevice {
+            return await generateOnDevice(for: bundle, force: force)
+        }
         if !force, !isStale(bundle), let cached = summaries[eventID] {
             return cached
         }
@@ -299,6 +334,11 @@ public final class AssistantCoordinator {
     }
 
     public func generateStale(in bundles: [LiveEventBundle]) async {
+        if engine == .rules { return }
+        if engine == .appleOnDevice {
+            await generateStaleOnDevice(in: bundles)
+            return
+        }
         guard autoSummarizeAfterRefresh, account.isSignedIn else { return }
         guard !isGeneratingStale else { return }
         isGeneratingStale = true
@@ -332,6 +372,134 @@ public final class AssistantCoordinator {
                 failedFingerprints.insert(fingerprint)
             }
         }
+    }
+
+    public func organizeOnDevice(eventID: String) async {
+        defer {
+            if LiveActionCenter.shared.pendingOrganizeEventID == eventID {
+                LiveActionCenter.shared.pendingOrganizeEventID = nil
+            }
+        }
+        let bundle: LiveEventBundle?
+        do {
+            bundle = try await LiveActionCenter.shared.repository.bundle(eventID: eventID)
+        } catch {
+            bundle = nil
+        }
+        guard let bundle else {
+            let message = "本地目录里没有这场演出。"
+            errors[eventID] = message
+            lastError = message
+            return
+        }
+        _ = await generateOnDevice(for: bundle, force: true)
+    }
+
+    public func consumePendingOrganize() async {
+        guard let eventID = LiveActionCenter.shared.takePendingOrganizeEventID() else { return }
+        await organizeOnDevice(eventID: eventID)
+    }
+
+    private func generateStaleOnDevice(in bundles: [LiveEventBundle]) async {
+        guard autoSummarizeAfterRefresh else { return }
+        if onDeviceOrganizer is SystemOnDeviceOrganizer, AppleIntelligenceStatus.current() != .ready {
+            return
+        }
+        guard !isGeneratingStale else { return }
+        isGeneratingStale = true
+        defer { isGeneratingStale = false }
+
+        let stale = bundles
+            .filter { bundle in
+                guard !deletedEventIDs.contains(bundle.event.id) else { return false }
+                guard let sourceText = bundle.sourceText,
+                      !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+                // Cloud-summary freshness is a different cache. Unchanged blocks are skipped inside the organizer.
+                return !failedFingerprints.contains(AssistantSummarizer.fingerprint(of: bundle))
+            }
+            .sorted { lhs, rhs in
+                let lhsMax = lhs.performances.compactMap(\.localDate).max() ?? ""
+                let rhsMax = rhs.performances.compactMap(\.localDate).max() ?? ""
+                return lhsMax > rhsMax
+            }
+            .prefix(20)
+
+        let batchRevision = configurationRevision
+        for bundle in stale {
+            guard !isRemovingAllSummaries, batchRevision == configurationRevision else { break }
+            guard !deletedEventIDs.contains(bundle.event.id) else { continue }
+            let fingerprint = AssistantSummarizer.fingerprint(of: bundle)
+            let revision = configurationRevision
+            let result = await generateOnDevice(for: bundle, force: false)
+            if result == nil, revision == configurationRevision {
+                failedFingerprints.insert(fingerprint)
+            }
+        }
+    }
+
+    private func generateOnDevice(for bundle: LiveEventBundle, force: Bool) async -> AssistantEventSummary? {
+        let eventID = bundle.event.id
+        guard !isRemovingAllSummaries, !deletingEventIDs.contains(eventID) else { return nil }
+        if let existing = inFlightGenerations[eventID] {
+            return await existing.value
+        }
+
+        let generationToken = UUID()
+        generationTokens[eventID] = generationToken
+        generationLogs[eventID] = []
+        let task = Task { [weak self] () -> AssistantEventSummary? in
+            guard let self else { return nil }
+            do {
+                self.appendGenerationLog("读取已保存的官网原文", eventID: eventID, token: generationToken)
+                self.appendGenerationLog("按区块整理日期角色", eventID: eventID, token: generationToken)
+                self.appendGenerationLog("正在核对候选", eventID: eventID, token: generationToken)
+                let organized = try await self.onDeviceOrganizer.organize(bundle: bundle, force: force)
+                guard !Task.isCancelled else { return nil }
+                self.appendGenerationLog("正在保存本地草稿", eventID: eventID, token: generationToken)
+                guard !Task.isCancelled else { return nil }
+                let note = Self.draftNote(for: organized)
+                let applied = await MainActor.run { () -> Bool in
+                    guard !Task.isCancelled else { return false }
+                    guard self.generationTokens[eventID] == generationToken else { return false }
+                    self.localDraftNotes[eventID] = note
+                    self.lastError = nil
+                    self.errors.removeValue(forKey: eventID)
+                    return true
+                }
+                guard applied else { return nil }
+                return nil
+            } catch is CancellationError {
+                return nil
+            } catch {
+                guard !Task.isCancelled else { return nil }
+                let message = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+                await MainActor.run {
+                    guard !Task.isCancelled else { return }
+                    self.lastError = message
+                    self.errors[eventID] = message
+                }
+                return nil
+            }
+        }
+        generatingEventIDs.insert(eventID)
+        inFlightGenerations[eventID] = task
+        let result = await task.value
+        if inFlightGenerations[eventID] == task {
+            inFlightGenerations.removeValue(forKey: eventID)
+            generatingEventIDs.remove(eventID)
+            generationTokens.removeValue(forKey: eventID)
+        }
+        return result
+    }
+
+    private static func draftNote(for result: OnDeviceOrganizeResult) -> String {
+        if result.draftCount > 0 {
+            return "已保存 \(result.draftCount) 条本地日期角色草稿，需要核对，尚未写入票务截止。"
+        }
+        if result.blockCount == 0 {
+            return "原文里没有可分类的日期，未调用模型。"
+        }
+        return "模型没有给出可核对的日期角色。"
     }
 
     /// Tests the candidate API key against the API backend before persisting

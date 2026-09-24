@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 public struct TicketPhaseBadge: Hashable, Sendable, Identifiable {
     public enum Tone: String, Hashable, Sendable { case open, upcoming, closed, soldOut }

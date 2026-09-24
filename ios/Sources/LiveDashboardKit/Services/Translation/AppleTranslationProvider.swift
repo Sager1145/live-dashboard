@@ -1,6 +1,7 @@
 import Foundation
 #if canImport(Translation)
 import Translation
+import LiveIngestionCore
 #endif
 
 /// Real `Translation` framework-backed availability check. Never call

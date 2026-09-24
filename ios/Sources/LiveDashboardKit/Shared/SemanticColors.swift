@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public extension Color {
     static let statusPositive = Color("StatusPositive", bundle: .kit)

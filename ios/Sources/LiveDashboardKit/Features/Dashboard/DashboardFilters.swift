@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 public struct DashboardFilters: Hashable, Sendable {
     public var franchise: Franchise?

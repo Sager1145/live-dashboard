@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// One source-language segment queued for on-device translation, keyed by a
 /// caller-chosen stable `id` (e.g. `"\(eventID)|\(cardType)|\(entityID)|title"`)

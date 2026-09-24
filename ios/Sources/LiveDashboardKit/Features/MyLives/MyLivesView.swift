@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public struct MyLivesView: View {
     @Bindable var dashboardStore: DashboardStore
@@ -7,18 +8,20 @@ public struct MyLivesView: View {
     let repository: LiveRepository
     let installationService: InstallationService
     let assistant: AssistantCoordinator
+    let externalStore: ExternalDataStore?
     /// Optional so this view keeps working wherever it isn't wired to the shared router yet;
     /// when present, the empty state offers a way back to the dashboard to follow something.
     let router: AppRouter?
     @State private var path: [DetailRoute] = []
 
-    public init(dashboardStore: DashboardStore, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, installationService: InstallationService, assistant: AssistantCoordinator, router: AppRouter? = nil) {
+    public init(dashboardStore: DashboardStore, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, installationService: InstallationService, assistant: AssistantCoordinator, externalStore: ExternalDataStore? = nil, router: AppRouter? = nil) {
         self.dashboardStore = dashboardStore
         self.userDataStore = userDataStore
         self.reminderService = reminderService
         self.repository = repository
         self.installationService = installationService
         self.assistant = assistant
+        self.externalStore = externalStore
         self.router = router
     }
 
@@ -80,7 +83,7 @@ public struct MyLivesView: View {
             .navigationTitle(Text("我的", bundle: .kit))
             .navigationDestination(for: DetailRoute.self) { route in
                 if let bundle = dashboardStore.bundles.first(where: { $0.event.id == route.eventID }) {
-                    LiveDetailView(bundle: bundle, initialPerformanceID: route.performanceID ?? userDataStore.selectedPerformanceID(eventID: bundle.event.id), initialTab: route.tab, userDataStore: userDataStore, reminderService: reminderService, repository: repository, installationService: installationService, assistant: assistant, onBundleRefresh: dashboardStore.acceptRefreshedBundle)
+                    LiveDetailView(bundle: bundle, initialPerformanceID: route.performanceID ?? userDataStore.selectedPerformanceID(eventID: bundle.event.id), initialTab: route.tab, userDataStore: userDataStore, reminderService: reminderService, repository: repository, installationService: installationService, assistant: assistant, externalStore: externalStore, onBundleRefresh: dashboardStore.acceptRefreshedBundle)
                         .id(route)
                 } else if dashboardStore.isLoading || dashboardStore.isRefreshing {
                     ProgressView { Text("正在载入资料…", bundle: .kit) }

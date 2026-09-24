@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public struct SeatingView: View {
     @Bindable var store: LiveDetailStore
@@ -39,7 +40,17 @@ public struct SeatingView: View {
                 // Cards the user hid are filtered out before this point, so an empty
                 // tab must not claim the data was never retrieved.
                 if resolved.applicable.filter(isSeatingAsset).isEmpty && resolved.unconfirmed.filter(isSeatingAsset).isEmpty {
-                    if store.bundle.mediaAssets.contains(where: isSeatingAsset) {
+                    if store.bundle.mediaAssets.contains(where: isSeatingAsset), store.selectedPerformance == nil {
+                        ContentUnavailableView {
+                            Label { Text("尚无可用场次资料", bundle: .kit) } icon: { Image(systemName: "calendar.badge.exclamationmark") }
+                        } description: {
+                            Text("官网尚未公布场次，或当前资料来源中没有场次。", bundle: .kit)
+                        } actions: {
+                            if let url = URL(string: store.bundle.event.primarySourceURL) {
+                                Link(destination: url) { Text("查看官方公演页面", bundle: .kit) }
+                            }
+                        }
+                    } else if store.bundle.mediaAssets.contains(where: isSeatingAsset) {
                         ContentUnavailableView {
                             Label { Text("所选场次暂无座位资料", bundle: .kit) } icon: { Image(systemName: "chair.lounge") }
                         } description: {

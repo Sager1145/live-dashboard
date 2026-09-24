@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// A ChatGPT OAuth session, as obtained through `ChatGPTOAuthClient`.
 public struct ChatGPTSession: Codable, Hashable, Sendable {

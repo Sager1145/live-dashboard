@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// Helpers for `CardSettingsView`, built entirely on `UserDataStore`'s
 /// existing public API (this file does not touch `UserDataStore.swift`,

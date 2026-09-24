@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// Persists the assistant sign-in credential (API key or ChatGPT session) in
 /// the Keychain.

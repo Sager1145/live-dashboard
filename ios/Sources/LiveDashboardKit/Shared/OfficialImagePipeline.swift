@@ -4,6 +4,7 @@ import Foundation
 import ImageIO
 import UIKit
 import UniformTypeIdentifiers
+import LiveIngestionCore
 
 /// Shared image download / decode / cache pipeline for official-site media.
 /// Both `OfficialMediaView` and `LiveEventCard` will route their downloads

@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public extension View {
     /// Animates `value` changes with a snappy spring unless Reduce Motion is on (then no animation).

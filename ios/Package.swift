@@ -4,13 +4,33 @@ import PackageDescription
 let package = Package(
     name: "LiveDashboardKit",
     defaultLocalization: "zh-Hans",
-    platforms: [.iOS(.v18)],
+    platforms: [
+        .iOS(.v18),
+        .macOS(.v14)
+    ],
     products: [
-        .library(name: "LiveDashboardKit", targets: ["LiveDashboardKit"])
+        .library(name: "LiveDashboardKit", targets: ["LiveDashboardKit"]),
+        .executable(name: "OfficialAuditCLI", targets: ["OfficialAuditCLI"])
     ],
     targets: [
         .target(
+            name: "SwiftSoup",
+            path: "Vendor/SwiftSoup",
+            exclude: ["LICENSE"]
+        ),
+        .target(
+            name: "LiveIngestionCore",
+            dependencies: ["SwiftSoup"],
+            path: "Sources/LiveIngestionCore"
+        ),
+        .executableTarget(
+            name: "OfficialAuditCLI",
+            dependencies: ["LiveIngestionCore"],
+            path: "Sources/OfficialAuditCLI"
+        ),
+        .target(
             name: "LiveDashboardKit",
+            dependencies: ["LiveIngestionCore"],
             path: "Sources/LiveDashboardKit",
             // Older local copies must not redeclare the active view types.
             exclude: [

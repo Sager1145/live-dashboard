@@ -121,4 +121,20 @@ public struct CardConfiguration: Codable, Hashable, Sendable {
         if !visibleFields.contains(CardField.configuredMarker) { return true }
         return visibleFields.contains(field.rawValue)
     }
+
+    /// Applies one settings toggle. A marker-less set still means every field
+    /// is visible, so the first write materializes this card's supported
+    /// fields as on. Existing strings — including unsupported or unknown
+    /// historical keys — are kept; this never replaces the set.
+    public mutating func setShows(_ field: CardField, enabled: Bool) {
+        if !visibleFields.contains(CardField.configuredMarker) {
+            visibleFields.formUnion(cardType.supportedFields.map(\.rawValue))
+            visibleFields.insert(CardField.configuredMarker)
+        }
+        if enabled {
+            visibleFields.insert(field.rawValue)
+        } else {
+            visibleFields.remove(field.rawValue)
+        }
+    }
 }

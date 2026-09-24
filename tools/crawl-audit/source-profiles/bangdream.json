@@ -1,0 +1,8 @@
+{
+  "id": "bangdream-detail",
+  "hostSuffix": "bang-dream.com",
+  "contentSelectors": [".p-live-event-detail__content", ".p-page-detail__content"],
+  "paneAttribute": null,
+  "panes": [],
+  "headingSelector": "h1, h2, h3, h4"
+}

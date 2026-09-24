@@ -9,6 +9,24 @@ final class OfficialAuditRegressionTests: XCTestCase {
         super.tearDown()
     }
 
+    func testFlatMultiDateOverviewKeepsEachVenueWithItsDate() async throws {
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">Two Venue Tour</h1>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>公演名</h2><p>Two Venue Tour</p>
+            <h2>日程・会場</h2>
+            <p>日程：2027年1月30日(土)<br>会場：TOYOTA ARENA TOKYO<br>
+            日程：2027年2月28日(日)<br>会場：愛知県芸術劇場 大ホール</p>
+          </div>
+        </article>
+        """
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/two-venue-tour/",
+            title: "Two Venue Tour")
+        XCTAssertEqual(refreshed.performances.map(\.localDate), ["2027-01-30", "2027-02-28"])
+        XCTAssertEqual(refreshed.performances.map(\.venueName), ["TOYOTA ARENA TOKYO", "愛知県芸術劇場 大ホール"])
+    }
+
     func testRoseliaTourAssociatesEachDateWithItsOwnVenue() async throws {
         // Source: https://bang-dream.com/events/roselia-10th-anniversary-live-tour/
         let html = """
@@ -41,7 +59,46 @@ final class OfficialAuditRegressionTests: XCTestCase {
                 "2027-04-25": "福岡サンパレス",
             ]
         )
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: refreshed.performances.map { ($0.id, $0.venueName) }),
+            Dictionary(uniqueKeysWithValues: refreshed.evidence.filter { $0.field == "performance.venueName" }.map { ($0.recordID, $0.quote) })
+        )
         XCTAssertTrue(refreshed.performances.allSatisfy { $0.performers == ["Roselia"] })
+    }
+
+    func testSplitVenueSectionAssignsCityLabeledHallsToGroupedDates() async throws {
+        // Source: https://bang-dream.com/events/evanescence_avemujica/
+        // 日程 and 会場 are separate headings. The summary 場所 cell joins both
+        // halls; 概要 groups Dec 1–2 as 東京 and Dec 4 as 大阪.
+        let html = """
+        <article class="p-live-event-detail">
+          <h1 class="p-live-event-detail__header-title">EVANESCENCE 2026 JAPAN</h1>
+          <div class="p-live-event-detail__table"><table>
+            <tr><th>開催日</th><td>2026年12月1日(火)・2日(水)・4日(金)</td></tr>
+            <tr><th>場所</th><td>SGC HALL ARIAKE、Zepp Osaka Bayside</td></tr>
+            <tr><th>概要</th><td>12月1日(火)・2日(水)東京公演、4日(金)大阪公演 Ave Mujica出演</td></tr>
+          </table></div>
+          <div class="p-live-event-detail__content c-post-content">
+            <h2>公演名</h2><p>EVANESCENCE 2026 JAPAN</p>
+            <h2>日程</h2><p>2026年12月1日(火)・2日(水)・4日(金)</p>
+            <h2>会場</h2><p>SGC HALL ARIAKE（東京公演）<br>Zepp Osaka Bayside（大阪公演）</p>
+          </div>
+        </article>
+        """
+        let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/evanescence_avemujica/",
+            title: "EVANESCENCE 2026 JAPAN")
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: refreshed.performances.map { ($0.localDate, $0.venueName) }),
+            [
+                "2026-12-01": "SGC HALL ARIAKE",
+                "2026-12-02": "SGC HALL ARIAKE",
+                "2026-12-04": "Zepp Osaka Bayside",
+            ]
+        )
+        XCTAssertEqual(refreshed.performances.map(\.venueCity), ["東京", "東京", "大阪"])
+        let venueQuotes = refreshed.evidence.filter { $0.field == "performance.venueName" }.map(\.quote)
+        XCTAssertEqual(Set(venueQuotes), ["SGC HALL ARIAKE", "Zepp Osaka Bayside"])
+        XCTAssertFalse(venueQuotes.contains("SGC HALL ARIAKE、Zepp Osaka Bayside"))
     }
 
     func testBootIgnitionCombinedOverviewAndVenueTicketRetainFacts() async throws {
@@ -172,6 +229,7 @@ final class OfficialAuditRegressionTests: XCTestCase {
         let refreshed = try await refresh(html: html, url: "https://bang-dream.com/events/eleganza/", title: "Morfonica LIVE「eleganza」")
 
         let performance = try XCTUnwrap(refreshed.performances.first)
+        XCTAssertEqual(performance.venueCity, "東京", "Kanadevia Hall is in Tokyo, not Osaka")
         let round = try XCTUnwrap(refreshed.ticketRounds.first { $0.officialName == "プレイガイド先行" })
         XCTAssertEqual(round.applyURL, "https://eplus.jp/morfonica-eleganza/")
         XCTAssertEqual(round.links.first { $0.url == "https://eplus.jp/morfonica-eleganza/" }?.label, "受付はこちら")
@@ -283,7 +341,10 @@ final class OfficialAuditRegressionTests: XCTestCase {
 
         XCTAssertEqual(refreshed.ticketRounds.map(\.officialName), ["見切れ席・2F後方立ち見エリア発売（DAY2のみ）", "一般発売（受付終了）"], "the 販売情報 container is not a round")
         XCTAssertTrue(refreshed.ticketRounds.allSatisfy { $0.applyURL == "https://eplus.jp/mygo-9th/" }, "the shared button reaches every round")
-        XCTAssertTrue(refreshed.ticketRounds.allSatisfy { $0.scope == .unconfirmed }, "two dates: never guess which day")
+        let day2 = try XCTUnwrap(refreshed.performances.first { $0.dayLabel == "DAY2" })
+        let day2Round = try XCTUnwrap(refreshed.ticketRounds.first { $0.officialName.contains("DAY2のみ") })
+        XCTAssertEqual(day2Round.scope, .performances(performanceIDs: [day2.id]))
+        XCTAssertEqual(refreshed.ticketRounds.first { $0.officialName.hasPrefix("一般発売") }?.scope, .unconfirmed, "a round that names no day stays unconfirmed")
     }
 
     func testBenefitContentsInChildHeadingAreNotOfficiallyTBA() async throws {
@@ -862,7 +923,7 @@ final class OfficialAuditRegressionTests: XCTestCase {
         // Source: https://www.lovelive-anime.jp/uranohoshi/live/live_detail.php?p=7thlive
         let html = """
         <html><head><meta property="og:description" content="ラブライブ！サンシャイン!! 7th Live"></head>
-        <article><div data-target="top"><h3>開催日程</h3><p>Day.1：2026年2月7日（土）16:00開場／17:00開演<br>Day.2:2026年2月8日(日)15:00開場/16:00開演<br>■会場<br>神奈川・横浜アリーナ<br>■お問い合わせ<br>H.I.P. 03-3475-9999(月曜~金曜日 11:00〜13:00 / 15:00〜18:00 (土・日・祝祭日休み))<br>＜愛知公演＞<br>Day.1：2026年2月28日（土）16:00開場／17:00開演<br>Day.2：2026年3月 1日（日）15:00開場／16:00開演</p></div></article>
+        <article><div data-target="top"><h3>開催日程</h3><p>＜神奈川公演＞<br>■日程<br>Day.1：2026年2月7日（土）16:00開場／17:00開演<br>Day.2:2026年2月8日(日)15:00開場/16:00開演<br>■会場<br>神奈川・横浜アリーナ<br>■お問い合わせ<br>H.I.P. 03-3475-9999(月曜~金曜日 11:00〜13:00 / 15:00〜18:00 (土・日・祝祭日休み))<br>＜愛知公演＞<br>■日程<br>Day.1：2026年2月28日（土）16:00開場／17:00開演<br>Day.2：2026年3月 1日（日）15:00開場／16:00開演<br>■会場<br>愛知・Aichi Sky Expo（愛知県国際展示場）ホールA</p></div></article>
         </html>
         """
 
@@ -875,6 +936,10 @@ final class OfficialAuditRegressionTests: XCTestCase {
 
         XCTAssertEqual(refreshed.performances.count, 4)
         XCTAssertEqual(refreshed.performances.map(\.localDate), ["2026-02-07", "2026-02-08", "2026-02-28", "2026-03-01"])
+        XCTAssertEqual(refreshed.performances.map(\.venueName), [
+            "神奈川・横浜アリーナ", "神奈川・横浜アリーナ",
+            "愛知・Aichi Sky Expo（愛知県国際展示場）ホールA", "愛知・Aichi Sky Expo（愛知県国際展示場）ホールA",
+        ])
         XCTAssertEqual(refreshed.performances.map(\.dayLabel), ["DAY1", "DAY2", "DAY1", "DAY2"])
         XCTAssertEqual(refreshed.performances.map(\.doorsAt), [
             Self.date("2026-02-07T07:00:00Z"), Self.date("2026-02-08T06:00:00Z"),

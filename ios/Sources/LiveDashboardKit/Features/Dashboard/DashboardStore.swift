@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import LiveIngestionCore
 
 /// A precomputed view of one `LiveEventBundle` for the dashboard card list.
 /// Per DESIGN.md 四.2: identity → dates/venue → current ticket phase → next
@@ -28,6 +29,18 @@ public struct DashboardEventSummary: Identifiable, Hashable, Sendable {
     public let hasPendingAction: Bool
     public let hasImportantUpdate: Bool
     public let timeZoneIdentifier: String
+    /// One row per performance: date, day label, start time, venue, and whether the user marked that day.
+    public let days: [DashboardDayLine]
+}
+
+/// Basic facts for one performance, shown as its own row on the event card.
+public struct DashboardDayLine: Identifiable, Hashable, Sendable {
+    public let id: String
+    /// Date, day label, and start time when the source gives a clock time.
+    public let primaryText: String
+    /// Subtitle and venue. Empty when the performance has neither.
+    public let secondaryText: String
+    public let isParticipating: Bool
 }
 
 /// Which part of the catalog a dashboard list shows, split on the phone's calendar day.
@@ -90,6 +103,9 @@ public final class DashboardStore {
         let bundlesVersion: Int
         let filters: DashboardFilters
         let followedIDs: Set<String>
+        /// Event-wide plans and per-day marks. A participation toggle must refresh the cards
+        /// even though `bundles` and the follow set did not change.
+        let participation: [String]
         let phoneDay: String
     }
 
@@ -333,9 +349,12 @@ public final class DashboardStore {
         // still sees `bundles`/`filters`/`userDataStore.eventStates` as read dependencies of
         // `body` even when the memoized result below is returned without recomputing.
         let followedIDs = Set(userDataStore.eventStates.values.filter(\.isFollowed).map(\.eventID))
+        let participation = userDataStore.eventStates.values.map { state in
+            "\(state.eventID)|\(state.planningToAttend)|\(state.participatingPerformanceIDs.sorted().joined(separator: ","))"
+        }.sorted()
         let day = phoneDay
         _ = bundles.count
-        let key = SummaryCacheKey(bundlesVersion: summaryCacheVersion, filters: filters, followedIDs: followedIDs, phoneDay: day)
+        let key = SummaryCacheKey(bundlesVersion: summaryCacheVersion, filters: filters, followedIDs: followedIDs, participation: participation, phoneDay: day)
         if let cached = summaryCache[scope], cached.key == key {
             return cached.result
         }
@@ -380,6 +399,12 @@ public final class DashboardStore {
 
     /// Every followed event regardless of either tab's filters, upcoming first (soonest date
     /// first, unknown last) then past (most recent first) — for the "My Lives" list.
+    /// Marks or unmarks a single performance from its card row.
+    public func toggleDayParticipation(eventID: String, performanceID: String) {
+        let known = bundles.first(where: { $0.event.id == eventID })?.performances.map(\.id) ?? [performanceID]
+        userDataStore.toggleParticipation(eventID: eventID, performanceID: performanceID, knownPerformanceIDs: known)
+    }
+
     public func followedSummaries() -> [DashboardEventSummary] {
         let upcoming = sorted(bundles(in: .upcoming).map { summarize($0, finished: false) }.filter(\.isFollowed), in: .upcoming)
         let past = sorted(bundles(in: .past).map { summarize($0, finished: true) }.filter(\.isFollowed), in: .past)
@@ -432,8 +457,10 @@ public final class DashboardStore {
             isFollowed: userState.isFollowed,
             dayLabels: sortedPerformances.map(\.dayLabel),
             stopCount: bundle.stops.count,
-            venueSummary: Array(NSOrderedSet(array: sortedPerformances.map(\.venueCity).filter { !$0.isEmpty }))
-                .compactMap { $0 as? String }.joined(separator: " · "),
+            venueSummary: sortedPerformances.map(\.venueCity).filter { !$0.isEmpty }
+                .reduce(into: [String]()) { cities, city in
+                    if !cities.contains(city) { cities.append(city) }
+                }.joined(separator: " · "),
             firstLocalDate: sortedPerformances.first?.localDate,
             lastLocalDate: sortedPerformances.compactMap(\.localDate).max(),
             firstStartAt: sortedPerformances.first?.startAt,
@@ -449,8 +476,49 @@ public final class DashboardStore {
             nextDeadline: soonestDeadline,
             hasPendingAction: soonestDeadline != nil,
             hasImportantUpdate: Self.hasImportantUpdate(bundle: bundle, now: now, finished: finished),
-            timeZoneIdentifier: deadlineTimeZone
+            timeZoneIdentifier: deadlineTimeZone,
+            days: dayLines(for: bundle, performances: sortedPerformances, userState: userState, finished: finished, now: now)
         )
+    }
+
+    private func dayLines(for bundle: LiveEventBundle, performances: [Performance], userState: UserEventState, finished: Bool, now: Date) -> [DashboardDayLine] {
+        let multipleStops = Set(performances.compactMap(\.stopID)).count > 1
+        return performances.map { performance in
+            let zone = EventFormatting.timeZone(identifier: performance.timeZone ?? bundle.event.timeZone, fallback: bundle.event.resolvedTimeZone)
+            var parts: [String] = [dayDateText(for: performance, zone: zone, finished: finished, now: now)]
+            if !performance.dayLabel.isEmpty, performance.dayLabel != parts[0] {
+                parts.append(performance.dayLabel)
+            }
+            if multipleStops, let stopName = bundle.stops.first(where: { $0.id == performance.stopID })?.name, !stopName.isEmpty {
+                parts.append(stopName)
+            }
+            if performance.precision == .minute, let startAt = performance.startAt {
+                parts.append(EventFormatting.clockTime(startAt, in: zone))
+            }
+            var place: [String] = []
+            if let subtitle = performance.subtitle, !subtitle.isEmpty { place.append(subtitle) }
+            if !performance.venueName.isEmpty { place.append(performance.venueName) }
+            if !performance.venueCity.isEmpty, performance.venueCity != performance.venueName {
+                place.append(performance.venueCity)
+            }
+            return DashboardDayLine(
+                id: performance.id,
+                primaryText: parts.joined(separator: " · "),
+                secondaryText: place.joined(separator: " · "),
+                isParticipating: userState.isParticipating(in: performance.id)
+            )
+        }
+    }
+
+    private func dayDateText(for performance: Performance, zone: TimeZone, finished: Bool, now: Date) -> String {
+        if let localDate = performance.localDate, let date = EventFormatting.parseISODate(localDate, in: zone) {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = zone
+            let includesYear = finished || calendar.component(.year, from: date) != calendar.component(.year, from: now)
+            return EventFormatting.date(date, in: zone, includesYear: includesYear)
+        }
+        if let rawDate = performance.rawDate, !rawDate.isEmpty { return rawDate }
+        return String(localized: "日期待公布", bundle: .kit)
     }
 
     /// True when the event has a notice published within the last 7 days and the event has not

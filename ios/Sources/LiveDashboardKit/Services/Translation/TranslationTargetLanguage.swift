@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// The user's chosen translation target. `followApp` resolves from the
 /// app's current display language; `off` hides all translation UI.

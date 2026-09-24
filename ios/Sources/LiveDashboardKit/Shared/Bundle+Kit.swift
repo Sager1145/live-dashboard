@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 private final class KitBundleToken {}
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public extension AssistantRichText {
     /// Maps each segment's style to the colours/weights the UI uses to make

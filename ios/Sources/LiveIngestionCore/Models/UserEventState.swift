@@ -23,7 +23,11 @@ public struct UserRoundRecord: Codable, Hashable, Sendable {
 public struct UserEventState: Codable, Hashable, Identifiable, Sendable {
     public var eventID: String
     public var isFollowed: Bool
+    /// Event-wide plan. When `participatingPerformanceIDs` is empty, this applies to every day.
+    /// When that list is non-empty, only those performances are marked.
     public var planningToAttend: Bool
+    /// Performances the user marked individually. Empty means "use `planningToAttend` for every day".
+    public var participatingPerformanceIDs: [String]
     public var roundRecords: [UserRoundRecord]
 
     public var id: String { eventID }
@@ -32,11 +36,18 @@ public struct UserEventState: Codable, Hashable, Identifiable, Sendable {
         eventID: String,
         isFollowed: Bool = false,
         planningToAttend: Bool = false,
+        participatingPerformanceIDs: [String] = [],
         roundRecords: [UserRoundRecord] = []
     ) {
         self.eventID = eventID
         self.isFollowed = isFollowed
         self.planningToAttend = planningToAttend
+        self.participatingPerformanceIDs = participatingPerformanceIDs
         self.roundRecords = roundRecords
+    }
+
+    public func isParticipating(in performanceID: String) -> Bool {
+        if participatingPerformanceIDs.isEmpty { return planningToAttend }
+        return participatingPerformanceIDs.contains(performanceID)
     }
 }

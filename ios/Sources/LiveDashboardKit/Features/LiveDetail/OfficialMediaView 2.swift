@@ -2,6 +2,7 @@ import ImageIO
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import LiveIngestionCore
 
 public struct OfficialMediaResponse: Sendable {
     public let data: Data

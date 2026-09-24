@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import LiveIngestionCore
 
 public struct LiveEventCard: View {
     public let summary: DashboardEventSummary
@@ -7,17 +8,39 @@ public struct LiveEventCard: View {
     public let isRefreshing: Bool
     /// Past-tab cards render a neutral "已结束" badge instead of the upcoming-tab chrome.
     public let scope: DashboardScope
+    /// Marks or unmarks one performance. The day control stays outside the card's navigation link.
+    public var onToggleParticipation: (String) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    public init(summary: DashboardEventSummary, showsPrice: Bool = true, isRefreshing: Bool = false, scope: DashboardScope = .upcoming) {
+    public init(summary: DashboardEventSummary, showsPrice: Bool = true, isRefreshing: Bool = false, scope: DashboardScope = .upcoming, onToggleParticipation: @escaping (String) -> Void = { _ in }) {
         self.summary = summary
         self.showsPrice = showsPrice
         self.isRefreshing = isRefreshing
         self.scope = scope
+        self.onToggleParticipation = onToggleParticipation
     }
 
     public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            NavigationLink(value: DetailRoute(eventID: summary.id)) {
+                summaryContent
+            }
+            .buttonStyle(.plain)
+
+            if !summary.days.isEmpty {
+                dayRows
+            }
+
+            footerRow
+        }
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// Identity, dates, ticket phase, and the next deadline. Opens the event.
+    /// Day rows stay outside this link so their buttons do not push the detail page.
+    private var summaryContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             DashboardThumbnail(summary: summary, isRefreshing: isRefreshing)
                 .padding(.bottom, 6)
@@ -59,15 +82,11 @@ public struct LiveEventCard: View {
                 }
             }
 
-            footerRow
-
             if summary.hasImportantUpdate {
                 importantUpdateBadge
             }
         }
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-        .contentShape(.rect(cornerRadius: 16))
+        .contentShape(.rect)
         .accessibilityElement(children: .ignore)
         // `.accessibilityElement(children: .ignore)` above removes the thumbnail's own
         // accessibility node from the tree, so its identifier has to live on this combined
@@ -75,6 +94,47 @@ public struct LiveEventCard: View {
         .accessibilityIdentifier("liveEventCard-\(summary.id)")
         .accessibilityLabel(accessibilitySummary)
         .accessibilityValue(isRefreshing ? Text("正在更新", bundle: .kit) : Text(verbatim: ""))
+    }
+
+    private var dayRows: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(summary.days) { day in
+                dayRow(day)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func dayRow(_ day: DashboardDayLine) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: day.primaryText)
+                    .font(.subheadline)
+                    .multilineTextAlignment(.leading)
+                if !day.secondaryText.isEmpty {
+                    Text(verbatim: day.secondaryText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                onToggleParticipation(day.id)
+            } label: {
+                Text(day.isParticipating ? "已参加" : "参加", bundle: .kit)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background((day.isParticipating ? Color.accentColor : Color.secondary).opacity(day.isParticipating ? 0.18 : 0.12), in: Capsule())
+            }
+            .buttonStyle(.borderless)
+            .frame(minWidth: 64, minHeight: 44)
+            .contentShape(.rect)
+            .accessibilityIdentifier("participateButton-\(summary.id)-\(day.id)")
+            .accessibilityLabel(Text(verbatim: "\(day.isParticipating ? String(localized: "已参加", bundle: .kit) : String(localized: "参加", bundle: .kit)) \(day.primaryText)"))
+        }
     }
 
     /// Renders nothing when there's no next deadline, so the horizontal branch's `HStack` and
@@ -238,6 +298,12 @@ public struct LiveEventCard: View {
         if showsPrice, let priceText { parts.append(String(localized: "\(priceText)起", bundle: .kit)) }
         if summary.hasImportantUpdate { parts.append(String(localized: "有重要更新", bundle: .kit)) }
         if summary.isFollowed { parts.append(String(localized: "已关注", bundle: .kit)) }
+        for day in summary.days {
+            var line = day.primaryText
+            if !day.secondaryText.isEmpty { line += "，\(day.secondaryText)" }
+            if day.isParticipating { line += "，" + String(localized: "已参加", bundle: .kit) }
+            parts.append(line)
+        }
         return parts.joined(separator: "，")
     }
 }

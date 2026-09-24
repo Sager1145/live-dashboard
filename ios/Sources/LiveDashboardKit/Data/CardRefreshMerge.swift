@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 public enum CardRefreshError: Error, LocalizedError, Sendable {
     case unavailable

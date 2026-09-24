@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// ChatGPT account and AI-summarisation settings. Credentials never live
 /// here — only the masked account state and controls that call into
@@ -53,6 +54,7 @@ public struct AssistantSettingsView: View {
 
     public var body: some View {
         Form {
+            engineSection
             accountSection
             modelSection
             testConnectionSection
@@ -79,6 +81,39 @@ public struct AssistantSettingsView: View {
                 try? await Task.sleep(for: .milliseconds(350))
                 isCustomModelFieldFocused = true
             }
+        }
+    }
+
+    @ViewBuilder
+    private var engineSection: some View {
+        Section {
+            Picker(selection: $assistant.engine) {
+                Text("规则解析", bundle: .kit).tag(AssistantEngine.rules)
+                Text("Apple 本地整理", bundle: .kit).tag(AssistantEngine.appleOnDevice)
+                Text("云端助手", bundle: .kit).tag(AssistantEngine.openAI)
+            } label: {
+                Text("整理方式", bundle: .kit)
+            }
+            LabeledContent {
+                Text(verbatim: Self.appleIntelligenceStatusText(AppleIntelligenceStatus.current()))
+            } label: {
+                Text("Apple Intelligence", bundle: .kit)
+            }
+        } header: {
+            Text("整理方式", bundle: .kit)
+        } footer: {
+            Text("Apple 本地整理不需要登录，只处理已经保存的官网文字。模型不可用时仍可使用规则解析。不会自动改用云端或私有云。", bundle: .kit)
+        }
+    }
+
+    private static func appleIntelligenceStatusText(_ status: AppleIntelligenceAvailability) -> String {
+        switch status {
+        case .ready: "可用"
+        case .unsupportedOS: "系统版本不支持"
+        case .unsupportedDevice: "设备不支持"
+        case .modelNotReady: "模型尚未就绪"
+        case .systemDisabledOrUnavailable: "Apple Intelligence 未开启"
+        case .unsupportedSourceLanguage: "不支持日文"
         }
     }
 
@@ -360,12 +395,19 @@ public struct AssistantSettingsView: View {
     private var autoSummarizeSection: some View {
         Section {
             Toggle(isOn: $assistant.autoSummarizeAfterRefresh) { Text("官网资料更新后自动整理 AI 字段", bundle: .kit) }
-                .disabled(!assistant.account.isSignedIn)
+                .disabled(assistant.engine == .rules || !(assistant.engine == .appleOnDevice || assistant.account.isSignedIn))
         } footer: {
-            if !assistant.account.isSignedIn {
-                Text("登录后才能开启自动整理。", bundle: .kit)
-            } else {
-                Text("开启后，每次官方资料刷新且内容有变化的公演会自动生成新摘要，会消耗 AI 用量或额度。", bundle: .kit)
+            switch assistant.engine {
+            case .appleOnDevice:
+                Text("开启后，刷新到有变化的公演时才会在本机整理未确定的日期。默认关闭。", bundle: .kit)
+            case .rules:
+                Text("规则解析在抓取时完成，不调用模型。", bundle: .kit)
+            case .openAI:
+                if !assistant.account.isSignedIn {
+                    Text("登录后才能开启自动整理。", bundle: .kit)
+                } else {
+                    Text("开启后，每次官方资料刷新且内容有变化的公演会自动生成新摘要，会消耗 AI 用量或额度。", bundle: .kit)
+                }
             }
         }
     }

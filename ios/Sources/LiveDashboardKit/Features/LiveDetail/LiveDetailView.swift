@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 #if canImport(Translation)
 @preconcurrency import Translation
 #endif
@@ -10,26 +11,53 @@ public struct LiveDetailView: View {
     private let repository: LiveRepository
     private let installationService: InstallationService
     private let assistant: AssistantCoordinator
+    private let externalStore: ExternalDataStore?
     private let onBundleRefresh: (@MainActor (LiveEventBundle) -> Void)?
     @State private var history: [EventChangeHistory] = []
     @State private var showsHistory = false
-    /// Feedback row shown under the action row after a personal-reminder or
-    /// card-refresh action completes. `succeeded` drives the icon/colour.
+    /// Feedback row shown under the action row after a personal-reminder
+    /// action completes. `succeeded` drives the icon/colour.
     private struct Feedback: Equatable {
         let message: String
         let succeeded: Bool
     }
+    /// Card refresh is not binary: no official payload is informational, not a failure.
+    private enum CardRefreshKind: Equatable {
+        case success
+        case informational
+        case failure
+
+        var systemImage: String {
+            switch self {
+            case .success: "checkmark.circle"
+            case .informational: "info.circle"
+            case .failure: "exclamationmark.circle"
+            }
+        }
+
+        var foregroundStyle: Color {
+            switch self {
+            case .success: .statusPositive
+            case .informational: .statusInfo
+            case .failure: .statusCritical
+            }
+        }
+    }
+    private struct CardRefreshFeedback: Equatable {
+        let message: String
+        let kind: CardRefreshKind
+    }
     @State private var reminderFeedback: Feedback?
     @State private var isRefreshingCard = false
-    @State private var cardRefreshMessage: String?
-    @State private var cardRefreshSucceeded = false
+    @State private var cardRefreshFeedback: CardRefreshFeedback?
     @State private var activeRefreshCardKey: CardConfiguration.Key?
+    @State private var communityEnrichment: CommunityPerformanceEnrichment?
     @AppStorage("translation.targetLanguage") private var translationTargetRaw = TranslationTargetLanguage.followApp.rawValue
     @State private var translationAlertMessage: String?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var translationStore: TranslationStore { TranslationStore.shared }
 
-    public init(bundle: LiveEventBundle, initialPerformanceID: String? = nil, initialTab: DetailTab = .overview, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, installationService: InstallationService, assistant: AssistantCoordinator, onBundleRefresh: (@MainActor (LiveEventBundle) -> Void)? = nil) {
+    public init(bundle: LiveEventBundle, initialPerformanceID: String? = nil, initialTab: DetailTab = .overview, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, installationService: InstallationService, assistant: AssistantCoordinator, externalStore: ExternalDataStore? = nil, onBundleRefresh: (@MainActor (LiveEventBundle) -> Void)? = nil) {
         let store = LiveDetailStore(bundle: bundle, initialPerformanceID: initialPerformanceID, userDataStore: userDataStore)
         store.selectedTab = initialTab
         _store = State(initialValue: store)
@@ -38,6 +66,7 @@ public struct LiveDetailView: View {
         self.repository = repository
         self.installationService = installationService
         self.assistant = assistant
+        self.externalStore = externalStore
         self.onBundleRefresh = onBundleRefresh
     }
 
@@ -80,17 +109,17 @@ public struct LiveDetailView: View {
 
                 dataSourceBlock
 
-                criticalNotices
-
-                if let url = URL(string: store.bundle.event.primarySourceURL) {
-                    Link(destination: url) {
-                        Label { Text("查看官方公演页面", bundle: .kit) } icon: { Image(systemName: "arrow.up.right.square") }
-                    }
-                    .font(.subheadline)
-                }
-
                 Section {
                     VStack(alignment: .leading, spacing: 16) {
+                        criticalNotices
+
+                        if let url = URL(string: store.bundle.event.primarySourceURL) {
+                            Link(destination: url) {
+                                Label { Text("查看官方公演页面", bundle: .kit) } icon: { Image(systemName: "arrow.up.right.square") }
+                            }
+                            .font(.subheadline)
+                        }
+
                         if let current = store.replacedPerformanceID != nil ? store.selectedPerformance : nil {
                             Label {
                                 Text("所选场次在当前资料来源中不存在，已改为显示 \(PerformanceSelector.shortLabel(for: current, in: store.bundle))", bundle: .kit)
@@ -112,14 +141,14 @@ public struct LiveDetailView: View {
                             .font(.caption)
                             .foregroundStyle(reminderFeedback.succeeded ? .statusPositive : .statusCritical)
                         }
-                        if let cardRefreshMessage {
+                        if let cardRefreshFeedback {
                             Label {
-                                Text(cardRefreshMessage)
+                                Text(cardRefreshFeedback.message)
                             } icon: {
-                                Image(systemName: cardRefreshSucceeded ? "checkmark.circle" : "exclamationmark.circle")
+                                Image(systemName: cardRefreshFeedback.kind.systemImage)
                             }
                             .font(.caption)
-                            .foregroundStyle(cardRefreshSucceeded ? .statusPositive : .statusCritical)
+                            .foregroundStyle(cardRefreshFeedback.kind.foregroundStyle)
                         }
 
                         additionalNotices
@@ -152,8 +181,7 @@ public struct LiveDetailView: View {
                     Task {
                         let result = await assistant.generate(for: store.officialBundle, force: true)
                         if result == nil, let error = assistant.error(for: eventID) {
-                            cardRefreshMessage = error
-                            cardRefreshSucceeded = false
+                            cardRefreshFeedback = CardRefreshFeedback(message: error, kind: .failure)
                         }
                     }
                 } label: {
@@ -199,10 +227,10 @@ public struct LiveDetailView: View {
                 }
             }
         }
-        .onChange(of: store.selectedTab) { _, _ in cardRefreshMessage = nil; cardRefreshSucceeded = false }
+        .onChange(of: store.selectedTab) { _, _ in cardRefreshFeedback = nil }
+        .task(id: store.selectedPerformanceID) { await loadCommunityEnrichment() }
         .onChange(of: store.selectedPerformanceID) { _, _ in
-            cardRefreshMessage = nil
-            cardRefreshSucceeded = false
+            cardRefreshFeedback = nil
             reminderFeedback = nil
         }
         .alert(
@@ -393,7 +421,18 @@ public struct LiveDetailView: View {
         case .tickets: TicketsView(store: store, userDataStore: userDataStore, reminderService: reminderService, installationService: installationService)
         case .seating: SeatingView(store: store, userDataStore: userDataStore)
         case .goods: GoodsView(store: store, userDataStore: userDataStore)
+        case .community: CommunityEnrichmentView(enrichment: communityEnrichment)
         }
+    }
+
+    private func loadCommunityEnrichment() async {
+        guard let externalStore, let performance = store.selectedPerformance else {
+            communityEnrichment = nil
+            return
+        }
+        let catalog = try? await externalStore.communityCatalog()
+        let references = (try? await externalStore.references()) ?? []
+        communityEnrichment = CommunityIngestor.enrichment(performance: performance, event: store.bundle.event, catalog: catalog, references: references)
     }
 
     @ViewBuilder private var criticalNotices: some View {
@@ -487,20 +526,25 @@ public struct LiveDetailView: View {
         guard !isRefreshingCard else { return }
         isRefreshingCard = true
         activeRefreshCardKey = CardConfiguration.Key(cardType: cardType, entityID: entityID, eventID: nil)
-        cardRefreshMessage = nil
-        cardRefreshSucceeded = false
+        cardRefreshFeedback = nil
         defer {
             isRefreshingCard = false
             activeRefreshCardKey = nil
-            if let cardRefreshMessage { AccessibilityNotification.Announcement(cardRefreshMessage).post() }
+            if let cardRefreshFeedback {
+                AccessibilityNotification.Announcement(cardRefreshFeedback.message).post()
+            }
         }
 
         if store.hasAssistantData, store.usesAssistantData {
             let result = await assistant.generate(for: store.officialBundle, force: true)
-            cardRefreshSucceeded = result != nil
-            cardRefreshMessage = result != nil
-                ? String(localized: "AI 字段已重新整理并保存", bundle: .kit)
-                : assistant.error(for: store.officialBundle.event.id)
+            if result != nil {
+                cardRefreshFeedback = CardRefreshFeedback(
+                    message: String(localized: "AI 字段已重新整理并保存", bundle: .kit),
+                    kind: .success
+                )
+            } else if let error = assistant.error(for: store.officialBundle.event.id) {
+                cardRefreshFeedback = CardRefreshFeedback(message: error, kind: .failure)
+            }
             return
         }
 
@@ -510,19 +554,34 @@ public struct LiveDetailView: View {
                 cardType: cardType,
                 entityID: entityID
             ) else {
-                cardRefreshMessage = String(localized: "此卡片暂无可更新的官方资料", bundle: .kit)
+                // refresh returns nil only when this event is missing from the catalog.
+                cardRefreshFeedback = CardRefreshFeedback(
+                    message: String(localized: "重新整理失败：此公演在当前资料来源中不存在", bundle: .kit),
+                    kind: .failure
+                )
                 return
             }
             store.replaceBundle(updated)
             onBundleRefresh?(updated)
-            cardRefreshMessage = String(localized: "此卡片已更新", bundle: .kit)
-            cardRefreshSucceeded = true
+            cardRefreshFeedback = CardRefreshFeedback(
+                message: String(localized: "此卡片已更新", bundle: .kit),
+                kind: .success
+            )
             if assistant.autoSummarizeAfterRefresh, assistant.account.isSignedIn, assistant.isStale(updated) {
                 Task { await assistant.generate(for: updated) }
             }
         } catch {
-            cardRefreshMessage = String(localized: "重新整理失败：\(error.localizedDescription)", bundle: .kit)
-            cardRefreshSucceeded = false
+            if case .unavailable = error as? CardRefreshError {
+                cardRefreshFeedback = CardRefreshFeedback(
+                    message: error.localizedDescription,
+                    kind: .informational
+                )
+            } else {
+                cardRefreshFeedback = CardRefreshFeedback(
+                    message: String(localized: "重新整理失败：\(error.localizedDescription)", bundle: .kit),
+                    kind: .failure
+                )
+            }
         }
     }
 }

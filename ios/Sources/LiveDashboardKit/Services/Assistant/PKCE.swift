@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import Security
+import LiveIngestionCore
 
 /// RFC 7636 PKCE parameters for the ChatGPT OAuth authorization-code flow.
 public struct PKCE: Sendable {

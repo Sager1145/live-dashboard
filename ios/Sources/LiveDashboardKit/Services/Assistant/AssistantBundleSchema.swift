@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// Strict structured-output schema for reconstructing a `LiveEventBundle`
 /// from an official event page. Optional Swift properties remain required in

@@ -1,9 +1,17 @@
 import Foundation
+import LiveIngestionCore
 
 public enum EventFormatting {
     /// "9月11日 15:00 JST" style: abbreviated date, short time, short generic zone name. Uses current locale.
     public static func dateTime(_ date: Date, in timeZone: TimeZone) -> String {
         var style = Date.FormatStyle.dateTime.month().day().hour().minute().timeZone(.specificName(.short))
+        style.timeZone = timeZone
+        return date.formatted(style)
+    }
+
+    /// Clock time only, in the given zone: "18:00". No date and no zone suffix.
+    public static func clockTime(_ date: Date, in timeZone: TimeZone) -> String {
+        var style = Date.FormatStyle.dateTime.hour().minute()
         style.timeZone = timeZone
         return date.formatted(style)
     }

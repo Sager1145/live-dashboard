@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 struct HorizontalSelectionOption<Value: Hashable>: Identifiable {
     let value: Value

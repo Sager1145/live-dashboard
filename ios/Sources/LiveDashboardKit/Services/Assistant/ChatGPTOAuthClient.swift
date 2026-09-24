@@ -4,6 +4,7 @@ import AuthenticationServices
 #endif
 #if canImport(UIKit)
 import UIKit
+import LiveIngestionCore
 #endif
 
 public enum ChatGPTOAuthError: Error, LocalizedError, Sendable, Equatable {

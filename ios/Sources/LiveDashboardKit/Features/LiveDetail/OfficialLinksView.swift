@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// A titled list of official links captured verbatim from the source page,
 /// deduplicated against any URLs already shown elsewhere on the card (e.g.

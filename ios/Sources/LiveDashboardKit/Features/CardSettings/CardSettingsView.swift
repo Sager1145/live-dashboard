@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// Global (cross-event) card layout settings, grouped by the tab each card
 /// type belongs to. Only the Overview tab's cards are true singletons (one
@@ -120,8 +121,9 @@ public struct CardSettingsView: View {
             } label: {
                 Text("密度", bundle: .kit)
             }
-            if !type.supportedFields.isEmpty {
-                fieldTogglesSection(value, fields: type.supportedFields)
+            let fields = Self.offeredFields(for: type)
+            if !fields.isEmpty {
+                fieldTogglesSection(value, fields: fields)
             }
             Button {
                 restoreTarget = type
@@ -157,6 +159,13 @@ public struct CardSettingsView: View {
         return parts
     }
 
+    /// Field toggles for one card type. This is `CardType.supportedFields`
+    /// (the keys that card's view actually passes to `shows(_:)`), not
+    /// `CardField.allCases`.
+    static func offeredFields(for type: CardType) -> [CardField] {
+        type.supportedFields
+    }
+
     @ViewBuilder
     private func fieldTogglesSection(_ value: CardConfiguration, fields: [CardField]) -> some View {
         ForEach(fields, id: \.self) { field in
@@ -164,11 +173,7 @@ public struct CardSettingsView: View {
                 get: { value.shows(field) },
                 set: { enabled in
                     var changed = value
-                    if !changed.visibleFields.contains(CardField.configuredMarker) {
-                        changed.visibleFields = Set(CardField.allCases.map(\.rawValue))
-                        changed.visibleFields.insert(CardField.configuredMarker)
-                    }
-                    if enabled { changed.visibleFields.insert(field.rawValue) } else { changed.visibleFields.remove(field.rawValue) }
+                    changed.setShows(field, enabled: enabled)
                     userDataStore.setConfiguration(changed)
                 }
             )) {

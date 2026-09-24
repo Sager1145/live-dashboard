@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// Refresh work is owned by `LiveDetailView`, while the menu remains reusable
 /// by every detail card. A missing action means this presentation does not

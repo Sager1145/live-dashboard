@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftData
+import LiveIngestionCore
 
 @Model
 public final class UserEventRecord {
@@ -14,6 +15,21 @@ public final class UserEventRecord {
         self.isFollowed = isFollowed
         self.planningToAttend = planningToAttend
         self.selectedPerformanceID = selectedPerformanceID
+    }
+}
+
+/// One performance the user marked as planning to attend. Absence means that day is not
+/// individually marked; an event-level `planningToAttend` with no rows still means every day.
+@Model
+public final class UserPerformanceParticipationRecord {
+    @Attribute(.unique) public var stableID: String
+    public var eventID: String
+    public var performanceID: String
+
+    public init(eventID: String, performanceID: String) {
+        stableID = "\(eventID)::\(performanceID)"
+        self.eventID = eventID
+        self.performanceID = performanceID
     }
 }
 
@@ -127,7 +143,7 @@ public final class UserDataStore {
     }
 
     public static func makeContainer(inMemory: Bool = false) -> ModelContainer {
-        let schema = Schema([UserEventRecord.self, UserRoundRecordModel.self, CardPreferenceRecord.self, PersonalReminderRecord.self, OfficialReminderPreference.self])
+        let schema = Schema([UserEventRecord.self, UserPerformanceParticipationRecord.self, UserRoundRecordModel.self, CardPreferenceRecord.self, PersonalReminderRecord.self, OfficialReminderPreference.self])
         let configuration = ModelConfiguration("PrivateUserState", schema: schema, isStoredInMemoryOnly: inMemory)
         do { return try ModelContainer(for: schema, configurations: [configuration]) }
         catch { fatalError("Unable to create private user store: \(error)") }
@@ -136,7 +152,38 @@ public final class UserDataStore {
     public func state(for eventID: String) -> UserEventState { eventStates[eventID] ?? UserEventState(eventID: eventID) }
 
     public func setFollowed(_ value: Bool, eventID: String) { updateEvent(eventID) { $0.isFollowed = value } }
-    public func setPlanningToAttend(_ value: Bool, eventID: String) { updateEvent(eventID) { $0.planningToAttend = value } }
+
+    /// Event-wide plan. Clears per-day marks so the flag applies to every performance again.
+    public func setPlanningToAttend(_ value: Bool, eventID: String) {
+        replaceParticipations(eventID: eventID, performanceIDs: [])
+        updateEvent(eventID) { $0.planningToAttend = value }
+    }
+
+    /// Marks or unmarks a single performance. An event-wide plan is expanded to the known
+    /// performances first, so turning one day off leaves the others marked.
+    public func toggleParticipation(eventID: String, performanceID: String, knownPerformanceIDs: [String]) {
+        let state = state(for: eventID)
+        var ids = Set(state.participatingPerformanceIDs)
+        if state.planningToAttend && ids.isEmpty {
+            ids = Set(knownPerformanceIDs)
+        }
+        if ids.contains(performanceID) { ids.remove(performanceID) } else { ids.insert(performanceID) }
+        replaceParticipations(eventID: eventID, performanceIDs: ids)
+        updateEvent(eventID) { $0.planningToAttend = !ids.isEmpty }
+    }
+
+    /// Sets one performance's personal participation. A second call with the same
+    /// value does not change stored rows. It never deletes the official event.
+    public func setParticipation(eventID: String, performanceID: String, participate: Bool, knownPerformanceIDs: [String]) {
+        let state = state(for: eventID)
+        var ids = Set(state.participatingPerformanceIDs)
+        if state.planningToAttend && ids.isEmpty { ids = Set(knownPerformanceIDs) }
+        let covered = ids.contains(performanceID)
+        if participate == covered { return }
+        if participate { ids.insert(performanceID) } else { ids.remove(performanceID) }
+        replaceParticipations(eventID: eventID, performanceIDs: ids)
+        updateEvent(eventID) { $0.planningToAttend = !ids.isEmpty }
+    }
     public func setSelectedPerformance(_ performanceID: String?, eventID: String) { updateEvent(eventID) { $0.selectedPerformanceID = performanceID } }
     public func selectedPerformanceID(eventID: String) -> String? {
         fetchEvent(eventID)?.selectedPerformanceID
@@ -274,8 +321,32 @@ public final class UserDataStore {
                 round.stableID = replacementStableID
                 claimedStableIDs.insert(replacementStableID)
             }
+
+            let orphanedDays = (try? context.fetch(FetchDescriptor<UserPerformanceParticipationRecord>(predicate: #Predicate { $0.eventID == sourceEventID }))) ?? []
+            for day in orphanedDays {
+                guard replacement.performances.contains(where: { $0.id == day.performanceID }) else { continue }
+                let replacementStableID = "\(remap.replacementID)::\(day.performanceID)"
+                if claimedStableIDs.contains(replacementStableID) { continue }
+                let existingDescriptor = FetchDescriptor<UserPerformanceParticipationRecord>(predicate: #Predicate { $0.stableID == replacementStableID })
+                if (try? context.fetch(existingDescriptor).first) != nil { continue }
+                day.eventID = remap.replacementID
+                day.stableID = replacementStableID
+                claimedStableIDs.insert(replacementStableID)
+            }
         }
         commit()
+    }
+
+    private func replaceParticipations(eventID: String, performanceIDs: Set<String>) {
+        let targetEventID = eventID
+        let existing = (try? context.fetch(FetchDescriptor<UserPerformanceParticipationRecord>(predicate: #Predicate { $0.eventID == targetEventID }))) ?? []
+        for record in existing where !performanceIDs.contains(record.performanceID) {
+            context.delete(record)
+        }
+        let already = Set(existing.map(\.performanceID))
+        for performanceID in performanceIDs where !already.contains(performanceID) {
+            context.insert(UserPerformanceParticipationRecord(eventID: eventID, performanceID: performanceID))
+        }
     }
 
     private func updateEvent(_ eventID: String, mutate: (UserEventRecord) -> Void) {
@@ -294,15 +365,20 @@ public final class UserDataStore {
     private func reload() {
         let events = (try? context.fetch(FetchDescriptor<UserEventRecord>())) ?? []
         let rounds = (try? context.fetch(FetchDescriptor<UserRoundRecordModel>())) ?? []
+        let participations = (try? context.fetch(FetchDescriptor<UserPerformanceParticipationRecord>())) ?? []
         let roundsByEvent = Dictionary(grouping: rounds, by: \.eventID)
+        let daysByEvent = Dictionary(grouping: participations, by: \.eventID).mapValues { $0.map(\.performanceID).sorted() }
         var states: [String: UserEventState] = [:]
         for event in events {
             let values = (roundsByEvent[event.eventID] ?? []).map { UserRoundRecord(roundID: $0.roundID, applied: $0.applied, paid: $0.paid, hasBaseTicket: $0.hasBaseTicket) }
-            states[event.eventID] = UserEventState(eventID: event.eventID, isFollowed: event.isFollowed, planningToAttend: event.planningToAttend, roundRecords: values)
+            states[event.eventID] = UserEventState(eventID: event.eventID, isFollowed: event.isFollowed, planningToAttend: event.planningToAttend, participatingPerformanceIDs: daysByEvent[event.eventID] ?? [], roundRecords: values)
         }
         for (eventID, roundModels) in roundsByEvent where states[eventID] == nil {
             let values = roundModels.map { UserRoundRecord(roundID: $0.roundID, applied: $0.applied, paid: $0.paid, hasBaseTicket: $0.hasBaseTicket) }
-            states[eventID] = UserEventState(eventID: eventID, isFollowed: false, planningToAttend: false, roundRecords: values)
+            states[eventID] = UserEventState(eventID: eventID, isFollowed: false, planningToAttend: false, participatingPerformanceIDs: daysByEvent[eventID] ?? [], roundRecords: values)
+        }
+        for (eventID, dayIDs) in daysByEvent where states[eventID] == nil {
+            states[eventID] = UserEventState(eventID: eventID, participatingPerformanceIDs: dayIDs)
         }
         eventStates = states
         let cards = (try? context.fetch(FetchDescriptor<CardPreferenceRecord>())) ?? []

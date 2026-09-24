@@ -1,6 +1,7 @@
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
+import LiveIngestionCore
 #endif
 
 public struct TicketsView: View {
@@ -159,6 +160,16 @@ public struct TicketsView: View {
                             recentlyHidden = nil
                         } label: {
                             Text("恢复显示", bundle: .kit)
+                        }
+                    }
+                } else if bundleHasTicketData, store.selectedPerformance == nil {
+                    ContentUnavailableView {
+                        Label { Text("尚无可用场次资料", bundle: .kit) } icon: { Image(systemName: "calendar.badge.exclamationmark") }
+                    } description: {
+                        Text("官网尚未公布场次，或当前资料来源中没有场次。", bundle: .kit)
+                    } actions: {
+                        if let url = URL(string: store.bundle.event.primarySourceURL) {
+                            Link(destination: url) { Text("查看官方公演页面", bundle: .kit) }
                         }
                     }
                 } else if bundleHasTicketData {
@@ -786,7 +797,7 @@ struct TicketBenefitCard: View {
                 }
 
                 ForEach(store.bundle.mediaAssets.filter { benefit.mediaAssetIDs.contains($0.id) }) { asset in
-                    OfficialMediaView(asset: asset, compact: true)
+                    OfficialMediaView(asset: asset, fitsWidth: true)
                 }
 
                 if config.shows(.source) {

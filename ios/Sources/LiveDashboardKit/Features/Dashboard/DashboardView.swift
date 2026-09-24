@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public struct DashboardView: View {
     @Bindable var store: DashboardStore
@@ -8,6 +9,7 @@ public struct DashboardView: View {
     let router: AppRouter
     let installationService: InstallationService
     let assistant: AssistantCoordinator
+    let externalStore: ExternalDataStore?
     /// `.upcoming` is the main "演出" tab; `.past` is the "往期" tab showing ended events.
     let scope: DashboardScope
     @State private var showsFilters = false
@@ -15,7 +17,7 @@ public struct DashboardView: View {
     @State private var isErrorExpanded = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    public init(store: DashboardStore, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, router: AppRouter, installationService: InstallationService, assistant: AssistantCoordinator, scope: DashboardScope = .upcoming) {
+    public init(store: DashboardStore, userDataStore: UserDataStore, reminderService: ReminderScheduling, repository: LiveRepository, router: AppRouter, installationService: InstallationService, assistant: AssistantCoordinator, externalStore: ExternalDataStore? = nil, scope: DashboardScope = .upcoming) {
         self.store = store
         self.userDataStore = userDataStore
         self.reminderService = reminderService
@@ -23,6 +25,7 @@ public struct DashboardView: View {
         self.router = router
         self.installationService = installationService
         self.assistant = assistant
+        self.externalStore = externalStore
         self.scope = scope
     }
 
@@ -43,10 +46,9 @@ public struct DashboardView: View {
             ScrollView {
                 LazyVGrid(columns: gridColumns, spacing: 16) {
                     ForEach(summaries) { summary in
-                        NavigationLink(value: DetailRoute(eventID: summary.id)) {
-                            LiveEventCard(summary: summary, isRefreshing: store.refreshingEventIDs.contains(summary.id), scope: scope)
+                        LiveEventCard(summary: summary, isRefreshing: store.refreshingEventIDs.contains(summary.id), scope: scope) { performanceID in
+                            store.toggleDayParticipation(eventID: summary.id, performanceID: performanceID)
                         }
-                        .buttonStyle(.plain)
                         .contextMenu {
                             Button {
                                 Task { await store.refresh(eventID: summary.id) }
@@ -110,7 +112,7 @@ public struct DashboardView: View {
                 if let bundle = store.bundles.first(where: { $0.event.id == route.eventID }) {
                     // Keyed on the route so replacing the stack for a deep link rebuilds the
                     // detail (and its store) instead of reusing the previous event's state.
-                    LiveDetailView(bundle: bundle, initialPerformanceID: route.performanceID, initialTab: route.tab, userDataStore: userDataStore, reminderService: reminderService, repository: repository, installationService: installationService, assistant: assistant, onBundleRefresh: store.acceptRefreshedBundle)
+                    LiveDetailView(bundle: bundle, initialPerformanceID: route.performanceID, initialTab: route.tab, userDataStore: userDataStore, reminderService: reminderService, repository: repository, installationService: installationService, assistant: assistant, externalStore: externalStore, onBundleRefresh: store.acceptRefreshedBundle)
                         .id(route)
                 } else if store.isLoading || store.isRefreshing {
                     ProgressView { Text("正在载入资料…", bundle: .kit) }
@@ -230,7 +232,7 @@ public struct DashboardView: View {
             if store.bundles.isEmpty {
                 if store.isRefreshing {
                     ProgressView {
-                        Text("正在检查官方资料…", bundle: .kit)
+                        Text("正在检查官方资料，请稍候…", bundle: .kit)
                     }
                 } else if let error = store.errorMessage {
                     ContentUnavailableView {
@@ -560,6 +562,8 @@ struct DashboardFiltersView: View {
                     }
                 } header: {
                     Text("日期", bundle: .kit)
+                } footer: {
+                    Text("只重置此处的条件，不影响年份、月份和搜索", bundle: .kit)
                 }
             }
             .navigationTitle(Text("筛选", bundle: .kit))

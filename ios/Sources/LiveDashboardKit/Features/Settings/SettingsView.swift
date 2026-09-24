@@ -1,20 +1,23 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import LiveIngestionCore
 
 public struct SettingsView: View {
     @Bindable var dashboardStore: DashboardStore
     let userDataStore: UserDataStore
     let assistant: AssistantCoordinator
+    let externalStore: ExternalDataStore?
     let reminderService: ReminderScheduling
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @AppStorage("translation.targetLanguage") private var translationTargetRaw = TranslationTargetLanguage.followApp.rawValue
     @Environment(\.openURL) private var openURL
 
-    public init(dashboardStore: DashboardStore, userDataStore: UserDataStore, assistant: AssistantCoordinator, reminderService: ReminderScheduling = ReminderService()) {
+    public init(dashboardStore: DashboardStore, userDataStore: UserDataStore, assistant: AssistantCoordinator, externalStore: ExternalDataStore? = nil, reminderService: ReminderScheduling = ReminderService()) {
         self.dashboardStore = dashboardStore
         self.userDataStore = userDataStore
         self.assistant = assistant
+        self.externalStore = externalStore
         self.reminderService = reminderService
     }
 
@@ -58,6 +61,9 @@ public struct SettingsView: View {
                         Text("翻译在设备上完成，不上传官网内容；首次使用某个语言时系统会提示下载语言包。翻译需要手动点击，默认始终显示官网原文。", bundle: .kit)
                         Text("在系统设置中为本 App 选择简体中文、繁體中文、English 或 日本語。", bundle: .kit)
                     }
+                }
+                if let externalStore {
+                    CommunityImportSection(externalStore: externalStore, bundles: dashboardStore.bundles, userDataStore: userDataStore)
                 }
                 Section {
                     LabeledContent {
@@ -168,7 +174,7 @@ private struct DataManagementView: View {
                     if dashboardStore.isRefreshing && !dashboardStore.isFetchingHistory {
                         HStack {
                             ProgressView()
-                            Text("正在检查官方资料…", bundle: .kit)
+                            Text("正在检查官方资料，请稍候…", bundle: .kit)
                         }
                     } else {
                         Label { Text("立即检查官方资料", bundle: .kit) } icon: { Image(systemName: "arrow.clockwise") }

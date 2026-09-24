@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 public enum AssistantError: Error, LocalizedError, Sendable {
     case notSignedIn

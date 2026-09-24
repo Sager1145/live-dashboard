@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// Determines default card ordering per detail tab, and how user
 /// `CardConfiguration` overrides apply on top of that default. Overrides are

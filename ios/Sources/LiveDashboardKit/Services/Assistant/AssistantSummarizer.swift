@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import LiveIngestionCore
 
 public struct AssistantSummarizer: Sendable {
     private let client: OpenAIResponsesClient

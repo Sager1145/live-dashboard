@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import LiveIngestionCore
 
 public struct LiveSelection: Equatable, Codable, Sendable {
     public var eventID: String
@@ -12,7 +13,7 @@ public struct LiveSelection: Equatable, Codable, Sendable {
     }
 }
 
-/// Drives the four detail tabs off a single `selectedPerformanceID`. Per
+/// Drives the detail tabs off a single `selectedPerformanceID`. Per
 /// DESIGN.md 四.3: switching the performance keeps the current tab, but every
 /// tab re-resolves its content against the new selection.
 @Observable

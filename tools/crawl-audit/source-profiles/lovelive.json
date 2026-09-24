@@ -1,0 +1,8 @@
+{
+  "id": "lovelive-detail",
+  "hostSuffix": "lovelive-anime.jp",
+  "contentSelectors": [".component-livetext", "[data-target]"],
+  "paneAttribute": "data-target",
+  "panes": ["top", "ticket", "ticket2", "goods", "streaming"],
+  "headingSelector": "h1, h2, h3, h4"
+}

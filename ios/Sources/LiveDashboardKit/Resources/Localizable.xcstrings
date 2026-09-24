@@ -206,29 +206,6 @@
         }
       }
     },
-    "•" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "•"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "•"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "•"
-          }
-        }
-      }
-    },
     "¥%lld起" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -613,6 +590,15 @@
           }
         }
       }
+    },
+    "Apple Intelligence" : {
+
+    },
+    "Apple 本地整理" : {
+
+    },
+    "Apple 本地整理不需要登录，只处理已经保存的官网文字。模型不可用时仍可使用规则解析。不会自动改用云端或私有云。" : {
+
     },
     "Apple 本机翻译，非官方资料，请以官网为准" : {
       "extractionState" : "manual",
@@ -1301,6 +1287,9 @@
           }
         }
       }
+    },
+    "云端助手" : {
+
     },
     "仅删除此 Live 的 AI 结果，保留官网资料。之后可手动重新整理。" : {
       "localizations" : {
@@ -2550,6 +2539,9 @@
         }
       }
     },
+    "写入个人参加记录" : {
+
+    },
     "凭据无效，已退出登录" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2640,6 +2632,9 @@
           }
         }
       }
+    },
+    "出演者或演出" : {
+
     },
     "分享" : {
       "extractionState" : "manual",
@@ -2845,6 +2840,7 @@
       }
     },
     "前往官方申请" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3115,6 +3111,9 @@
           }
         }
       }
+    },
+    "参加" : {
+
     },
     "发布时间" : {
       "localizations" : {
@@ -3433,6 +3432,9 @@
           }
         }
       }
+    },
+    "同时写入冲突记录" : {
+
     },
     "同时显示设备本地时间" : {
       "localizations" : {
@@ -4182,6 +4184,9 @@
         }
       }
     },
+    "场馆补充" : {
+
+    },
     "场馆通用图，不代表本次舞台布局" : {
       "localizations" : {
         "en" : {
@@ -4223,6 +4228,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "場館通用座位圖"
+          }
+        }
+      }
+    },
+    "处理日志" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progress log"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "処理ログ"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "處理記錄"
           }
         }
       }
@@ -4318,6 +4346,9 @@
           }
         }
       }
+    },
+    "字段对照" : {
+
     },
     "安装身份已撤销" : {
       "extractionState" : "stale",
@@ -5031,6 +5062,15 @@
         }
       }
     },
+    "导入参加记录备份" : {
+
+    },
+    "导入同一版本的社区快照后，这里显示对照和歌单。" : {
+
+    },
+    "导入社区快照" : {
+
+    },
     "将恢复显示、显示密度、字段及置顶设置，并清除该卡片在各场演出中的单独覆盖。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5392,6 +5432,19 @@
         }
       }
     },
+    "已匹配 %lld 条，未匹配 %lld 条，冲突 %lld 条" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "已匹配 %1$lld 条，未匹配 %2$lld 条，冲突 %3$lld 条"
+          }
+        }
+      }
+    },
+    "已参加" : {
+
+    },
     "已取消" : {
       "localizations" : {
         "en" : {
@@ -5691,6 +5744,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已擷取 %lld 場公演（%@ 至 %@）"
+          }
+        }
+      }
+    },
+    "已提交给 AI，正在等待结果…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent to AI. Waiting for a response…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AIに送信しました。結果を待っています…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已提交給 AI，正在等待結果…"
           }
         }
       }
@@ -6056,6 +6132,9 @@
         }
       }
     },
+    "开启后，刷新到有变化的公演时才会在本机整理未确定的日期。默认关闭。" : {
+
+    },
     "开启后，每次官方资料刷新且内容有变化的公演会自动生成新摘要，会消耗 AI 用量或额度。" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6351,6 +6430,9 @@
           }
         }
       }
+    },
+    "快照只补充对照和歌单。参加记录备份不会删除官网活动，也不能当作账号同步。" : {
+
     },
     "总览" : {
       "extractionState" : "manual",
@@ -7055,6 +7137,9 @@
         }
       }
     },
+    "搜索 Eventernote" : {
+
+    },
     "撤销" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7146,6 +7231,9 @@
           }
         }
       }
+    },
+    "整理方式" : {
+
     },
     "无法下载官方图片" : {
       "extractionState" : "manual",
@@ -7651,6 +7739,9 @@
           }
         }
       }
+    },
+    "显示歌单" : {
+
     },
     "暂无已发布变更" : {
       "localizations" : {
@@ -8312,6 +8403,16 @@
         }
       }
     },
+    "来源 %@%@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "来源 %1$@%2$@"
+          }
+        }
+      }
+    },
     "来源核对" : {
       "localizations" : {
         "en" : {
@@ -8626,6 +8727,28 @@
         }
       }
     },
+    "概览卡片已全部隐藏" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All overview cards are hidden"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概要カードはすべて非表示です"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概覽卡片已全部隱藏"
+          }
+        }
+      }
+    },
     "模型" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8648,6 +8771,12 @@
           }
         }
       }
+    },
+    "歌单" : {
+
+    },
+    "歌单默认遮住，避免剧透。" : {
+
     },
     "正在 AI 整理" : {
       "extractionState" : "manual",
@@ -8691,6 +8820,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在下載翻譯語言"
+          }
+        }
+      }
+    },
+    "正在保存整理结果…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving the summary…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理結果を保存しています…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在儲存整理結果…"
           }
         }
       }
@@ -8747,6 +8899,29 @@
         }
       }
     },
+    "正在整理官网资料…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing official information…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公式情報を整理しています…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在整理官網資料…"
+          }
+        }
+      }
+    },
     "正在更新" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8766,6 +8941,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在更新"
+          }
+        }
+      }
+    },
+    "正在校验 AI 返回的资料…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validating the AI response…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AIの結果を検証しています…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在驗證 AI 回傳的資料…"
           }
         }
       }
@@ -8793,25 +8991,25 @@
         }
       }
     },
-    "正在检查官方资料…" : {
+    "正在检查官方资料，请稍候…" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking official information…"
+            "value" : "Checking official information. Please wait…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "公式情報を確認しています…"
+            "value" : "公式情報を確認しています。しばらくお待ちください…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在檢查官方資料…"
+            "value" : "正在檢查官方資料，請稍候…"
           }
         }
       }
@@ -8858,6 +9056,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在翻譯"
+          }
+        }
+      }
+    },
+    "正在读取官网页面…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading the official page…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公式ページを読み込んでいます…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在讀取官網頁面…"
           }
         }
       }
@@ -9126,6 +9347,9 @@
           }
         }
       }
+    },
+    "没有社区补充" : {
+
     },
     "没有符合条件的往期演出" : {
       "localizations" : {
@@ -9650,6 +9874,9 @@
         }
       }
     },
+    "用 Apple 本地整理本公演" : {
+
+    },
     "由 %@ 生成 · %@ · 非官方资料，请以官网为准" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10129,6 +10356,15 @@
           }
         }
       }
+    },
+    "社区记录为实际歌单。" : {
+
+    },
+    "社区资料" : {
+
+    },
+    "社区资料只作对照，不替换官网日程、票务和状态。" : {
+
     },
     "票价" : {
       "extractionState" : "stale",
@@ -10834,6 +11070,9 @@
         }
       }
     },
+    "补充" : {
+
+    },
     "补票" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10856,6 +11095,12 @@
           }
         }
       }
+    },
+    "规则解析" : {
+
+    },
+    "规则解析在抓取时完成，不调用模型。" : {
+
     },
     "解析失败" : {
       "extractionState" : "manual",
@@ -11613,6 +11858,12 @@
         }
       }
     },
+    "这不是实际歌单。" : {
+
+    },
+    "这是场馆通用座席资料，不是这一场的座位图。" : {
+
+    },
     "连接" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11779,7 +12030,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Applicable performance unconfirmed"
+            "value" : "Performance applicability unconfirmed"
           }
         },
         "ja" : {
@@ -11802,13 +12053,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Applicable performance unconfirmed; source reference only"
+            "value" : "Performance applicability unconfirmed; verify with the official source"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "対象公演を確認中のため、出典確認用です"
+            "value" : "対象公演が未確認のため、公式情報でご確認ください"
           }
         },
         "zh-Hant" : {
@@ -11825,7 +12076,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Goods info with unconfirmed performances"
+            "value" : "Goods info with unconfirmed performance applicability"
           }
         },
         "ja" : {
@@ -11848,7 +12099,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Goods info with unconfirmed performances (%lld)"
+            "value" : "Goods info with unconfirmed performance applicability (%lld)"
           }
         },
         "ja" : {
@@ -11871,7 +12122,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seating info with unconfirmed performances"
+            "value" : "Seating info with unconfirmed performance applicability"
           }
         },
         "ja" : {
@@ -11894,7 +12145,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seating info with unconfirmed performances (%lld)"
+            "value" : "Seating info with unconfirmed performance applicability (%lld)"
           }
         },
         "ja" : {
@@ -11916,7 +12167,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sales sessions with unconfirmed dates"
+            "value" : "Sales sessions with unconfirmed performance applicability"
           }
         },
         "ja" : {
@@ -11938,13 +12189,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Streaming offer with unconfirmed performance"
+            "value" : "Streaming info with unconfirmed performance applicability"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "対象公演を確認中の配信情報"
+            "value" : "対象公演が未確認の配信情報"
           }
         },
         "zh-Hant" : {
@@ -11960,13 +12211,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Applicable performance unconfirmed"
+            "value" : "Performance applicability unconfirmed"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "対象公演を確認中"
+            "value" : "対象公演が未確認"
           }
         },
         "zh-Hant" : {
@@ -11982,13 +12233,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bonus details with unconfirmed performance"
+            "value" : "Bonus details with unconfirmed performance applicability"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "対象公演を確認中の特典情報"
+            "value" : "対象公演が未確認の特典情報"
           }
         },
         "zh-Hant" : {
@@ -12236,6 +12487,9 @@
           }
         }
       }
+    },
+    "重新整理失败：此公演在当前资料来源中不存在" : {
+
     },
     "重新整理此公演" : {
       "extractionState" : "manual",
@@ -12584,6 +12838,9 @@
         }
       }
     },
+    "隐藏歌单" : {
+
+    },
     "需持票" : {
       "localizations" : {
         "en" : {
@@ -12829,54 +13086,6 @@
             "value" : "預設使用 OpenAI 官方的 ChatGPT 登入用戶端（PKCE）。如需使用你自己註冊的“Sign in with ChatGPT”應用，請填寫 Client ID 與回呼位址；自訂 scheme 請用 live-dashboard://oauth/openai。已登入時無法修改，請先登出。"
           }
         }
-      }
-    },
-    "处理日志" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress log" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "処理ログ" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "處理記錄" } }
-      }
-    },
-    "正在读取官网页面…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reading the official page…" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "公式ページを読み込んでいます…" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在讀取官網頁面…" } }
-      }
-    },
-    "正在整理官网资料…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing official information…" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "公式情報を整理しています…" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在整理官網資料…" } }
-      }
-    },
-    "已提交给 AI，正在等待结果…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sent to AI. Waiting for a response…" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIに送信しました。結果を待っています…" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已提交給 AI，正在等待結果…" } }
-      }
-    },
-    "正在校验 AI 返回的资料…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Validating the AI response…" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIの結果を検証しています…" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在驗證 AI 回傳的資料…" } }
-      }
-    },
-    "正在保存整理结果…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saving the summary…" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "整理結果を保存しています…" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在儲存整理結果…" } }
       }
     },
     "默认封面" : {

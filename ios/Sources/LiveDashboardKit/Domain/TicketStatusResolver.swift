@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// Derived state of a ticket round for display purposes.
 public enum TicketRoundComputedStatus: String, Hashable, Sendable {

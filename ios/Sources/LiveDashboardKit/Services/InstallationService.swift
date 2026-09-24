@@ -1,6 +1,7 @@
 import Foundation
 import Security
 import UIKit
+import LiveIngestionCore
 
 public struct InstallationIdentity: Codable, Sendable {
     public let id: String

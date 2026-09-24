@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import CryptoKit
+import LiveIngestionCore
 #if canImport(Translation)
 @preconcurrency import Translation
 #endif

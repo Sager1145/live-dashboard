@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 // MARK: - Rich text
 

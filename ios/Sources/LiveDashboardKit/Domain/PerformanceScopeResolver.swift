@@ -1,4 +1,5 @@
 import Foundation
+import LiveIngestionCore
 
 /// Records that apply to the selected performance, split from records whose
 /// applicability could not be determined by the parser.

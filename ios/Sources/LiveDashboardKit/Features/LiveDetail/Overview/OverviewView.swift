@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public struct OverviewView: View {
     @Bindable var store: LiveDetailStore
@@ -14,25 +15,64 @@ public struct OverviewView: View {
 
     private static let overviewCardTypes: [CardType] = ImportantInformationPolicy.overviewDefaultOrder
 
+    /// Cards whose body already presents a state when no performance is selected.
+    private static func rendersWithoutPerformance(_ cardType: CardType) -> Bool {
+        switch cardType {
+        case .assistantSummary, .pricing, .admission:
+            true
+        default:
+            false
+        }
+    }
+
     public var body: some View {
         let configs = userDataStore.effectiveConfigurations(eventID: store.bundle.event.id)
         let order = ImportantInformationPolicy.overviewCards(configurations: configs)
         let hiddenCount = userDataStore.hiddenCardCount(cardTypes: Self.overviewCardTypes, eventID: store.bundle.event.id)
+        let performance = store.selectedPerformance
+        // Time and venue and performers have no body without a performance.
+        let visibleOrder = performance == nil ? order.filter(Self.rendersWithoutPerformance) : order
 
         LazyVStack(spacing: 12) {
-            if store.selectedPerformance == nil {
+            if performance == nil {
                 ContentUnavailableView {
                     Label { Text("尚无可用场次资料", bundle: .kit) } icon: { Image(systemName: "calendar.badge.exclamationmark") }
                 } description: {
                     Text("官网尚未公布场次，或当前资料来源中没有场次。", bundle: .kit)
+                    if visibleOrder.isEmpty {
+                        Text("资料已获取，只是这些卡片被你隐藏了。", bundle: .kit)
+                    }
                 } actions: {
                     if let url = URL(string: store.bundle.event.primarySourceURL) {
                         Link(destination: url) { Text("查看官方公演页面", bundle: .kit) }
                     }
+                    if visibleOrder.isEmpty {
+                        Button {
+                            userDataStore.unhideCards(cardTypes: Self.overviewCardTypes, eventID: store.bundle.event.id)
+                            recentlyHidden = nil
+                        } label: {
+                            Text("恢复显示", bundle: .kit)
+                        }
+                    }
                 }
             }
-            ForEach(order, id: \.self) { cardType in
-                cardView(for: cardType, performance: store.selectedPerformance)
+            if visibleOrder.isEmpty, performance != nil {
+                ContentUnavailableView {
+                    Label { Text("概览卡片已全部隐藏", bundle: .kit) } icon: { Image(systemName: "eye.slash") }
+                } description: {
+                    Text("资料已获取，只是这些卡片被你隐藏了。", bundle: .kit)
+                } actions: {
+                    Button {
+                        userDataStore.unhideCards(cardTypes: Self.overviewCardTypes, eventID: store.bundle.event.id)
+                        recentlyHidden = nil
+                    } label: {
+                        Text("恢复显示", bundle: .kit)
+                    }
+                }
+            } else if !visibleOrder.isEmpty {
+                ForEach(visibleOrder, id: \.self) { cardType in
+                    cardView(for: cardType, performance: performance)
+                }
             }
             if let recentlyHidden {
                 UndoHiddenCardRow(id: "\(recentlyHidden.cardType.rawValue)|\(recentlyHidden.entityID)", title: recentlyHidden.title) {
@@ -46,9 +86,11 @@ public struct OverviewView: View {
                     self.recentlyHidden = nil
                 }
             }
-            HiddenCardsFooter(count: hiddenCount) {
-                userDataStore.unhideCards(cardTypes: Self.overviewCardTypes, eventID: store.bundle.event.id)
-                recentlyHidden = nil
+            if !visibleOrder.isEmpty {
+                HiddenCardsFooter(count: hiddenCount) {
+                    userDataStore.unhideCards(cardTypes: Self.overviewCardTypes, eventID: store.bundle.event.id)
+                    recentlyHidden = nil
+                }
             }
         }
         .environment(\.detailCardHideNotification, DetailCardHideNotification { cardType, entityID, title in

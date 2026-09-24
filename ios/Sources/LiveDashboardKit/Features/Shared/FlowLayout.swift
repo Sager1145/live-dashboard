@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 /// A simple wrapping horizontal-then-vertical layout, like a wrapping HStack, spacing 6pt
 /// between items on both axes. Used for chip rows (e.g. day labels) that would otherwise

@@ -1,4 +1,5 @@
 import SwiftUI
+import LiveIngestionCore
 
 public struct GoodsView: View {
     @Bindable var store: LiveDetailStore
@@ -40,6 +41,16 @@ public struct GoodsView: View {
                             Label { Text("暂无结构化周边资料", bundle: .kit) } icon: { Image(systemName: "bag") }
                         } description: {
                             Text("可使用下方 AI 识别的链接前往官网查看。", bundle: .kit)
+                        }
+                    } else if !store.bundle.goodsCampaigns.isEmpty, store.selectedPerformance == nil {
+                        ContentUnavailableView {
+                            Label { Text("尚无可用场次资料", bundle: .kit) } icon: { Image(systemName: "calendar.badge.exclamationmark") }
+                        } description: {
+                            Text("官网尚未公布场次，或当前资料来源中没有场次。", bundle: .kit)
+                        } actions: {
+                            if let url = URL(string: store.bundle.event.primarySourceURL) {
+                                Link(destination: url) { Text("查看官方公演页面", bundle: .kit) }
+                            }
                         }
                     } else if !store.bundle.goodsCampaigns.isEmpty {
                         ContentUnavailableView {
@@ -219,11 +230,11 @@ public struct GoodsView: View {
 
                 let assets = mediaAssets(for: campaign)
                 if let first = assets.first {
-                    OfficialMediaView(asset: first, compact: config.density == .compact)
+                    OfficialMediaView(asset: first, fitsWidth: true)
                     if assets.count > 1 {
                         DisclosureGroup {
                             ForEach(assets.dropFirst()) { asset in
-                                OfficialMediaView(asset: asset, compact: config.density == .compact)
+                                OfficialMediaView(asset: asset, fitsWidth: true)
                             }
                         } label: {
                             Text("查看全部 \(assets.count) 张图片", bundle: .kit).font(.caption).foregroundStyle(.secondary)

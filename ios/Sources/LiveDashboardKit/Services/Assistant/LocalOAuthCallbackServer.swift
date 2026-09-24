@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import LiveIngestionCore
 
 /// Minimal loopback HTTP server used to catch the OAuth redirect when the
 /// configured redirect URI is `http://localhost:<port>/...` rather than a

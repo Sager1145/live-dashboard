@@ -1,6 +1,7 @@
 import Foundation
 #if canImport(Security)
 import Security
+import LiveIngestionCore
 #endif
 
 /// Abstraction over secret storage so tests can substitute an in-memory
