@@ -551,12 +551,24 @@ export async function proposeSnapshot(db: DB, snapshotID: string) {
     if (p.startAt) ev(id, "startAt", c, [id]);
     if (venue) ev(id, "venueName", venue, [id]);
   }
+  const eventTypes = ["live", "fanMeeting", "screening", "other"] as const;
+  const eventStatuses = [
+    "scheduled",
+    "postponed",
+    "cancelled",
+    "finished",
+  ] as const;
+  const statedEventType = parsed.candidates.find(
+    (c) => c.field === "event.eventType",
+  )?.value;
+  const statedStatus = parsed.candidates.find(
+    (c) => c.field === "event.status",
+  )?.value;
+  // Same event id may already exist. Field values are this snapshot only.
   const bundle = parseBundle({
-    ...(existing?.bundle ?? {}),
     schemaVersion: 1,
     publishedAt: now,
     event: {
-      ...(existing?.bundle.event ?? {}),
       id: eventID,
       franchise:
         new URL(snapshot.finalUrl).hostname === "bang-dream.com"
@@ -564,21 +576,26 @@ export async function proposeSnapshot(db: DB, snapshotID: string) {
           : "lovelive",
       officialTitle: title.value,
       groups: [...new Set(performances.flatMap((p) => p.performers))],
-      eventType: existing?.bundle.event.eventType ?? "live",
-      status: existing?.bundle.event.status ?? "scheduled",
+      eventType: eventTypes.find((kind) => kind === statedEventType) ?? "live",
+      status:
+        eventStatuses.find((kind) => kind === statedStatus) ?? "scheduled",
       primarySourceURL: snapshot.finalUrl,
       timeZone: "Asia/Tokyo",
     },
     performances,
-    evidence: [
-      ...(existing?.bundle.evidence ?? []).filter(
-        (e: any) =>
-          !evidence.some(
-            (n) => n.recordID === e.recordID && n.field === e.field,
-          ),
-      ),
-      ...evidence,
-    ],
+    editions: [],
+    stops: [],
+    ticketTiers: [],
+    ticketRounds: [],
+    ticketBenefits: [],
+    ticketOffers: [],
+    streamOffers: [],
+    goodsCampaigns: [],
+    products: [],
+    goodsSessions: [],
+    mediaAssets: [],
+    notices: [],
+    evidence,
   });
   const detailed = await mergeSnapshotDetails(db, bundle, parsed, snapshot);
   const review = await createReview(db, detailed, existing?.revision ?? 0, [

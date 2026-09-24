@@ -300,16 +300,24 @@ private extension OfficialEventScraper {
         let localDate: String
         let dayLabel: String?
         var subtitle: String? = nil
-        let doorsAt: Date?
-        let startsAt: Date?
-        let raw: String
+        var doorsAt: Date?
+        var startsAt: Date?
+        var raw: String
         var venue: String? = nil
         var performers: [String]? = nil
+        var localEndDate: String? = nil
+        var activityKind: PerformanceActivity? = nil
     }
 
     struct ParsedGoods: Sendable {
         let campaigns: [GoodsCampaign]
         let mediaAssets: [MediaAsset]
+        let bodies: [String: String]
+    }
+
+    struct ParsedTicketRound: Sendable {
+        let round: TicketRound
+        let scopeText: String
     }
 
     static func parseIndex(_ html: String, finalURL: URL) throws -> [EventCandidate] {
@@ -393,12 +401,14 @@ private extension OfficialEventScraper {
         var loveLiveInlineTickets: String?
         var bangDreamTicketHeadingHTML: String?
         var loveLiveStreamBlocks: [String] = []
+        var bangDreamArticle = ""
         if isBangDream {
             guard html.contains("p-live-event-detail") || html.contains("p-page-detail") else {
                 throw OfficialScrapeFailure(url: finalURL, kind: .unsupportedTemplate, message: "Missing BanG Dream detail article")
             }
             let content = HTML.blocks(html, tag: "div", className: "p-live-event-detail__content").max { $0.count < $1.count }
                 ?? HTML.blocks(html, tag: "div", className: "p-page-detail__content").max { $0.count < $1.count } ?? ""
+            bangDreamArticle = content
             title = HTML.textForClass(html, "p-live-event-detail__header-title")
                 ?? HTML.textForClass(html, "p-page-detail__header-title") ?? candidate.title
             combinedScheduleHTML = HTML.sectionHTML(content, heading: "日程・会場")
@@ -469,10 +479,16 @@ private extension OfficialEventScraper {
 
         let canonical = canonicalURL(finalURL.absoluteString)
         let eventID = cached?.event.id ?? stableID(prefix: candidate.franchise.rawValue, seed: canonical)
+        let activityDocument = bangDreamArticle.isEmpty ? nil : parseActivityDocument(bangDreamArticle, eventID: eventID, sourceURL: finalURL.absoluteString)
         var schedules = combinedScheduleHTML.map(parseCombinedSchedules) ?? parseSchedules(scheduleRaw)
         if schedules.isEmpty { schedules = parseSchedules(candidate.scheduleRaw) }
+        if let activityDocument, !activityDocument.schedules.isEmpty {
+            schedules = activityDocument.schedules
+        }
+        var stopVenueByDate: [String: String] = [:]
         if let loveLiveOverviewText {
             let stopVenues = loveLiveStopVenues(loveLiveOverviewText)
+            stopVenueByDate = stopVenues
             if !stopVenues.isEmpty {
                 schedules = schedules.map { schedule in
                     var result = schedule
@@ -481,7 +497,10 @@ private extension OfficialEventScraper {
                 }
             }
         }
-        let venue = cleanedVenue(venueRaw ?? "", summary: HTML.tableValue(html, label: "場所"))
+        let cleanedSummary = cleanedVenue(venueRaw ?? "", summary: HTML.tableValue(html, label: "場所"))
+        // A page-level 場所 cell often lists every hall in one sentence. That
+        // string is not a venue for any single day.
+        let venue = isMultiVenueSummary(cleanedSummary) ? "" : cleanedSummary
         let eventTimeZone = officialTimeZone(title + " " + venue)
         let performers = splitNames(performersRaw)
         let officialGroups = HTML.blocks(html, tag: "a", className: "p-news-detail__related-artist-link").map(HTML.text)
@@ -500,17 +519,39 @@ private extension OfficialEventScraper {
             func sameLabel(_ p: Performance) -> Bool { p.dayLabel.caseInsensitiveCompare(label) == .orderedSame }
             let labelIsUnique = oldPerformances.filter(sameLabel).count == 1
                 && schedules.enumerated().filter { scheduleLabel($0.offset, $0.element).caseInsensitiveCompare(label) == .orderedSame }.count == 1
-            let prior = oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate && sameLabel($0) && $0.subtitle == item.subtitle }
-                ?? oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate && sameLabel($0) && (item.subtitle == nil || $0.subtitle == nil) }
-                ?? (labelIsUnique ? oldPerformances.first { unclaimed($0) && sameLabel($0) } : nil)
-                ?? oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate && $0.startAt != nil && $0.startAt == reinterpretJapanWallTime(item.startsAt, in: eventTimeZone) }
-                ?? oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate }
-                ?? (index < oldPerformances.count && unclaimed(oldPerformances[index]) && oldPerformances[index].localDate == nil ? oldPerformances[index] : nil)
+            let strictIdentity = item.activityKind != nil || item.localEndDate != nil
+            let prior: Performance?
+            if strictIdentity {
+                prior = oldPerformances.first { candidate in
+                    guard unclaimed(candidate), candidate.localDate == item.localDate else { return false }
+                    if let end = item.localEndDate {
+                        guard (candidate.localEndDate ?? candidate.localDate) == end else { return false }
+                    }
+                    if let kind = item.activityKind, let priorKind = candidate.activityKind, priorKind != kind { return false }
+                    if let venueName = item.venue, !venueName.isEmpty {
+                        if isMultiVenueSummary(candidate.venueName) { return false }
+                        if !candidate.venueName.isEmpty, !venuesReferToSamePlace(candidate.venueName, venueName) { return false }
+                    }
+                    return true
+                }
+            } else {
+                prior = oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate && sameLabel($0) && $0.subtitle == item.subtitle }
+                    ?? oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate && sameLabel($0) && (item.subtitle == nil || $0.subtitle == nil) }
+                    ?? (labelIsUnique ? oldPerformances.first { unclaimed($0) && sameLabel($0) } : nil)
+                    ?? oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate && $0.startAt != nil && $0.startAt == reinterpretJapanWallTime(item.startsAt, in: eventTimeZone) }
+                    ?? oldPerformances.first { unclaimed($0) && $0.localDate == item.localDate }
+                    ?? (index < oldPerformances.count && unclaimed(oldPerformances[index]) && oldPerformances[index].localDate == nil ? oldPerformances[index] : nil)
+            }
             if let prior { claimedPriorIDs.insert(prior.id) }
             return ResolvedPerformance(index: index, item: item, label: label, prior: prior)
         }
         var usedPerformanceIDs: Set<String> = []
-        let hasDistinctScheduleVenues = Set(schedules.compactMap(\.venue).filter { !$0.isEmpty }).count > 1
+        func nonempty(_ value: String?) -> String? {
+            guard let value else { return nil }
+            let cleaned = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return cleaned.isEmpty ? nil : cleaned
+        }
+        let hasAnyScheduleVenue = schedules.contains { nonempty($0.venue) != nil }
         let parsedPerformances = resolved.map { resolvedItem -> Performance in
             let index = resolvedItem.index
             let item = resolvedItem.item
@@ -522,20 +563,21 @@ private extension OfficialEventScraper {
             } else {
                 let candidateID = "\(eventID)-performance-\(index + 1)"
                 performanceID = (cachedPerformanceIDs.contains(candidateID) || usedPerformanceIDs.contains(candidateID))
-                    ? stableID(prefix: "\(eventID)-performance", seed: "\(item.localDate)|\(label)|\(item.subtitle ?? "")")
+                    ? stableID(prefix: "\(eventID)-performance", seed: "\(item.localDate)|\(item.localEndDate ?? "")|\(label)|\(item.subtitle ?? "")|\(item.venue ?? "")|\(item.activityKind?.rawValue ?? "")")
                     : candidateID
             }
             usedPerformanceIDs.insert(performanceID)
             let associatedVenue = isLoveLive && item.venue != nil ? nil : scopedVenue(venueRaw ?? "", note: overviewNote, date: item.localDate)
             let associatedPerformers = notedPerformers(overviewNote, groups: officialGroups, date: item.localDate, singleDate: Set(schedules.map(\.localDate)).count == 1)
             let loveLiveCast = loveLivePerformers(loveLiveCastBlocks, dayLabel: label, localDate: item.localDate, stop: loveLiveStopByDate[item.localDate])
-            let resolvedVenue = item.venue ?? associatedVenue
-                ?? (hasDistinctScheduleVenues ? (prior?.venueName ?? "") : (venue.isEmpty ? (prior?.venueName ?? "") : venue))
+            let stopName = loveLiveStopByDate[item.localDate]
+            let resolvedVenue = nonempty(item.venue)
+                ?? nonempty(associatedVenue)
+                ?? nonempty(stopVenueByDate[item.localDate])
+                ?? (hasAnyScheduleVenue ? nil : nonempty(venue))
+                ?? ""
             let parsedDoors = reinterpretJapanWallTime(item.doorsAt, in: eventTimeZone)
             let parsedStart = reinterpretJapanWallTime(item.startsAt, in: eventTimeZone)
-            // A new local date is a different performance day. Keep the ID, but
-            // do not carry the previous day's absolute instants onto it.
-            let sameLocalDate = prior?.localDate == item.localDate
             let resolvedPerformers = resolvedPerformerNames(
                 explicit: item.performers,
                 loveLiveCast: loveLiveCast,
@@ -543,58 +585,66 @@ private extension OfficialEventScraper {
                 performersRaw: performersRaw,
                 performers: performers,
                 associatedPerformers: associatedPerformers,
-                priorPerformers: prior?.performers ?? [],
                 dayLabel: label
             )
+            let cityFromVenue = resolvedVenue.isEmpty ? "" : venueCity(resolvedVenue)
             return Performance(
-                id: performanceID, eventID: eventID, stopID: prior?.stopID,
-                dayLabel: label, subtitle: item.subtitle ?? prior?.subtitle, localDate: item.localDate,
-                doorsAt: parsedDoors ?? (sameLocalDate ? prior?.doorsAt : nil),
-                startAt: parsedStart ?? (sameLocalDate ? prior?.startAt : nil),
+                id: performanceID, eventID: eventID,
+                stopID: stopName.map { stableID(prefix: "\(eventID)-stop", seed: $0) },
+                dayLabel: label, subtitle: item.subtitle, localDate: item.localDate,
+                doorsAt: parsedDoors,
+                startAt: parsedStart,
                 venueName: resolvedVenue,
-                venueCity: resolvedVenue.isEmpty ? (prior?.venueCity ?? "") : {
-                    let city = venueCity(resolvedVenue)
-                    return city.isEmpty ? stopCity(loveLiveStopByDate[item.localDate]) : city
-                }(),
-                performers: resolvedPerformers, order: index,
-                editionID: prior?.editionID, rawDate: item.raw, precision: (item.startsAt != nil || item.doorsAt != nil) ? .minute : .date,
-                timeZone: eventTimeZone
+                venueCity: cityFromVenue.isEmpty ? stopCity(stopName) : cityFromVenue,
+                performers: PerformerLines.expandingNewlines(resolvedPerformers), order: index,
+                editionID: nil, rawDate: item.raw,
+                precision: (item.localEndDate != nil && item.localEndDate != item.localDate) ? .range : ((item.startsAt != nil || item.doorsAt != nil) ? .minute : .date),
+                timeZone: eventTimeZone, localEndDate: item.localEndDate, activityKind: item.activityKind
             )
         }
+        var parsedStops: [LiveStop] = []
+        var seenStopNames: [String] = []
+        for item in schedules {
+            guard let name = loveLiveStopByDate[item.localDate], !seenStopNames.contains(name) else { continue }
+            seenStopNames.append(name)
+            parsedStops.append(LiveStop(id: stableID(prefix: "\(eventID)-stop", seed: name), eventID: eventID, name: name, order: parsedStops.count))
+        }
 
-        let performances = parsedPerformances.isEmpty ? oldPerformances : parsedPerformances
+        let performances = parsedPerformances
         // A page with exactly one performance cannot mean any other date, so
         // its ticket records apply to that performance. With several dates the
         // parser still emits `.unconfirmed` (DESIGN.md: never guess Day2).
         let ticketScope: Scope = performances.count == 1 ? .performances(performanceIDs: [performances[0].id]) : .unconfirmed
         let parsedTiers = parseTicketTiers(ticketHTML, eventID: eventID, cached: cached?.ticketTiers ?? [])
-        let baseTiers = parsedTiers.isEmpty ? (cached?.ticketTiers ?? []) : parsedTiers
+        let baseTiers = parsedTiers
         let tradeHTML = HTML.sectionHTML(html, heading: "チケットトレード") ?? ""
-        var parsedRounds: [TicketRound] = []
+        let parsedRoundItems: [ParsedTicketRound]
         if isLoveLive {
             let loveLiveRounds = [loveLiveTaggedTickets, loveLiveInlineTickets]
                 .compactMap { $0 }
                 .map { parseLoveLiveTicketRounds($0, eventID: eventID, cached: cached?.ticketRounds ?? [], timeZone: eventTimeZone, referenceDate: schedules.first?.localDate, sourceURL: finalURL) }
                 .first { !$0.isEmpty } ?? []
-            parsedRounds = loveLiveRounds.isEmpty
+            parsedRoundItems = loveLiveRounds.isEmpty
                 ? parseTicketRounds(ticketHTML + "\n" + tradeHTML, eventID: eventID, cached: cached?.ticketRounds ?? [], timeZone: eventTimeZone, referenceDate: schedules.first?.localDate, sourceURL: finalURL)
                 : loveLiveRounds
         } else {
             let salesSection = HTML.sectionHTML(bangDreamTicketHeadingHTML ?? ticketHTML, heading: "販売情報") ?? ""
             let salesPreamble = salesSection.range(of: "<h6", options: [.caseInsensitive]).map { String(salesSection[..<$0.lowerBound]) } ?? salesSection
             let sharedLinks = HTML.links(salesPreamble, relativeTo: finalURL)
-            parsedRounds = parseTicketRounds(ticketHTML + "\n" + tradeHTML, eventID: eventID, cached: cached?.ticketRounds ?? [], timeZone: eventTimeZone, referenceDate: schedules.first?.localDate, sourceURL: finalURL, sharedLinks: sharedLinks)
+            parsedRoundItems = parseTicketRounds(ticketHTML + "\n" + tradeHTML, eventID: eventID, cached: cached?.ticketRounds ?? [], timeZone: eventTimeZone, referenceDate: schedules.first?.localDate, sourceURL: finalURL, sharedLinks: sharedLinks)
         }
-        parsedRounds = parsedRounds.map { round in
-            round.replacingScope(resolvedScope(round.scope, heading: round.officialName, performances: performances, fallback: ticketScope))
+        let mappedRounds = parsedRoundItems.map { item in
+            item.round.replacingScope(resolvedScope(item.round.scope, text: item.scopeText, performances: performances, fallback: ticketScope))
         }
-        let rounds = parsedRounds.isEmpty ? (cached?.ticketRounds ?? []) : parsedRounds
+        let rounds = mappedRounds
         let parsedBenefitsResult = parseTicketBenefits(
-            ticketHTML, sourceURL: finalURL, eventID: eventID, tiers: baseTiers, scope: ticketScope,
+            ticketHTML, sourceURL: finalURL, eventID: eventID, tiers: baseTiers, scope: .unconfirmed,
             cached: cached?.ticketBenefits ?? [], cachedMedia: cached?.mediaAssets ?? []
         )
-        let parsedBenefits = parsedBenefitsResult.benefits
-        let ticketBenefits = parsedBenefits.isEmpty ? (cached?.ticketBenefits ?? []) : parsedBenefits
+        let ticketBenefits = parsedBenefitsResult.benefits.map { benefit in
+            let text = [benefit.officialName, benefit.detail, benefit.notes, benefit.redemptionNote].compactMap { $0 }.joined(separator: "\n")
+            return benefit.replacingScope(resolvedScope(.unconfirmed, text: text, performances: performances, fallback: ticketScope))
+        }
         let tiers = tiersWithBenefitContents(baseTiers, benefits: ticketBenefits)
         let richContentHTML: String
         if isBangDream {
@@ -614,7 +664,7 @@ private extension OfficialEventScraper {
         let sourceText: String?
         if isBangDream {
             let rendered = HTML.linkedText(richContentHTML, relativeTo: finalURL)
-            sourceText = rendered.isEmpty ? cached?.sourceText : cappedSourceText("# \(title)\n" + rendered)
+            sourceText = rendered.isEmpty ? nil : cappedSourceText("# \(title)\n" + rendered)
         } else {
             let sourceTextTop = HTML.blockWithAttribute(html, attribute: "data-target", value: "top") ?? ""
             let sourceTextTicket = HTML.blockWithAttribute(html, attribute: "data-target", value: "ticket") ?? ""
@@ -627,50 +677,56 @@ private extension OfficialEventScraper {
                 }
             }.map(\.element)
             let rendered = HTML.linkedText(includedBlocks.joined(separator: "\n\n"), relativeTo: finalURL)
-            sourceText = rendered.isEmpty ? cached?.sourceText : cappedSourceText("# \(title)\n" + rendered)
+            sourceText = rendered.isEmpty ? nil : cappedSourceText("# \(title)\n" + rendered)
         }
         let loveLiveStreams = parseLoveLiveStreams(loveLiveStreamBlocks, sourceURL: finalURL, eventID: eventID, performances: performances, timeZone: eventTimeZone, referenceDate: schedules.first?.localDate)
             .map { offer -> StreamOffer in
-                offer.replacingScope(resolvedScope(offer.scope, heading: offer.officialName, performances: performances, fallback: .unconfirmed))
+                offer.replacingScope(resolvedScope(offer.scope, text: offer.officialName, performances: performances, fallback: ticketScope))
             }
-        let parsedStreams = parseStreams(richContentHTML, sourceURL: finalURL, eventID: eventID).map { offer in
-            offer.replacingScope(resolvedScope(offer.scope, heading: offer.officialName, performances: performances, fallback: .unconfirmed))
-        } + loveLiveStreams
+        let parsedStreams = parseStreams(
+            richContentHTML, sourceURL: finalURL, eventID: eventID,
+            performances: performances, ticketScope: ticketScope
+        ) + loveLiveStreams
         let parsedGoodsResult = parseGoods(
             richContentHTML, sourceURL: finalURL, eventID: eventID,
             cachedCampaigns: cached?.goodsCampaigns ?? [], cachedMedia: cached?.mediaAssets ?? []
         )
-        // The event key visual normally lives outside the rich-content body
-        // (in the page head or the BanG Dream eyecatch). Pass the complete
-        // document so media parsing can refresh it alongside seating maps.
+        var goodsCampaigns = parsedGoodsResult.campaigns.map { campaign in
+            let text = parsedGoodsResult.bodies[campaign.id] ?? campaign.officialName
+            return campaign.replacingScope(resolvedScope(.unconfirmed, text: text, performances: performances, fallback: ticketScope))
+        }
+        let boundActivity = activityDocument.map { bindActivity($0, performances: performances, campaigns: goodsCampaigns) }
+        if let boundCampaigns = boundActivity?.campaigns { goodsCampaigns = boundCampaigns }
+        let structured = structuredGoods(from: goodsCampaigns, bodies: parsedGoodsResult.bodies, eventID: eventID)
+        let products = !(boundActivity?.products.isEmpty ?? true) ? (boundActivity?.products ?? []) : structured.products
+        let goodsSessions = !(boundActivity?.sessions.isEmpty ?? true) ? (boundActivity?.sessions ?? []) : structured.sessions
+        let notices = boundActivity?.notices ?? []
+        var scopeByMediaID: [String: Scope] = [:]
+        for campaign in goodsCampaigns {
+            for id in campaign.mediaAssetIDs { scopeByMediaID[id] = campaign.scope }
+        }
+        for benefit in ticketBenefits {
+            for id in benefit.mediaAssetIDs { scopeByMediaID[id] = benefit.scope }
+        }
         let parsedMedia = parseMediaAssets(
             html, sourceURL: finalURL, eventID: eventID, cached: cached?.mediaAssets ?? [],
-            eventCoverURL: candidate.coverURL, eventCoverSourceURL: candidate.coverSourceURL
+            eventCoverURL: candidate.coverURL, eventCoverSourceURL: candidate.coverSourceURL,
+            performances: performances, ticketScope: ticketScope
         )
             + parsedGoodsResult.mediaAssets
             + parsedBenefitsResult.mediaAssets
-        let mediaAssets = parsedMedia.isEmpty ? (cached?.mediaAssets ?? []) : mergeMedia(cached?.mediaAssets ?? [], parsedMedia)
-        let parsedGoods = parsedGoodsResult.campaigns
-        let goodsCampaigns = parsedGoods.isEmpty ? (cached?.goodsCampaigns ?? []) : mergeGoods(cached?.goodsCampaigns ?? [], parsedGoods)
-        let structured = structuredGoods(from: parsedGoods, eventID: eventID)
-        let products = structured.products.isEmpty ? (cached?.products ?? []) : structured.products
-        let goodsSessions = structured.sessions.isEmpty ? (cached?.goodsSessions ?? []) : structured.sessions
-        let lastDate = performances.compactMap(\.localDate).max()
+        let mediaAssets = Dictionary(parsedMedia.map { (canonicalURL($0.originalURL), $0) }, uniquingKeysWith: { _, fresh in fresh })
+            .values.map { asset in
+                guard let scope = scopeByMediaID[asset.id] else { return asset }
+                return asset.replacingScope(scope)
+            }
+            .sorted { $0.id < $1.id }
+        let lastDate = performances.compactMap(\.periodEndLocalDate).max()
         let today = localDate(now)
         let noticeText = statusNoticeText(title: title, html: richContentHTML)
         let status: EventStatus = announcedStatus(in: noticeText)
             ?? (lastDate.map { $0 < today } == true ? .finished : lastDate == nil ? .unknown : .scheduled)
-        let retainedStaleCache = (parsedRounds.isEmpty && !(cached?.ticketRounds ?? []).isEmpty)
-            || (parsedTiers.isEmpty && !(cached?.ticketTiers ?? []).isEmpty)
-            || (parsedBenefits.isEmpty && !(cached?.ticketBenefits ?? []).isEmpty)
-            || (parsedGoods.isEmpty && !(cached?.goodsCampaigns ?? []).isEmpty)
-            || (parsedStreams.isEmpty && !(cached?.streamOffers ?? []).isEmpty)
-            || (structured.products.isEmpty && !(cached?.products ?? []).isEmpty)
-            || (structured.sessions.isEmpty && !(cached?.goodsSessions ?? []).isEmpty)
-            || !(cached?.stops ?? []).isEmpty
-            || !(cached?.ticketOffers ?? []).isEmpty
-            || !(cached?.notices ?? []).isEmpty
-        let sourceHealth: SourceHealthState = retainedStaleCache ? .stale : .healthy
+        let sourceHealth: SourceHealthState = .healthy
         let event = LiveEvent(
             id: eventID, franchise: candidate.franchise, officialTitle: title,
             groups: officialGroups.isEmpty ? candidate.groups : officialGroups, eventType: candidate.eventType, status: status,
@@ -706,10 +762,10 @@ private extension OfficialEventScraper {
         for tier in parsedTiers {
             evidence.append(makeEvidence(recordID: tier.id, field: "ticket.price", sourceURL: finalURL, quote: "\(tier.name): \(tier.amount?.formatted ?? String(tier.priceJPY ?? 0))", now: now))
         }
-        for round in parsedRounds {
+        for round in rounds {
             evidence.append(makeEvidence(recordID: round.id, field: "ticket.round", sourceURL: finalURL, quote: round.officialName, now: now))
         }
-        for benefit in parsedBenefits {
+        for benefit in ticketBenefits {
             evidence.append(makeEvidence(recordID: benefit.id, field: "ticket.benefit", sourceURL: finalURL, quote: "\(benefit.officialName): \(benefit.detail ?? benefit.notes ?? "")", now: now))
         }
         if let admission = HTML.headingSections(html).first(where: { $0.heading.contains("入場") }), !HTML.text(admission.html).isEmpty {
@@ -721,17 +777,17 @@ private extension OfficialEventScraper {
         for stream in parsedStreams {
             evidence.append(makeEvidence(recordID: stream.id, field: "stream.offer", sourceURL: finalURL, quote: stream.officialName, now: now))
         }
-        for campaign in parsedGoods {
+        for campaign in goodsCampaigns {
             evidence.append(makeEvidence(recordID: campaign.id, field: "goods.campaign", sourceURL: finalURL, quote: campaign.officialName, now: now))
         }
 
         return LiveEventBundle(
             schemaVersion: 1, revision: cached?.revision, publishedAt: now, event: event,
-            stops: cached?.stops ?? [], performances: performances,
-            ticketTiers: tiers, ticketRounds: rounds, ticketOffers: cached?.ticketOffers ?? [],
+            stops: parsedStops, performances: performances,
+            ticketTiers: tiers, ticketRounds: rounds, ticketOffers: [],
             goodsCampaigns: goodsCampaigns, mediaAssets: mediaAssets,
-            notices: cached?.notices ?? [], evidence: mergeEvidence(cached?.evidence ?? [], evidence),
-            editions: cached?.editions ?? [], streamOffers: parsedStreams.isEmpty ? (cached?.streamOffers ?? []) : parsedStreams,
+            notices: notices, evidence: mergeEvidence(cached?.evidence ?? [], evidence),
+            editions: [], streamOffers: parsedStreams,
             products: products, goodsSessions: goodsSessions, ticketBenefits: ticketBenefits, sourceHealth: sourceHealth,
             sourceText: sourceText
         )
@@ -793,27 +849,72 @@ private extension OfficialEventScraper {
         }
         let raw = HTML.text(html)
         let parsed = parseSchedules(raw)
-        let dateMatches = regex(#"(?:\d{4}年\s*)?(?:\d{1,2}月\s*)?\d{1,2}日(?!目)"#, raw)
-        let distinctDates = parsed.map(\.localDate).reduce(into: [String]()) { dates, date in
-            if !dates.contains(date) { dates.append(date) }
-        }
-        var venuesByDate: [String: String] = [:]
-        if dateMatches.count == distinctDates.count, dateMatches.count > 1 {
-            let ns = raw as NSString
-            for (index, match) in dateMatches.enumerated() {
-                let end = index + 1 < dateMatches.count ? dateMatches[index + 1].range.location : ns.length
-                let segment = ns.substring(with: NSRange(location: match.range.location, length: end - match.range.location))
-                if let venue = venueFromOverview(segment) {
-                    venuesByDate[distinctDates[index]] = venue
-                }
-            }
-        }
-        if Set(venuesByDate.values).count < 2 { venuesByDate = [:] }
+        let venuesByDate = venuesPairedWithDates(in: raw)
+        let shared = venuesByDate.isEmpty ? venueFromOverview(raw) : nil
         return parsed.map { schedule in
             var result = schedule
-            result.venue = venuesByDate[schedule.localDate] ?? (venuesByDate.isEmpty ? venueFromOverview(raw) : nil)
+            if let own = venuesByDate[schedule.localDate] {
+                result.venue = own
+            } else if venuesByDate.isEmpty {
+                result.venue = shared
+            } else {
+                result.venue = nil
+            }
             return result
         }
+    }
+
+    /// Pairs each date with the venue in its own segment. One venue marker is a
+    /// shared hall (empty map; the caller applies it to every date). Two or more
+    /// markers stay per date, including when they name the same hall. A date that
+    /// already has a hall does not donate that hall to a date that does not.
+    static func venuesPairedWithDates(in raw: String) -> [String: String] {
+        let source = raw.precomposedStringWithCompatibilityMapping
+        let dateMatches = regex(#"(?:(\d{4})年\s*)?(?:(\d{1,2})月\s*)?(\d{1,2})日(?!目)"#, source)
+        let venueMatches = regex(#"■会場|【(?:会場|場所)】|(?:会場|開催場所)[：:]"#, source).compactMap { match -> (location: Int, venue: String)? in
+            guard let venue = venueValue(after: match.range, in: source) else { return nil }
+            return (match.range.location, venue)
+        }
+        guard venueMatches.count >= 2, !dateMatches.isEmpty else { return [:] }
+        var year: Int?
+        var month: Int?
+        var dated: [(location: Int, end: Int, local: String)] = []
+        for match in dateMatches {
+            if let value = group(match, 1, in: source).flatMap(Int.init) { year = value }
+            if let value = group(match, 2, in: source).flatMap(Int.init) { month = value }
+            guard let year, let month, let day = group(match, 3, in: source).flatMap(Int.init),
+                  validDate(year: year, month: month, day: day) != nil else { continue }
+            dated.append((match.range.location, NSMaxRange(match.range), String(format: "%04d-%02d-%02d", year, month, day)))
+        }
+        guard let firstDate = dated.first, let firstVenue = venueMatches.first else { return [:] }
+        let venueBeforeDate = firstVenue.location < firstDate.location
+        var venuesByDate: [String: String] = [:]
+        for (index, date) in dated.enumerated() {
+            let venue: String?
+            if venueBeforeDate {
+                let previousEnd = index == 0 ? -1 : dated[index - 1].end
+                venue = venueMatches.last(where: { $0.location > previousEnd && $0.location < date.location })?.venue
+            } else {
+                let nextLocation = index + 1 < dated.count ? dated[index + 1].location : Int.max
+                venue = venueMatches.first(where: { $0.location >= date.end && $0.location < nextLocation })?.venue
+            }
+            if let venue, venuesByDate[date.local] == nil { venuesByDate[date.local] = venue }
+        }
+        return venuesByDate
+    }
+
+    /// The hall named by one venue marker, stopping before the next marker.
+    static func venueValue(after marker: NSRange, in raw: String) -> String? {
+        let ns = raw as NSString
+        let start = NSMaxRange(marker)
+        guard start <= ns.length else { return nil }
+        let rest = ns.substring(from: start)
+        let boundary = rest.range(of: #"■会場|【(?:会場|場所)】|(?:会場|開催場所)[：:]|出演"#, options: .regularExpression)
+        let window = boundary.map { String(rest[..<$0.lowerBound]) } ?? rest
+        let cleaned = clean(window.replacingOccurrences(of: #"^[：:\s　]+"#, with: "", options: .regularExpression))
+        let line = cleaned.components(separatedBy: "\n").first { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? ""
+        let value = clean(line)
+        return value.isEmpty ? nil : value
     }
 
     static func parseSchedules(_ raw: String?) -> [ParsedSchedule] {
@@ -883,7 +984,8 @@ private extension OfficialEventScraper {
     /// Love Live tour overviews list every stop inside one text body:
     /// `＜東京公演＞ / Day.1 …日 / 会場：… / ＜兵庫公演＞ / …`. Split that text at
     /// whole-line `＜…＞` stop headers and map each date to its own stop's venue.
-    /// Returns an empty map unless at least two dated stops name distinct venues.
+    /// A tour that uses one hall still keeps that pairing. A block with no venue
+    /// line is skipped instead of inheriting another stop.
     static func loveLiveStopVenues(_ overviewText: String) -> [String: String] {
         var blocks: [[String]] = [[]]
         for line in overviewText.components(separatedBy: "\n") {
@@ -911,7 +1013,6 @@ private extension OfficialEventScraper {
             guard !dates.isEmpty, let venue = venueFromOverview(text).map(clean), !venue.isEmpty else { continue }
             stops.append((dates, venue))
         }
-        guard Set(stops.map(\.venue)).count > 1 else { return [:] }
         var result: [String: String] = [:]
         for stop in stops {
             for date in stop.dates where result[date] == nil { result[date] = stop.venue }
@@ -1296,7 +1397,7 @@ private extension OfficialEventScraper {
         return clauses.isEmpty ? nil : clauses.joined(separator: "\n")
     }
 
-    static func parseTicketRounds(_ html: String, eventID: String, cached: [TicketRound], timeZone: String = "Asia/Tokyo", referenceDate: String? = nil, sourceURL: URL? = nil, sharedLinks: [OfficialLink] = []) -> [TicketRound] {
+    static func parseTicketRounds(_ html: String, eventID: String, cached: [TicketRound], timeZone: String = "Asia/Tokyo", referenceDate: String? = nil, sourceURL: URL? = nil, sharedLinks: [OfficialLink] = []) -> [ParsedTicketRound] {
         let classifiedSharedLinks = classifiedLinks(sharedLinks)
         let headings = HTML.headingSections(html)
         struct Candidate {
@@ -1343,7 +1444,7 @@ private extension OfficialEventScraper {
                 consumed.insert(neighbor)
             }
         }
-        let rounds: [TicketRound] = headings.enumerated().compactMap { index, section in
+        let rounds: [ParsedTicketRound] = headings.enumerated().compactMap { index, section in
             let raw = HTML.text(section.html)
             guard candidates[index].isRound else { return nil }
             // The heading names the round; body text only decides when the
@@ -1391,7 +1492,7 @@ private extension OfficialEventScraper {
             let paymentWindowText = markedLineText(raw, markers: ["入金期間", "支払期間", "支払期限"])
             let paymentDates = parseExplicitDateTimes(paymentWindowText ?? "")
 
-            return TicketRound(
+            return ParsedTicketRound(round: TicketRound(
                 id: id, eventID: eventID,
                 officialName: section.heading, kind: kind,
                 scope: .unconfirmed,
@@ -1413,9 +1514,10 @@ private extension OfficialEventScraper {
                 lotteryProducts: products,
                 applicationTarget: nil,
                 notes: ticketNotes(in: lines, links: ownLinks)
-            )
+            ), scopeText: section.heading + "\n" + raw)
         }
-        return uniqueByID(rounds)
+        var seenRoundIDs: Set<String> = []
+        return rounds.filter { seenRoundIDs.insert($0.round.id).inserted }
     }
 
     struct ParsedTicketBenefits: Sendable {
@@ -1510,7 +1612,7 @@ private extension OfficialEventScraper {
                 return MediaAsset(
                     id: prior?.id ?? stableID(prefix: "\(eventID)-media", seed: canonicalURL(image.original.absoluteString)),
                     eventID: eventID, kind: .product, originalURL: image.original.absoluteString,
-                    thumbnailURL: image.thumbnail?.absoluteString ?? prior?.thumbnailURL,
+                    thumbnailURL: image.thumbnail?.absoluteString,
                     scope: scope, sourceURL: sourceURL.absoluteString,
                     version: (prior?.version ?? 0) + 1, caption: section.heading,
                     displayPolicy: .remoteDisplay, contentKind: .image
@@ -1548,7 +1650,7 @@ private extension OfficialEventScraper {
     /// `＜最速先行抽選＞`-style marker lines, each with one or more
     /// `★申込対象：` sub-blocks that carry their own product list and
     /// `■label：value` fields.
-    static func parseLoveLiveTicketRounds(_ html: String, eventID: String, cached: [TicketRound], timeZone: String, referenceDate: String?, sourceURL: URL?) -> [TicketRound] {
+    static func parseLoveLiveTicketRounds(_ html: String, eventID: String, cached: [TicketRound], timeZone: String, referenceDate: String?, sourceURL: URL?) -> [ParsedTicketRound] {
         struct Line { let text: String; let struck: Bool; let links: [OfficialLink] }
         let lines: [Line] = HTML.annotatedLines(html, relativeTo: sourceURL).map { Line(text: $0.text, struck: $0.struck, links: $0.links) }
 
@@ -1779,7 +1881,7 @@ private extension OfficialEventScraper {
             return results.map(clean).filter { !$0.isEmpty && seen.insert($0).inserted }
         }
 
-        let rounds: [TicketRound] = blocks.compactMap { block in
+        let rounds: [ParsedTicketRound] = blocks.compactMap { block in
             let officialName = block.target.map { "\(block.roundHeading)（\($0)）" } ?? block.roundHeading
             let allText = block.allLines.map(\.text).joined(separator: "\n") + "\n" + block.productLines.map(\.text).joined(separator: "\n")
             let nameAndFields = officialName + allText
@@ -1822,7 +1924,7 @@ private extension OfficialEventScraper {
                 ticketRoundIdentity($0.officialName) == identity && (!repeated || ($0.lotteryProducts == lotteryProducts && $0.applyStartAt == applyDates.first && Set($0.allApplicationLinks.map(\.url)) == applicationURLs))
             })?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
 
-            return TicketRound(
+            return ParsedTicketRound(round: TicketRound(
                 id: id, eventID: eventID,
                 officialName: officialName, kind: kind,
                 scope: .unconfirmed,
@@ -1844,12 +1946,19 @@ private extension OfficialEventScraper {
                 lotteryProducts: lotteryProducts,
                 applicationTarget: block.target ?? block.applicationTargetField,
                 notes: notes
-            )
+            ), scopeText: officialName + "\n" + allText)
         }
-        return uniqueByID(rounds)
+        var seenRoundIDs: Set<String> = []
+        return rounds.filter { seenRoundIDs.insert($0.round.id).inserted }
     }
 
-    static func parseStreams(_ html: String, sourceURL: URL, eventID: String) -> [StreamOffer] {
+    static func parseStreams(
+        _ html: String,
+        sourceURL: URL,
+        eventID: String,
+        performances: [Performance],
+        ticketScope: Scope
+    ) -> [StreamOffer] {
         guard let heading = HTML.headingSections(html).first(where: { $0.heading.hasPrefix("配信チケット") }),
               let section = HTML.sectionHTML(html, heading: heading.heading) else { return [] }
         let raw = HTML.text(section)
@@ -1882,7 +1991,8 @@ private extension OfficialEventScraper {
                 guard amount != nil || url != nil || !dates.isEmpty else { continue }
                 offers.append(StreamOffer(id: stableID(prefix: "\(eventID)-stream", seed: label), eventID: eventID,
                     platform: url?.contains("eplus") == true ? "Streaming+" : "公式配信", officialName: label,
-                    scope: .unconfirmed, amount: amount, salesStartAt: dates.first, salesEndAt: dates.dropFirst().first,
+                    scope: resolvedScope(.unconfirmed, text: label + "\n" + slice, performances: performances, fallback: ticketScope),
+                    amount: amount, salesStartAt: dates.first, salesEndAt: dates.dropFirst().first,
                     archiveAvailableUntil: archive, regionNote: nil, url: url, status: .confirmed))
             }
         }
@@ -2023,7 +2133,9 @@ private extension OfficialEventScraper {
         eventID: String,
         cached: [MediaAsset],
         eventCoverURL: URL?,
-        eventCoverSourceURL: URL?
+        eventCoverSourceURL: URL?,
+        performances: [Performance],
+        ticketScope: Scope
     ) -> [MediaAsset] {
         var assets: [MediaAsset] = []
         if let eventCoverURL {
@@ -2045,19 +2157,27 @@ private extension OfficialEventScraper {
             assets.append(MediaAsset(
                 id: prior?.id ?? stableID(prefix: "\(eventID)-key-visual", seed: eventID),
                 eventID: eventID, kind: .keyVisual, originalURL: visual.absoluteString,
-                thumbnailURL: nil, scope: .unconfirmed, sourceURL: sourceURL.absoluteString,
+                thumbnailURL: nil,
+                scope: resolvedScope(.unconfirmed, text: "公演キービジュアル", performances: performances, fallback: ticketScope),
+                sourceURL: sourceURL.absoluteString,
                 version: (prior?.version ?? 0) + 1, caption: "公演キービジュアル",
                 displayPolicy: .remoteDisplay, contentKind: .image
             ))
         }
         let sections = HTML.headingSections(html).filter { $0.heading.contains("座席") || $0.heading.contains("会場エリア") }
         assets.append(contentsOf: sections.flatMap { section in
-            extractImages(HTML.sectionHTML(html, heading: section.heading) ?? section.html, relativeTo: sourceURL).map { image in
+            let sectionHTML = HTML.sectionHTML(html, heading: section.heading) ?? section.html
+            let genericVenueMap = section.heading.contains("汎用")
+            let seatingScope: Scope = genericVenueMap
+                ? .unconfirmed
+                : resolvedScope(.unconfirmed, text: section.heading + "\n" + HTML.text(sectionHTML), performances: performances, fallback: ticketScope)
+            return extractImages(sectionHTML, relativeTo: sourceURL).map { image in
                 let prior = cached.first { canonicalURL($0.originalURL) == canonicalURL(image.original.absoluteString) }
                 return MediaAsset(
                     id: prior?.id ?? stableID(prefix: "\(eventID)-media", seed: canonicalURL(image.original.absoluteString)),
-                    eventID: eventID, kind: .eventSeatingMap, originalURL: image.original.absoluteString,
-                    thumbnailURL: image.thumbnail?.absoluteString ?? prior?.thumbnailURL, scope: .unconfirmed,
+                    eventID: eventID, kind: genericVenueMap ? .venueGenericSeatingMap : .eventSeatingMap,
+                    originalURL: image.original.absoluteString,
+                    thumbnailURL: image.thumbnail?.absoluteString, scope: seatingScope,
                     sourceURL: sourceURL.absoluteString, version: (prior?.version ?? 0) + 1,
                     caption: section.heading, displayPolicy: .remoteDisplay, contentKind: .image
                 )
@@ -2122,12 +2242,10 @@ private extension OfficialEventScraper {
         cachedCampaigns: [GoodsCampaign],
         cachedMedia: [MediaAsset]
     ) -> ParsedGoods {
-        let allSections = HTML.headingSections(html)
+        let allSections = HTML.headingRegions(html)
         var sections = allSections
             .filter { isGoodsHeading($0.heading) }
-            .map { heading in
-                (heading: heading.heading, html: HTML.sectionHTML(html, heading: heading.heading) ?? heading.html)
-            }
+            .map { (heading: $0.heading, html: $0.html) }
         if sections.isEmpty, let goods = HTML.blockWithAttribute(html, attribute: "data-target", value: "goods") {
             sections = [(heading: "グッズ", html: goods)]
         }
@@ -2141,6 +2259,7 @@ private extension OfficialEventScraper {
             .flatMap { HTML.links($0.html, relativeTo: sourceURL) }
         var media: [MediaAsset] = []
         var campaigns: [GoodsCampaign] = []
+        var bodies: [String: String] = [:]
         var usedIDs: Set<String> = []
         /// Several sections of one page often share their first link (the goods
         /// X account); a second record on the same link gets a name-qualified ID.
@@ -2148,6 +2267,16 @@ private extension OfficialEventScraper {
             let resolved = usedIDs.contains(candidate) ? stableID(prefix: "\(eventID)-goods", seed: candidate + "|" + clean(name)) : candidate
             usedIDs.insert(resolved)
             return resolved
+        }
+        func parentPerformanceHeading(for sectionHTML: String, sectionHeading: String) -> String? {
+            let parents = allSections.filter { other in
+                other.heading != sectionHeading
+                    && other.html.count > sectionHTML.count
+                    && other.html.contains(sectionHeading)
+                    && !isGoodsHeading(other.heading)
+                    && hasOwnScopeCue(other.heading)
+            }
+            return parents.min(by: { $0.html.count < $1.html.count })?.heading
         }
         for section in sections {
             // A container heading (グッズ情報 above 会場グッズ販売について / グッズ通販)
@@ -2162,7 +2291,7 @@ private extension OfficialEventScraper {
                 return MediaAsset(
                     id: prior?.id ?? stableID(prefix: "\(eventID)-media", seed: canonicalURL(image.original.absoluteString)),
                     eventID: eventID, kind: .goodsList, originalURL: image.original.absoluteString,
-                    thumbnailURL: image.thumbnail?.absoluteString ?? prior?.thumbnailURL,
+                    thumbnailURL: image.thumbnail?.absoluteString,
                     scope: .unconfirmed, sourceURL: sourceURL.absoluteString,
                     version: (prior?.version ?? 0) + 1, caption: section.heading,
                     displayPolicy: .remoteDisplay, contentKind: .image
@@ -2199,8 +2328,11 @@ private extension OfficialEventScraper {
                     let key = link.map { canonicalURL($0.absoluteString) } ?? clean(section.heading)
                     let cached = prior(name: section.heading, url: link)
                     let catalogText = catalogLines.joined(separator: "\n")
+                    let catalogID = uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), name: section.heading)
+                    let parent = parentPerformanceHeading(for: section.html, sectionHeading: section.heading)
+                    bodies[catalogID] = goodsScopeText(heading: section.heading, body: catalogText, parentHeading: parent)
                     campaigns.append(GoodsCampaign(
-                        id: uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), name: section.heading), eventID: eventID,
+                        id: catalogID, eventID: eventID,
                         officialName: section.heading, channel: .online, fulfillment: .shipping, phase: .unknown,
                         scope: .unconfirmed, salesStartAt: nil, salesEndAt: nil, pickupWindow: nil,
                         shippingNote: nil, location: nil, requiresTicket: nil,
@@ -2216,8 +2348,12 @@ private extension OfficialEventScraper {
                         .map { $0.replacingOccurrences(of: #"^※"#, with: "", options: .regularExpression) }.joined(separator: "\n")
                     let name = clean(sub.name)
                     let cached = prior(name: name, url: link)
+                    let subID = uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: (link.map { canonicalURL($0.absoluteString) } ?? "") + "|" + name), name: name)
+                    let parent = parentPerformanceHeading(for: section.html, sectionHeading: section.heading)
+                    let inherited = hasOwnScopeCue(section.heading) ? section.heading : parent
+                    bodies[subID] = goodsScopeText(heading: name, body: sub.lines.joined(separator: "\n"), parentHeading: inherited)
                     campaigns.append(GoodsCampaign(
-                        id: uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: (link.map { canonicalURL($0.absoluteString) } ?? "") + "|" + name), name: name),
+                        id: subID,
                         eventID: eventID, officialName: name, channel: channel,
                         fulfillment: channel == .online ? .shipping : .venuePickup, phase: phase,
                         scope: .unconfirmed, salesStartAt: salesDates.first, salesEndAt: salesDates.dropFirst().first,
@@ -2255,8 +2391,11 @@ private extension OfficialEventScraper {
                 .map { $0.replacingOccurrences(of: #"^※"#, with: "", options: .regularExpression) }.joined(separator: "\n") : ""
             let key = link.map { canonicalURL($0.absoluteString) } ?? clean(section.heading)
             let cached = prior(name: section.heading, url: link)
+            let campaignID = uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), name: section.heading)
+            let parent = parentPerformanceHeading(for: section.html, sectionHeading: section.heading)
+            bodies[campaignID] = goodsScopeText(heading: section.heading, body: text, parentHeading: parent)
             campaigns.append(GoodsCampaign(
-                id: uniqueID(cached?.id ?? stableID(prefix: "\(eventID)-goods", seed: key), name: section.heading), eventID: eventID,
+                id: campaignID, eventID: eventID,
                 officialName: section.heading, channel: channel, fulfillment: fulfillment, phase: phase,
                 scope: .unconfirmed, salesStartAt: salesDates.first, salesEndAt: salesDates.dropFirst().first,
                 pickupWindow: channel == .venue ? goodsSalesWindowText(salesText.map { $0.components(separatedBy: "\n") } ?? lines) : nil,
@@ -2293,7 +2432,10 @@ private extension OfficialEventScraper {
             (campaign.salesStartAt != nil ? 4 : 0) + (campaign.url != nil ? 2 : 0) + (campaign.mediaAssetIDs.isEmpty ? 0 : 1)
         }
         for campaign in campaigns {
-            let key = clean(campaign.officialName)
+            let key = goodsMergeKey(
+                name: campaign.officialName, phase: campaign.phase, channel: campaign.channel,
+                location: campaign.location, body: bodies[campaign.id] ?? ""
+            )
             if let existing = byName[key] {
                 if score(campaign) > score(existing) { byName[key] = campaign }
             } else {
@@ -2303,13 +2445,13 @@ private extension OfficialEventScraper {
         }
         let uniqueMedia = Dictionary(media.map { (canonicalURL($0.originalURL), $0) }, uniquingKeysWith: { first, _ in first })
             .values.sorted { $0.id < $1.id }
-        return ParsedGoods(campaigns: uniqueByID(order.compactMap { byName[$0] }), mediaAssets: uniqueMedia)
+        return ParsedGoods(campaigns: uniqueByID(order.compactMap { byName[$0] }), mediaAssets: uniqueMedia, bodies: bodies)
     }
 
     static func isGoodsHeading(_ heading: String) -> Bool {
         guard !isGoodsLimitHeading(heading), !isGoodsVenueGuideHeading(heading),
               heading.range(of: "ご注意|注意事項|お問い?合わ?せ", options: .regularExpression) == nil else { return false }
-        return heading.contains("グッズ通販") || heading.contains("グッズ販売") || heading.contains("事前通販") || heading == "グッズ情報" || (heading.hasPrefix("グッズ") && heading.contains("販売"))
+        return heading.contains("グッズ通販") || heading.contains("グッズ販売") || heading.contains("販売グッズ") || heading.contains("事前通販") || heading == "グッズ情報" || (heading.hasPrefix("グッズ") && heading.contains("販売"))
     }
 
     /// Global navigation anchors (LIVE&EVENT LIST / OFFICIAL X / TOP) that a
@@ -2489,7 +2631,13 @@ private extension OfficialEventScraper {
 
     static func isDirectImageURL(_ url: URL) -> Bool {
         let value = url.absoluteString.lowercased().removingPercentEncoding ?? url.absoluteString.lowercased()
-        return value.range(of: #"\.(?:jpe?g|png|webp|gif|avif)(?:[?#&]|$)"#, options: .regularExpression) != nil
+        if value.range(of: #"\.(?:jpe?g|png|webp|gif|avif)(?:[?#&]|$)"#, options: .regularExpression) != nil {
+            return true
+        }
+        let path = url.path.lowercased()
+        guard path.hasSuffix("/image.php") || path.hasSuffix("image.php") else { return false }
+        return URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+            .contains { $0.name == "img_path" && !($0.value ?? "").isEmpty } == true
     }
 
     static func mergeMedia(_ cached: [MediaAsset], _ parsed: [MediaAsset]) -> [MediaAsset] {
@@ -2627,7 +2775,13 @@ private extension OfficialEventScraper {
         for context in contexts where context.dates.contains(date) {
             if let venue = venues.first(where: { context.context.contains($0.1) }) { return venue.0 }
         }
-        return ""
+        return nil
+    }
+
+    static func nonempty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let cleaned = clean(value)
+        return cleaned.isEmpty ? nil : cleaned
     }
 
     static func notedPerformers(_ note: String, groups: [String], date: String, singleDate: Bool) -> [String] {
@@ -2636,11 +2790,7 @@ private extension OfficialEventScraper {
         let applicable = contexts.filter { $0.dates.contains(date) }.map(\.context).joined(separator: "\n")
         let mentionedGroups = groups.filter { note.contains($0) }
         let text = (contexts.isEmpty && singleDate) || (mentionedGroups.count == 1 && contexts.contains { $0.dates.contains(date) }) ? note : applicable
-        return groups.filter { text.contains($0) }.map { group in
-            // The official notice names an individual guest from this group.
-            if group == "夢限大みゅーたいぷ", text.contains("千石ユノ") { return "千石ユノ（夢限大みゅーたいぷ）" }
-            return group
-        }
+        return groups.filter { text.contains($0) }
     }
 
     static func cleanedVenue(_ raw: String, summary: String?) -> String {
@@ -2832,27 +2982,46 @@ private extension OfficialEventScraper {
         }.filter { !isLoveLiveCastNote($0) && !loveLiveCastLabels.contains($0) }
     }
 
-    /// A goods image is media. A product or sales session exists only when the
-    /// page also stated a window, a purchase limit, or a payment restriction.
-    static func structuredGoods(from campaigns: [GoodsCampaign], eventID: String) -> (products: [Product], sessions: [GoodsSession]) {
+    /// A goods image is media. A `名称：金額円` line becomes a product with that
+    /// amount. Lines without an amount are not given a guessed price. A campaign
+    /// that states a window or a purchase rule and no priced line still yields
+    /// one product with a nil amount so the UI can say the price is unchecked.
+    static func structuredGoods(from campaigns: [GoodsCampaign], bodies: [String: String], eventID: String) -> (products: [Product], sessions: [GoodsSession]) {
         var products: [Product] = []
         var sessions: [GoodsSession] = []
         for campaign in campaigns {
-            let hasWindow = campaign.salesStartAt != nil || campaign.salesEndAt != nil || campaign.pickupWindow?.isEmpty == false
-            let hasRule = campaign.purchaseLimit != nil || campaign.paymentMethods != nil
-            guard hasWindow || hasRule else { continue }
-            if hasRule || campaign.salesStartAt != nil {
-                products.append(Product(
-                    id: stableID(prefix: "\(eventID)-product", seed: campaign.id),
-                    eventID: eventID,
-                    campaignID: campaign.id,
-                    name: campaign.officialName,
-                    amount: nil,
-                    url: campaign.url,
-                    variants: [],
-                    purchaseLimit: campaign.purchaseLimit
-                ))
+            let body = bodies[campaign.id] ?? ""
+            let priced = pricedLines(in: body)
+            if !priced.isEmpty {
+                for (index, line) in priced.enumerated() {
+                    products.append(Product(
+                        id: stableID(prefix: "\(eventID)-product", seed: "\(campaign.id)|\(index)|\(line.name)|\(line.amount)"),
+                        eventID: eventID,
+                        campaignID: campaign.id,
+                        name: line.name,
+                        amount: MoneyAmount(minorUnits: line.amount, currency: "JPY"),
+                        url: campaign.url,
+                        variants: [],
+                        purchaseLimit: campaign.purchaseLimit
+                    ))
+                }
+            } else {
+                let hasWindow = campaign.salesStartAt != nil || campaign.salesEndAt != nil || campaign.pickupWindow?.isEmpty == false
+                let hasRule = campaign.purchaseLimit != nil || campaign.paymentMethods != nil
+                if hasWindow || hasRule, hasRule || campaign.salesStartAt != nil {
+                    products.append(Product(
+                        id: stableID(prefix: "\(eventID)-product", seed: campaign.id),
+                        eventID: eventID,
+                        campaignID: campaign.id,
+                        name: campaign.officialName,
+                        amount: nil,
+                        url: campaign.url,
+                        variants: [],
+                        purchaseLimit: campaign.purchaseLimit
+                    ))
+                }
             }
+            let hasWindow = campaign.salesStartAt != nil || campaign.salesEndAt != nil || campaign.pickupWindow?.isEmpty == false
             if hasWindow {
                 sessions.append(GoodsSession(
                     id: stableID(prefix: "\(eventID)-goods-session", seed: campaign.id),
@@ -2866,6 +3035,20 @@ private extension OfficialEventScraper {
             }
         }
         return (products, sessions)
+    }
+
+    /// `T シャツ：3,500円` lines. The same name with two amounts stays two products.
+    static func pricedLines(in body: String) -> [(name: String, amount: Int64)] {
+        var lines: [(name: String, amount: Int64)] = []
+        for raw in body.components(separatedBy: "\n") {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard let match = regex(#"^[・●■\s　]*([^：:\n]{1,80}?)[：:]\s*([\d,]+)円"#, line).first,
+                  let name = group(match, 1, in: line).map(clean), !name.isEmpty,
+                  let digits = group(match, 2, in: line)?.replacingOccurrences(of: ",", with: ""),
+                  let amount = Int64(digits) else { continue }
+            lines.append((name, amount))
+        }
+        return lines
     }
 
     static func loveLivePerformers(_ blocks: [LoveLiveCastBlock], dayLabel: String, localDate: String, stop: String?) -> [String] {
@@ -2902,7 +3085,6 @@ private extension OfficialEventScraper {
         performersRaw: String?,
         performers: [String],
         associatedPerformers: [String],
-        priorPerformers: [String],
         dayLabel: String
     ) -> [String] {
         if let explicit { return explicit }
@@ -2915,7 +3097,7 @@ private extension OfficialEventScraper {
         let raw = performersRaw ?? ""
         let rawHasDayLabels = !regex(#"DAY\s*\d+"#, raw).isEmpty
         if performers.isEmpty {
-            return rawHasDayLabels ? [] : (associatedPerformers.isEmpty ? priorPerformers : associatedPerformers)
+            return rawHasDayLabels ? [] : associatedPerformers
         }
         let forDay = performersForDay(raw, dayLabel: dayLabel)
         if rawHasDayLabels && forDay.isEmpty { return [] }
@@ -2925,36 +3107,171 @@ private extension OfficialEventScraper {
     /// Binds a record only to a range the heading states. An unconfirmed
     /// record keeps `fallback` (the single performance, or still unconfirmed).
     /// A scope the parser already resolved is left alone.
-    static func resolvedScope(_ scope: Scope, heading: String, performances: [Performance], fallback: Scope) -> Scope {
+    static func resolvedScope(_ scope: Scope, text: String, performances: [Performance], fallback: Scope) -> Scope {
         if case .unconfirmed = scope {
-            return explicitScope(heading: heading, performances: performances) ?? fallback
+            return explicitScope(text: text, performances: performances) ?? fallback
         }
         return scope
     }
 
-    static func explicitScope(heading: String, performances: [Performance]) -> Scope? {
-        let text = heading.precomposedStringWithCompatibilityMapping
-        if text.contains("全公演") || text.contains("通し") || text.contains("全日程") {
+    /// `text` is the record heading, a newline, then that record's section body.
+    /// Bare `DAY n` is read only from the heading line and lines that contain 対象.
+    /// A date and a venue in the same text must both match. Sale, payment,
+    /// distribution and archive dates are not performance dates. The same
+    /// calendar day at two halls, with no hall named, stays unresolved.
+    static func explicitScope(text: String, performances: [Performance]) -> Scope? {
+        let normalized = text.precomposedStringWithCompatibilityMapping
+        if normalized.contains("全公演") || normalized.contains("通し") || normalized.contains("全日程")
+            || normalized.contains("各公演") || normalized.contains("全日") || normalized.contains("両日共通") {
             let ids = performances.map(\.id)
             return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         }
-        if let match = regex(#"DAY\s*(\d+)\s*のみ"#, text).first,
-           let day = group(match, 1, in: text).flatMap(Int.init) {
+        if normalized.contains("両日"), performances.count == 2 {
+            return .performances(performanceIDs: performances.map(\.id))
+        }
+        if let match = regex(#"DAY\s*(\d+)\s*のみ"#, normalized).first,
+           let day = group(match, 1, in: normalized).flatMap(Int.init) {
             let ids = performances.filter { performanceMatchesDay($0, day: day) }.map(\.id)
             return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         }
-        if let match = regex(#"(?:(\d{4})年\s*)?(\d{1,2})月\s*(\d{1,2})日"#, text).first,
-           let month = group(match, 2, in: text).flatMap(Int.init),
-           let day = group(match, 3, in: text).flatMap(Int.init) {
-            let year = group(match, 1, in: text).flatMap(Int.init)
-            let ids = performances.filter { performance in
-                let parts = performance.localDate?.split(separator: "-").compactMap { Int($0) } ?? []
-                guard parts.count == 3, parts[1] == month, parts[2] == day else { return false }
-                return year == nil || parts[0] == year
-            }.map(\.id)
+        let lines = normalized.components(separatedBy: "\n")
+        let dayScope = lines.enumerated().compactMap { index, line -> String? in
+            index == 0 || line.contains("対象") ? line : nil
+        }.joined(separator: "\n")
+        let dayNumbers = regex(#"DAY\.?\s*(\d+)"#, dayScope).compactMap { group($0, 1, in: dayScope).flatMap(Int.init) }
+        if !dayNumbers.isEmpty {
+            var matched: Set<String> = []
+            for day in dayNumbers {
+                for id in performances.filter({ performanceMatchesDay($0, day: day) }).map(\.id) {
+                    matched.insert(id)
+                }
+            }
+            let ids = performances.map(\.id).filter { matched.contains($0) }
+            if !ids.isEmpty { return .performances(performanceIDs: ids) }
+        }
+        let dateSource = performanceDateSource(normalized)
+        let dateEvidence = performanceDateEvidence(dateSource, performances: performances)
+        let placeIDs = placePerformanceIDs(in: normalized, performances: performances)
+        switch dateEvidence {
+        case .absent:
+            guard let placeIDs, !placeIDs.isEmpty else { return nil }
+            return .performances(performanceIDs: placeIDs)
+        case .unmatched:
+            return nil
+        case .matched(let dateIDs):
+            var ids = dateIDs
+            if let placeIDs {
+                let places = Set(placeIDs)
+                ids = ids.filter { places.contains($0) }
+                if ids.isEmpty { return nil }
+            } else if scopeVenuesAmbiguous(ids, performances: performances) {
+                return nil
+            }
             return ids.isEmpty ? nil : .performances(performanceIDs: ids)
         }
-        return nil
+    }
+
+    /// Drops clauses whose date is a sale, application, result, payment,
+    /// shipping, distribution or archive deadline.
+    static func performanceDateSource(_ text: String) -> String {
+        let pattern = #"(?:受付(?:期間|開始|終了|日時)?|申込(?:期間|開始|終了)?|当落(?:発表)?(?:日時)?|入金(?:期間|期限|締切)?|支払(?:期限|締切)?|発送(?:予定|期間)?|配送(?:予定|期間)?|配布(?:開始|期間|日)?|アーカイブ(?:配信)?(?:終了|期限)?|見逃し(?:配信)?(?:期間|期限)?|販売(?:開始|期間|終了)|発売(?:期間|開始|日)|通販(?:期間|開始|終了|受付)|注文(?:期間|開始|終了)?)[^。\n]*"#
+        return text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+    }
+
+    private enum PerformanceDateEvidence {
+        case absent
+        case unmatched
+        case matched([String])
+    }
+
+    private static func performanceDateEvidence(_ text: String, performances: [Performance]) -> PerformanceDateEvidence {
+        let matches = regex(#"(?:(\d{4})年\s*)?(\d{1,2})月\s*(\d{1,2})日"#, text)
+        if matches.isEmpty { return .absent }
+        var matched: Set<String> = []
+        for match in matches {
+            guard let month = group(match, 2, in: text).flatMap(Int.init),
+                  let day = group(match, 3, in: text).flatMap(Int.init) else { continue }
+            let year = group(match, 1, in: text).flatMap(Int.init)
+            for performance in performances {
+                let parts = performance.localDate?.split(separator: "-").compactMap { Int($0) } ?? []
+                guard parts.count == 3, parts[1] == month, parts[2] == day else { continue }
+                guard year == nil || parts[0] == year else { continue }
+                matched.insert(performance.id)
+            }
+        }
+        let ids = performances.map(\.id).filter { matched.contains($0) }
+        return ids.isEmpty ? .unmatched : .matched(ids)
+    }
+
+    /// Hall names written in the text, and ＜stop＞ tokens, must agree when both appear.
+    private static func placePerformanceIDs(in text: String, performances: [Performance]) -> [String]? {
+        let namedVenues = performances.filter { performance in
+            let name = clean(performance.venueName)
+            return name.count >= 2 && text.contains(name)
+        }.map(\.id)
+        let stopNames = regex(#"[＜<]([^＜＞<>]+)[＞>]"#, text).compactMap { group($0, 1, in: text).map(clean) }
+            .filter { name in name.contains("公演") || knownPrefectures.contains { name.hasPrefix($0) } }
+        var fromStops: [String] = []
+        if !stopNames.isEmpty {
+            var matched: Set<String> = []
+            for name in stopNames {
+                let eventID = performances.first?.eventID ?? ""
+                let stopID = stableID(prefix: "\(eventID)-stop", seed: name)
+                let city = stopCity(name)
+                for performance in performances where performance.stopID == stopID || (!city.isEmpty && performance.venueCity == city) {
+                    matched.insert(performance.id)
+                }
+            }
+            fromStops = performances.map(\.id).filter { matched.contains($0) }
+        }
+        if namedVenues.isEmpty && stopNames.isEmpty { return nil }
+        if namedVenues.isEmpty { return fromStops }
+        if fromStops.isEmpty { return namedVenues }
+        let stops = Set(fromStops)
+        return namedVenues.filter { stops.contains($0) }
+    }
+
+    /// Same local date at more than one hall is not a license to pick a hall.
+    private static func scopeVenuesAmbiguous(_ ids: [String], performances: [Performance]) -> Bool {
+        let rows = performances.filter { ids.contains($0.id) }
+        let names = Set(rows.map { clean($0.venueName) }.filter { !$0.isEmpty })
+        if names.count > 1 { return true }
+        let stops = Set(rows.compactMap(\.stopID))
+        return names.isEmpty && stops.count > 1
+    }
+
+    /// A goods block nested under a dated performance heading inherits that
+    /// heading only when the block itself does not restate a range.
+    static func goodsScopeText(heading: String, body: String, parentHeading: String?) -> String {
+        let own = heading + "\n" + body
+        guard let parentHeading, !hasOwnScopeCue(own) else { return own }
+        return parentHeading + "\n" + own
+    }
+
+    static func hasOwnScopeCue(_ text: String) -> Bool {
+        let normalized = text.precomposedStringWithCompatibilityMapping
+        if normalized.contains("全公演") || normalized.contains("通し") || normalized.contains("全日程")
+            || normalized.contains("各公演") || normalized.contains("全日") || normalized.contains("両日") {
+            return true
+        }
+        if !regex(#"DAY\s*\d+"#, normalized).isEmpty { return true }
+        if !regex(#"[＜<][^＜＞<>]+[＞>]"#, normalized).isEmpty { return true }
+        let dates = performanceDateSource(normalized)
+        return !regex(#"\d{1,2}月\s*\d{1,2}日"#, dates).isEmpty
+    }
+
+    /// Same display name at two halls or two batches is not one campaign.
+    static func goodsMergeKey(name: String, phase: GoodsPhase, channel: GoodsChannel, location: String?, body: String) -> String {
+        let dates = performanceDateSource(body)
+        let days = regex(#"(?:(\d{4})年\s*)?(\d{1,2})月\s*(\d{1,2})日"#, dates).compactMap { match -> String? in
+            guard let month = group(match, 2, in: dates), let day = group(match, 3, in: dates) else { return nil }
+            return (group(match, 1, in: dates) ?? "") + "-" + month + "-" + day
+        }
+        let dayLabels = regex(#"DAY\s*\d+"#, body).compactMap { group($0, 0, in: body) }
+        return [
+            clean(name), phase.rawValue, channel.rawValue, clean(location ?? ""),
+            days.joined(separator: ","), dayLabels.joined(separator: ",")
+        ].joined(separator: "\u{1}")
     }
 
     static func performanceMatchesDay(_ performance: Performance, day: Int) -> Bool {
@@ -3193,6 +3510,360 @@ private extension OfficialEventScraper {
     }
 }
 
+// MARK: - Exhibition / handover pages
+
+/// One parent activity (an h3 such as イベント概要 or お渡し会概要) and the
+/// sections that belong to it. Duplicate headings stay inside their parent.
+fileprivate struct ActivityDocument {
+    var schedules: [OfficialEventScraper.ParsedSchedule]
+    var products: [Product]
+    var sessions: [PendingGoodsSession]
+    var notices: [PendingActivityNotice]
+    var sourceURL: String
+}
+
+fileprivate struct PendingGoodsSession {
+    var venueHint: String
+    var location: String
+}
+
+fileprivate struct PendingActivityNotice {
+    enum Audience { case sharedCatalog, handovers }
+    var title: String
+    var body: String
+    var audience: Audience
+}
+
+fileprivate struct BoundActivity {
+    var campaigns: [GoodsCampaign]
+    var products: [Product]
+    var sessions: [GoodsSession]
+    var notices: [Notice]
+}
+
+extension OfficialEventScraper {
+    /// Returns nil unless the article has more than one `日程・会場` under
+    /// separate parent activities. Ordinary live pages keep the existing parser.
+    fileprivate static func parseActivityDocument(_ html: String, eventID: String, sourceURL: String) -> ActivityDocument? {
+        let regions = activityRegions(in: html)
+        let scheduleCount = regions.reduce(0) { count, region in
+            count + HTML.headingSections(region.body).filter { $0.heading == "日程・会場" || $0.heading == "日時・会場" }.count
+        }
+        guard scheduleCount >= 2 else { return nil }
+
+        var schedules: [ParsedSchedule] = []
+        var products: [Product] = []
+        var sessions: [PendingGoodsSession] = []
+        var notices: [PendingActivityNotice] = []
+        for region in regions {
+            let kind = activityKind(for: region.title)
+            let sections = HTML.headingSections(region.body)
+            for section in sections where section.heading == "日程・会場" || section.heading == "日時・会場" {
+                schedules.append(contentsOf: schedulesFromVenueLines(HTML.text(section.html), kind: kind))
+            }
+            if kind == .handover {
+                attachHandoverClocks(&schedules, text: HTML.text(region.body))
+                sessions.append(contentsOf: distributionSessions(in: HTML.text(region.body)))
+            }
+            for section in sections where section.heading.contains("販売グッズ") {
+                products.append(contentsOf: pricedProducts(in: HTML.text(section.html), eventID: eventID))
+            }
+            for section in sections where section.heading.contains("購入特典") {
+                let body = clean(HTML.text(section.html))
+                if !body.isEmpty {
+                    notices.append(PendingActivityNotice(title: "先着購入特典", body: body, audience: .sharedCatalog))
+                }
+            }
+            for section in sections where section.heading.contains("参加方法") {
+                let lines = HTML.text(section.html).components(separatedBy: "\n").map(clean).filter { !$0.isEmpty }
+                let eligibility = lines.filter { $0.contains("参加券") && ($0.contains("以上") || $0.contains("ご購入")) }
+                if !eligibility.isEmpty {
+                    notices.append(PendingActivityNotice(title: "参加资格", body: eligibility.joined(separator: "\n"), audience: .handovers))
+                }
+            }
+        }
+        var seen: Set<String> = []
+        schedules = schedules.filter { item in
+            seen.insert("\(item.activityKind?.rawValue ?? "")|\(item.localDate)|\(item.localEndDate ?? "")|\(item.venue ?? "")|\(item.subtitle ?? "")").inserted
+        }
+        guard !schedules.isEmpty else { return nil }
+        return ActivityDocument(schedules: schedules, products: products, sessions: sessions, notices: notices, sourceURL: sourceURL)
+    }
+
+    fileprivate static func bindActivity(_ document: ActivityDocument, performances: [Performance], campaigns: [GoodsCampaign]) -> BoundActivity {
+        let eventID = performances.first?.eventID ?? campaigns.first?.eventID ?? document.products.first?.eventID ?? "event"
+        let allIDs = performances.map(\.id)
+        let sharedScope: Scope = allIDs.isEmpty ? .unconfirmed : .performances(performanceIDs: allIDs)
+        let handoverIDs = performances.filter { $0.activityKind == .handover }.map(\.id)
+        var campaigns = campaigns
+        let catalogID: String
+        if let index = campaigns.firstIndex(where: { $0.officialName.contains("販売グッズ") || $0.officialName.contains("グッズ販売") }) {
+            catalogID = campaigns[index].id
+            campaigns[index] = catalogCampaign(campaigns[index], scope: sharedScope)
+        } else if !document.products.isEmpty {
+            catalogID = stableID(prefix: "\(eventID)-goods", seed: "販売グッズ")
+            campaigns.append(GoodsCampaign(
+                id: catalogID, eventID: eventID, officialName: "販売グッズ", channel: .unknown, fulfillment: .unknown,
+                phase: .unknown, scope: sharedScope, salesStartAt: nil, salesEndAt: nil, pickupWindow: nil,
+                shippingNote: nil, location: nil, requiresTicket: nil, purchaseLimit: nil, paymentMethods: nil,
+                url: nil, mediaAssetIDs: [], status: .confirmed, links: []
+            ))
+        } else {
+            catalogID = ""
+        }
+        let products = document.products.map { product in
+            Product(id: product.id, eventID: product.eventID, campaignID: catalogID.isEmpty ? product.campaignID : catalogID,
+                    name: product.name, amount: product.amount, url: nil, variants: product.variants, purchaseLimit: nil)
+        }
+        let sessions = document.sessions.map { session in
+            let matches = performances.filter { performance in
+                performance.activityKind == .handover && venuesReferToSamePlace(performance.venueName, session.venueHint)
+            }
+            let scope: Scope = matches.count == 1 ? .performances(performanceIDs: [matches[0].id]) : .unconfirmed
+            return GoodsSession(
+                id: stableID(prefix: "\(eventID)-goods-session", seed: "\(session.venueHint)|\(session.location)"),
+                eventID: eventID, campaignID: catalogID, scope: scope, startsAt: nil, endsAt: nil, location: session.location
+            )
+        }
+        let notices = document.notices.map { pending in
+            let ids: [String]
+            switch pending.audience {
+            case .sharedCatalog: ids = allIDs
+            case .handovers: ids = handoverIDs
+            }
+            let scope: Scope = ids.isEmpty ? .unconfirmed : .performances(performanceIDs: ids)
+            return Notice(
+                id: stableID(prefix: "\(eventID)-notice", seed: pending.title),
+                eventID: eventID, kind: .other, title: pending.title, body: pending.body,
+                publishedAt: nil, sourceURL: document.sourceURL, scope: scope
+            )
+        }
+        return BoundActivity(campaigns: campaigns, products: products, sessions: sessions, notices: notices)
+    }
+
+    fileprivate static func activityRegions(in html: String) -> [(title: String, body: String)] {
+        let html = OfficialPageBlocks.normalizedBody(html) ?? html
+        let matches = regex(#"<h3\b[^>]*>(.*?)</h3>"#, html, options: [.caseInsensitive, .dotMatchesLineSeparators])
+        guard matches.count >= 2 else { return [] }
+        let ns = html as NSString
+        return matches.enumerated().compactMap { index, match in
+            guard let titleRaw = group(match, 1, in: html) else { return nil }
+            let start = NSMaxRange(match.range)
+            let end = index + 1 < matches.count ? matches[index + 1].range.location : ns.length
+            return (HTML.text(titleRaw), ns.substring(with: NSRange(location: start, length: max(0, end - start))))
+        }
+    }
+
+    fileprivate static func activityKind(for title: String) -> PerformanceActivity {
+        if title.contains("お渡し会") { return .handover }
+        if title.contains("展") { return .exhibition }
+        return .performance
+    }
+
+    fileprivate static func schedulesFromVenueLines(_ text: String, kind: PerformanceActivity) -> [ParsedSchedule] {
+        let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        var results: [ParsedSchedule] = []
+        var index = 0
+        while index < lines.count {
+            let line = lines[index]
+            if let span = leadingDateSpan(in: line), !span.remainder.contains("開店") {
+                var venue = span.remainder
+                if !isVenueLine(venue), index + 1 < lines.count, isVenueLine(lines[index + 1]) {
+                    index += 1
+                    venue = lines[index]
+                }
+                let cleanedVenue = isVenueLine(venue) ? clean(venue) : ""
+                if !cleanedVenue.isEmpty {
+                    let label = kind == .handover ? "お渡し会" : (kind == .exhibition ? "会期" : nil)
+                    results.append(ParsedSchedule(
+                        localDate: span.start, dayLabel: label, subtitle: nil, doorsAt: nil, startsAt: nil,
+                        raw: clean(line), venue: cleanedVenue, performers: nil,
+                        localEndDate: span.end == span.start ? nil : span.end, activityKind: kind
+                    ))
+                }
+            }
+            index += 1
+        }
+        return results
+    }
+
+    fileprivate static func attachHandoverClocks(_ schedules: inout [ParsedSchedule], text: String) {
+        let lines = text.components(separatedBy: "\n").map(clean).filter { !$0.isEmpty }
+        var headerDate: String?
+        var headerVenue: String?
+        for line in lines {
+            if let span = leadingDateSpan(in: line), !span.remainder.contains("開店"),
+               isVenueLine(span.remainder) || line.contains("【") {
+                headerDate = span.start
+                if isVenueLine(span.remainder) { headerVenue = clean(span.remainder.replacingOccurrences(of: "】", with: "")) }
+            }
+            guard let headerDate, let headerVenue,
+                  let match = regex(#"開場\s*(\d{1,2}):(\d{2})\s*[／/]\s*開演\s*(\d{1,2}):(\d{2})"#, line).first,
+                  let doors = timeDate(headerDate, hour: group(match, 1, in: line), minute: group(match, 2, in: line)),
+                  let start = timeDate(headerDate, hour: group(match, 3, in: line), minute: group(match, 4, in: line)),
+                  let index = schedules.firstIndex(where: { item in
+                      item.activityKind == .handover && item.localDate == headerDate
+                          && venuesReferToSamePlace(item.venue ?? "", headerVenue)
+                  })
+            else { continue }
+            schedules[index].doorsAt = doors
+            schedules[index].startsAt = start
+            schedules[index].raw = schedules[index].raw + " 開場／開演"
+        }
+    }
+
+    fileprivate static func distributionSessions(in text: String) -> [PendingGoodsSession] {
+        let lines = text.components(separatedBy: "\n").map(clean).filter { !$0.isEmpty }
+        var sessions: [PendingGoodsSession] = []
+        for (index, line) in lines.enumerated() where line.contains("配布期間") {
+            let following = lines.dropFirst(index + 1).prefix { !$0.contains("配布期間") && !$0.hasPrefix("【") }
+            guard let window = following.first(where: { $0.contains("日") && ($0.contains("～") || $0.contains("〜") || $0.contains("~")) }),
+                  let storeLine = following.first(where: { $0.contains("対象店舗") }) else { continue }
+            let store = clean(storeLine.replacingOccurrences(of: #"^.*対象店舗\s*[：:]+\s*"#, with: "", options: .regularExpression))
+            guard !store.isEmpty else { continue }
+            sessions.append(PendingGoodsSession(venueHint: store, location: "\(store)（\(window)）"))
+        }
+        return sessions
+    }
+
+    fileprivate static func pricedProducts(in text: String, eventID: String) -> [Product] {
+        let rows = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        var products: [Product] = []
+        var index = 0
+        while index < rows.count {
+            let raw = rows[index]
+            guard raw.hasPrefix("・") || raw.hasPrefix("●") else { index += 1; continue }
+            let name = clean(raw.replacingOccurrences(of: #"^[・●\s　]+"#, with: "", options: .regularExpression))
+            index += 1
+            var details: [String] = []
+            while index < rows.count {
+                let next = rows[index]
+                if next.hasPrefix("・") || next.hasPrefix("●") || next.hasPrefix("※") { break }
+                details.append(next)
+                index += 1
+            }
+            guard !name.isEmpty, !name.contains("参加券"), !name.contains("以上") else { continue }
+            let blob = details.joined(separator: " ")
+            let variantMatches = regex(#"【([^】]{1,24})】\s*([\d,]+)\s*円"#, blob)
+            var variants: [ProductVariant] = []
+            for match in variantMatches {
+                guard let label = group(match, 1, in: blob)?.trimmingCharacters(in: .whitespaces),
+                      let digits = group(match, 2, in: blob)?.replacingOccurrences(of: ",", with: ""),
+                      let amount = Int64(digits) else { continue }
+                variants.append(ProductVariant(
+                    id: stableID(prefix: "\(eventID)-variant", seed: "\(name)|\(label)"),
+                    name: label, amount: MoneyAmount(minorUnits: amount, currency: "JPY"), stockStatus: nil
+                ))
+            }
+            let single = variants.isEmpty
+                ? regex(#"([\d,]+)\s*円"#, blob).first.flatMap { group($0, 1, in: blob)?.replacingOccurrences(of: ",", with: "") }.flatMap(Int64.init)
+                : nil
+            guard !variants.isEmpty || single != nil else { continue }
+            products.append(Product(
+                id: stableID(prefix: "\(eventID)-product", seed: name),
+                eventID: eventID, campaignID: "\(eventID)-goods-catalog", name: name,
+                amount: single.map { MoneyAmount(minorUnits: $0, currency: "JPY") },
+                url: nil, variants: variants, purchaseLimit: nil
+            ))
+        }
+        return products
+    }
+
+    fileprivate static func leadingDateSpan(in line: String) -> (start: String, end: String, remainder: String)? {
+        let source = clean(line).precomposedStringWithCompatibilityMapping
+            .replacingOccurrences(of: #"^[・●■\s　]+"#, with: "", options: .regularExpression)
+        let rangePattern = #"(?:(\d{4})年\s*)?(?:(\d{1,2})月\s*)?(\d{1,2})日(?:\([^)]*\))?\s*[～〜~]\s*(?:(\d{4})年\s*)?(?:(\d{1,2})月\s*)?(\d{1,2})日(?:\([^)]*\))?"#
+        if let match = regex(rangePattern, source).first,
+           let start = isoFromGroups(match, year: 1, month: 2, day: 3, in: source, inheritYear: nil, inheritMonth: nil),
+           let end = isoFromGroups(match, year: 4, month: 5, day: 6, in: source, inheritYear: start.year, inheritMonth: start.month) {
+            guard let span = Range(match.range, in: source) else { return nil }
+            return (start.iso, end.iso, clean(String(source[span.upperBound...])))
+        }
+        let singlePattern = #"(?:(\d{4})年\s*)?(?:(\d{1,2})月\s*)?(\d{1,2})日(?:\([^)]*\))?"#
+        guard let match = regex(singlePattern, source).first,
+              let start = isoFromGroups(match, year: 1, month: 2, day: 3, in: source, inheritYear: nil, inheritMonth: nil),
+              let span = Range(match.range, in: source) else { return nil }
+        return (start.iso, start.iso, clean(String(source[span.upperBound...])))
+    }
+
+    private static func isoFromGroups(
+        _ match: NSTextCheckingResult, year: Int, month: Int, day: Int, in source: String,
+        inheritYear: Int?, inheritMonth: Int?
+    ) -> (iso: String, year: Int, month: Int)? {
+        let resolvedYear = group(match, year, in: source).flatMap(Int.init) ?? inheritYear
+        let resolvedMonth = group(match, month, in: source).flatMap(Int.init) ?? inheritMonth
+        guard let resolvedYear, let resolvedMonth, let day = group(match, day, in: source).flatMap(Int.init),
+              let iso = isoDate(year: resolvedYear, month: resolvedMonth, day: day) else { return nil }
+        return (iso, resolvedYear, resolvedMonth)
+    }
+
+    private static func isoDate(year: Int, month: Int, day: Int) -> String? {
+        guard validDate(year: year, month: month, day: day) != nil else { return nil }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    fileprivate static func isVenueLine(_ raw: String) -> Bool {
+        let line = clean(raw).replacingOccurrences(of: "】", with: "")
+        guard !line.isEmpty, !line.hasPrefix("※"), !line.hasPrefix("■") else { return false }
+        if line.contains("開場") || line.contains("開演") || line.contains("開店") || line.contains("円") { return false }
+        return ["店", "階", "STORE", "ストア", "スペース", "ホール", "会館", "PARCO", "パルコ"].contains { line.range(of: $0, options: .caseInsensitive) != nil }
+            || line.range(of: #"\d\s*F\b"#, options: .regularExpression) != nil
+    }
+
+    /// A summary such as "A店・B店、C STORE" names more than one hall.
+    fileprivate static func isMultiVenueSummary(_ raw: String) -> Bool {
+        let text = clean(raw)
+        guard text.contains("、") else { return false }
+        let markers = ["本店", "STORE", "ストア", "ホール", "会館", "ドーム", "アリーナ", "劇場", "スタジオ", "PARCO", "パルコ", "イベントスペース"]
+        let hits = markers.reduce(0) { count, marker in
+            count + (text.range(of: marker, options: .caseInsensitive) != nil ? 1 : 0)
+        }
+        let shops = text.components(separatedBy: "店").count - 1
+        let floors = regex(#"\d+\s*(?:階|F\b)"#, text).count
+        return shops >= 2 || hits >= 2 || floors >= 2
+    }
+
+    fileprivate static func venuesReferToSamePlace(_ lhs: String, _ rhs: String) -> Bool {
+        let left = squishedVenue(lhs)
+        let right = squishedVenue(rhs)
+        guard !left.isEmpty, !right.isEmpty else { return false }
+        if left == right { return true }
+        if let floorL = floorToken(left), let floorR = floorToken(right), floorL != floorR { return false }
+        guard left.count >= 6, right.count >= 6 else { return false }
+        return left.contains(right) || right.contains(left)
+    }
+
+    private static func squishedVenue(_ raw: String) -> String {
+        clean(raw).replacingOccurrences(of: #"[\s　・]+"#, with: "", options: .regularExpression)
+    }
+
+    private static func floorToken(_ squished: String) -> String? {
+        guard let match = regex(#"(\d+)(?:階|F)"#, squished).first, let value = group(match, 1, in: squished) else { return nil }
+        return value
+    }
+
+    private static func catalogCampaign(_ campaign: GoodsCampaign, scope: Scope) -> GoodsCampaign {
+        let mentionsMailOrder = campaign.officialName.contains("通販")
+        let channel: GoodsChannel = mentionsMailOrder ? campaign.channel : (campaign.channel == .online ? .unknown : campaign.channel)
+        let url = campaign.url.flatMap { isProbablyImageURL($0) ? nil : $0 }
+        let links = campaign.links.filter { !isProbablyImageURL($0.url) }
+        return GoodsCampaign(
+            id: campaign.id, eventID: campaign.eventID, officialName: campaign.officialName,
+            channel: channel, fulfillment: mentionsMailOrder ? campaign.fulfillment : .unknown,
+            phase: campaign.phase, scope: scope, salesStartAt: campaign.salesStartAt, salesEndAt: campaign.salesEndAt,
+            pickupWindow: campaign.pickupWindow, shippingNote: mentionsMailOrder ? campaign.shippingNote : nil,
+            location: campaign.location, requiresTicket: campaign.requiresTicket, purchaseLimit: campaign.purchaseLimit,
+            paymentMethods: campaign.paymentMethods, url: url, mediaAssetIDs: campaign.mediaAssetIDs,
+            status: campaign.status, links: links
+        )
+    }
+
+    private static func isProbablyImageURL(_ raw: String) -> Bool {
+        let path = URL(string: raw)?.path.lowercased() ?? raw.lowercased()
+        return ["jpg", "jpeg", "png", "webp", "gif"].contains(URL(fileURLWithPath: path).pathExtension)
+    }
+}
+
 extension TicketRound {
     func replacingScope(_ scope: Scope) -> TicketRound {
         TicketRound(id: id, eventID: eventID, officialName: officialName, kind: kind, scope: scope,
@@ -3209,6 +3880,31 @@ extension StreamOffer {
         StreamOffer(id: id, eventID: eventID, platform: platform, officialName: officialName, scope: scope, amount: amount,
             salesStartAt: salesStartAt, salesEndAt: salesEndAt, archiveAvailableUntil: archiveAvailableUntil,
             regionNote: regionNote, url: url, status: status)
+    }
+}
+
+extension TicketBenefit {
+    func replacingScope(_ scope: Scope) -> TicketBenefit {
+        TicketBenefit(id: id, eventID: eventID, officialName: officialName, scope: scope, tierIDs: tierIDs,
+            detail: detail, notes: notes, redemptionLocation: redemptionLocation, redemptionWindow: redemptionWindow,
+            redemptionNote: redemptionNote, mediaAssetIDs: mediaAssetIDs, status: status, links: links)
+    }
+}
+
+extension GoodsCampaign {
+    func replacingScope(_ scope: Scope) -> GoodsCampaign {
+        GoodsCampaign(id: id, eventID: eventID, officialName: officialName, channel: channel, fulfillment: fulfillment,
+            phase: phase, scope: scope, salesStartAt: salesStartAt, salesEndAt: salesEndAt, pickupWindow: pickupWindow,
+            shippingNote: shippingNote, location: location, requiresTicket: requiresTicket, purchaseLimit: purchaseLimit,
+            paymentMethods: paymentMethods, url: url, mediaAssetIDs: mediaAssetIDs, status: status, links: links)
+    }
+}
+
+extension MediaAsset {
+    func replacingScope(_ scope: Scope) -> MediaAsset {
+        MediaAsset(id: id, eventID: eventID, kind: kind, originalURL: originalURL, thumbnailURL: thumbnailURL,
+            scope: scope, sourceURL: sourceURL, version: version, caption: caption, displayPolicy: displayPolicy,
+            contentKind: contentKind)
     }
 }
 
@@ -3320,6 +4016,31 @@ private enum HTML {
     }
 
     static func sectionText(_ html: String, heading: String) -> String? { sectionHTML(html, heading: heading).map(text) }
+
+    /// Every heading with the raw HTML that follows it until the next heading
+    /// of the same or higher rank. Repeated headings stay separate regions.
+    static func headingRegions(_ html: String) -> [(heading: String, html: String, level: Int)] {
+        let html = OfficialPageBlocks.normalizedBody(html) ?? html
+        let pattern = #"<h([1-6])\b[^>]*>(.*?)</h\1>"#
+        let matches = OfficialEventScraper.regex(pattern, html, options: [.caseInsensitive, .dotMatchesLineSeparators])
+        let ns = html as NSString
+        return matches.enumerated().compactMap { index, match in
+            guard let headingRaw = OfficialEventScraper.group(match, 2, in: html),
+                  let level = OfficialEventScraper.group(match, 1, in: html).flatMap(Int.init) else { return nil }
+            let start = NSMaxRange(match.range)
+            var end = ns.length
+            if index + 1 < matches.count {
+                for later in matches[(index + 1)...] {
+                    let laterLevel = OfficialEventScraper.group(later, 1, in: html).flatMap(Int.init) ?? 6
+                    if laterLevel <= level {
+                        end = later.range.location
+                        break
+                    }
+                }
+            }
+            return (text(headingRaw), ns.substring(with: NSRange(location: start, length: max(0, end - start))), level)
+        }
+    }
 
     /// Every heading with the HTML that follows it up to the next heading of
     /// any level, plus the heading level (1–6) so callers can relate siblings.

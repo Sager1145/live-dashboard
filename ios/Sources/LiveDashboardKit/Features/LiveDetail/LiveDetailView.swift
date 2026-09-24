@@ -12,6 +12,7 @@ public struct LiveDetailView: View {
     private let installationService: InstallationService
     private let assistant: AssistantCoordinator
     private let externalStore: ExternalDataStore?
+    private let presentedBundle: LiveEventBundle
     private let onBundleRefresh: (@MainActor (LiveEventBundle) -> Void)?
     @State private var history: [EventChangeHistory] = []
     @State private var showsHistory = false
@@ -61,6 +62,7 @@ public struct LiveDetailView: View {
         let store = LiveDetailStore(bundle: bundle, initialPerformanceID: initialPerformanceID, userDataStore: userDataStore)
         store.selectedTab = initialTab
         _store = State(initialValue: store)
+        self.presentedBundle = bundle
         self.userDataStore = userDataStore
         self.reminderService = reminderService
         self.repository = repository
@@ -77,6 +79,10 @@ public struct LiveDetailView: View {
             LazyVStack(alignment: .leading, spacing: 16, pinnedViews: [.sectionHeaders]) {
                 OfficialText(store.bundle.event.officialTitle, cardKey: pageCardKey, eventID: eventID)
                     .font(.largeTitle.bold())
+                    .onChange(of: presentedBundle) { _, updated in
+                        guard updated != store.officialBundle else { return }
+                        store.replaceBundle(updated)
+                    }
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
 
@@ -337,7 +343,14 @@ public struct LiveDetailView: View {
 
     @ViewBuilder private var selectors: some View {
         VStack(alignment: .leading, spacing: 8) {
-            PerformanceSelector(bundle: store.bundle, selectedPerformanceID: $store.selectedPerformanceID)
+            PerformanceSelector(
+                bundle: store.bundle,
+                selectedPerformanceID: $store.selectedPerformanceID,
+                selectedLocalDate: Binding(
+                    get: { store.selectedLocalDate ?? "" },
+                    set: { store.selectLocalDate($0) }
+                )
+            )
             tabPicker
             if store.hasAssistantData {
                 Label(

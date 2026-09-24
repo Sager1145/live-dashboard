@@ -553,7 +553,7 @@ public struct AssistantSummarizer: Sendable {
         let performances = bundle.performances.sorted { $0.order < $1.order }
         for performance in performances {
             let startISO = performance.startAt.map(Self.isoFormatter.string(from:)) ?? ""
-            parts.append("\(performance.id)|\(performance.dayLabel)|\(performance.localDate ?? "")|\(startISO)|\(performance.venueName)")
+            parts.append("\(performance.id)|\(performance.dayLabel)|\(performance.localDate ?? "")|\(performance.localEndDate ?? "")|\(performance.activityKind?.rawValue ?? "")|\(startISO)|\(performance.venueName)")
         }
 
         let rounds = bundle.ticketRounds.sorted { $0.id < $1.id }

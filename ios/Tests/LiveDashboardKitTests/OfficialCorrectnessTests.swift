@@ -156,7 +156,7 @@ final class OfficialCorrectnessTests: XCTestCase {
         XCTAssertEqual(secondPerformance.precision, .date)
     }
 
-    func testSameDateKeepsCachedTimeWhenThePageOmitsIt() async throws {
+    func testSameDateDoesNotCopyCachedTimeWhenThePageOmitsIt() async throws {
         let url = "https://bang-dream.com/events/same-date/"
         let original = """
         <article class="p-live-event-detail">
@@ -179,11 +179,12 @@ final class OfficialCorrectnessTests: XCTestCase {
         let first = try await refresh(html: original, url: url, title: "Same Date")
         let second = try await refresh(html: omitted, url: url, title: "Same Date", existing: first)
         XCTAssertEqual(second.performances.first?.localDate, "2026-05-01")
-        XCTAssertEqual(second.performances.first?.startAt, first.performances.first?.startAt)
-        XCTAssertEqual(second.performances.first?.doorsAt, first.performances.first?.doorsAt)
+        XCTAssertNil(second.performances.first?.startAt)
+        XCTAssertNil(second.performances.first?.doorsAt)
+        XCTAssertEqual(second.performances.first?.id, first.performances.first?.id)
     }
 
-    func testEmptyTicketParseKeepsCachedRoundsAndMarksStale() async throws {
+    func testEmptyTicketParseDropsCachedRoundsAndStaysHealthy() async throws {
         let url = "https://bang-dream.com/events/stale-tickets/"
         let original = """
         <article class="p-live-event-detail">
@@ -212,8 +213,9 @@ final class OfficialCorrectnessTests: XCTestCase {
         XCTAssertFalse(first.ticketRounds.isEmpty)
 
         let second = try await refresh(html: stripped, url: url, title: "Stale Tickets", existing: first)
-        XCTAssertEqual(second.ticketRounds.map(\.id), first.ticketRounds.map(\.id))
-        XCTAssertEqual(second.sourceHealth, .stale)
+        XCTAssertTrue(second.ticketRounds.isEmpty)
+        XCTAssertEqual(second.sourceHealth, .healthy)
+        XCTAssertEqual(second.performances.first?.venueName, "Zepp Shinjuku")
     }
 
     func testImageOnlyGoodsDoNotBecomeProducts() async throws {

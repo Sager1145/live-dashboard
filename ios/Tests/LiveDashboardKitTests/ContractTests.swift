@@ -131,6 +131,14 @@ final class ContractTests: XCTestCase {
         XCTAssertTrue(hidden.online.isEmpty && hidden.venue.isEmpty)
     }
 
+    func testKnownScopesAllowTheSelectedPerformance() {
+        XCTAssertTrue(PerformanceScopeResolver.allowsAction(scope: .wholeEvent, selectedPerformanceID: "p", selectedStopID: nil))
+        XCTAssertTrue(PerformanceScopeResolver.allowsAction(scope: .stop(stopID: "s"), selectedPerformanceID: "p", selectedStopID: "s"))
+        XCTAssertFalse(PerformanceScopeResolver.allowsAction(scope: .stop(stopID: "other"), selectedPerformanceID: "p", selectedStopID: "s"))
+        XCTAssertTrue(PerformanceScopeResolver.allowsAction(scope: .performances(performanceIDs: ["p"]), selectedPerformanceID: "p", selectedStopID: nil))
+        XCTAssertFalse(PerformanceScopeResolver.allowsAction(scope: .unconfirmed, selectedPerformanceID: "p", selectedStopID: "s"))
+    }
+
     func testUnconfirmedScopeNeverLeaksIntoApplicable() {
         let round = TicketRound(id: "r", eventID: "e", officialName: "x", kind: .other, scope: .unconfirmed, applyStartAt: nil, applyEndAt: nil, resultAt: nil, paymentDeadlineAt: nil, eligibility: nil, announcementURL: nil, applyURL: nil, overseasURL: nil, officialStatus: nil, status: .needsReview)
         let result = PerformanceScopeResolver.resolve(records: [round], selectedPerformanceID: "p", stopID: { _ in nil })

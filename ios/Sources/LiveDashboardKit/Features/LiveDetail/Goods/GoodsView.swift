@@ -228,17 +228,17 @@ public struct GoodsView: View {
                     }
                 }
 
-                let assets = mediaAssets(for: campaign)
-                if let first = assets.first {
-                    OfficialMediaView(asset: first, fitsWidth: true)
-                    if assets.count > 1 {
-                        DisclosureGroup {
-                            ForEach(assets.dropFirst()) { asset in
-                                OfficialMediaView(asset: asset, fitsWidth: true)
-                            }
-                        } label: {
-                            Text("查看全部 \(assets.count) 张图片", bundle: .kit).font(.caption).foregroundStyle(.secondary)
-                        }
+                let images = mediaPresentation(for: campaign)
+                ForEach(images.inline) { asset in
+                    OfficialMediaView(asset: asset, fitsWidth: true)
+                }
+                if !images.pending.isEmpty {
+                    Text("适用场次待确认", bundle: .kit)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityAddTraits(.isHeader)
+                    ForEach(images.pending) { asset in
+                        OfficialMediaView(asset: asset, fitsWidth: true)
                     }
                 }
             }
@@ -295,9 +295,13 @@ public struct GoodsView: View {
             .foregroundStyle(.secondary)
     }
 
-    private func mediaAssets(for campaign: GoodsCampaign) -> [MediaAsset] {
-        let IDs = Set(campaign.mediaAssetIDs)
-        return store.bundle.mediaAssets.filter { IDs.contains($0.id) && [.goodsList, .venueGoodsNotice, .goodsAreaMap, .product].contains($0.kind) }
+    private func mediaPresentation(for campaign: GoodsCampaign) -> GoodsImageSequence.Presentation {
+        GoodsImageSequence.presentation(
+            mediaAssetIDs: campaign.mediaAssetIDs,
+            mediaAssets: store.bundle.mediaAssets,
+            selectedPerformanceID: store.selectedPerformanceID,
+            selectedStopID: store.stopID(for: store.selectedPerformanceID)
+        )
     }
 
     private func sessionText(_ session: GoodsSession) -> String {
@@ -312,8 +316,11 @@ public struct GoodsView: View {
     }
 
     private func hasExplicitSelectedScope(_ scope: Scope) -> Bool {
-        guard case .performances(let ids) = scope else { return false }
-        return ids.contains(store.selectedPerformanceID)
+        PerformanceScopeResolver.allowsAction(
+            scope: scope,
+            selectedPerformanceID: store.selectedPerformanceID,
+            selectedStopID: store.stopID(for: store.selectedPerformanceID)
+        )
     }
 
     private func format(_ date: Date) -> String {
@@ -325,4 +332,54 @@ public struct GoodsView: View {
         switch value { case .pre: "事前"; case .during: "会期"; case .post: "事后"; case .unknown: "批次待核验" }
     }
 
+}
+
+/// Campaign images in the order the page cited them. A thumbnail record and
+/// the original it points at are one picture. An image whose own scope is
+/// another performance stays out of this selection; an unresolved image stays
+/// visible in `pending`.
+enum GoodsImageSequence {
+    struct Presentation: Equatable {
+        var inline: [MediaAsset]
+        var pending: [MediaAsset]
+    }
+
+    static func presentation(
+        mediaAssetIDs: [String],
+        mediaAssets: [MediaAsset],
+        selectedPerformanceID: String,
+        selectedStopID: String?
+    ) -> Presentation {
+        let byID = Dictionary(mediaAssets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let allowed: Set<MediaAssetKind> = [.goodsList, .venueGoodsNotice, .goodsAreaMap, .product]
+        var seen: Set<String> = []
+        var inline: [MediaAsset] = []
+        var pending: [MediaAsset] = []
+        for id in mediaAssetIDs {
+            guard let asset = byID[id], allowed.contains(asset.kind) else { continue }
+            let keys = identityKeys(asset)
+            if keys.contains(where: seen.contains) { continue }
+            seen.formUnion(keys)
+            if PerformanceScopeResolver.allowsAction(
+                scope: asset.scope,
+                selectedPerformanceID: selectedPerformanceID,
+                selectedStopID: selectedStopID
+            ) {
+                inline.append(asset)
+            } else if case .unconfirmed = asset.scope {
+                pending.append(asset)
+            }
+        }
+        return Presentation(inline: inline, pending: pending)
+    }
+
+    private static func identityKeys(_ asset: MediaAsset) -> [String] {
+        [asset.originalURL, asset.thumbnailURL].compactMap { $0 }.map(canonicalize)
+    }
+
+    private static func canonicalize(_ raw: String) -> String {
+        guard var components = URLComponents(string: raw) else { return raw }
+        components.fragment = nil
+        return components.string ?? raw
+    }
 }

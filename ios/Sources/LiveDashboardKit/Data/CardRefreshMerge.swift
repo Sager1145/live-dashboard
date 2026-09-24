@@ -18,6 +18,8 @@ enum CardRefreshMerge {
         var rounds = saved.ticketRounds
         var streams = saved.streamOffers
         var goods = saved.goodsCampaigns
+        var products = saved.products
+        var goodsSessions = saved.goodsSessions
         var media = saved.mediaAssets
         var benefits = saved.ticketBenefits
         switch cardType {
@@ -37,7 +39,9 @@ enum CardRefreshMerge {
                 performers: cardType == .performers ? updated.performers : old.performers, order: old.order,
                 editionID: old.editionID, rawDate: updateSchedule ? updated.rawDate : old.rawDate,
                 precision: (updateSchedule ? updated.precision : old.precision) ?? .unknown,
-                timeZone: updateSchedule ? updated.timeZone : old.timeZone)
+                timeZone: updateSchedule ? updated.timeZone : old.timeZone,
+                localEndDate: updateSchedule ? updated.localEndDate : old.localEndDate,
+                activityKind: updateSchedule ? updated.activityKind : old.activityKind)
         case .pricing:
             selectedEvidence = evidence.filter { $0.field == "ticket.price" }
             let ids = Set(selectedEvidence.map(\.recordID))
@@ -72,6 +76,16 @@ enum CardRefreshMerge {
                 media.removeAll { $0.id == asset.id }; media.append(asset)
             }
             selectedEvidence += evidence.filter { assetIDs.contains($0.recordID) && $0.field.hasPrefix("media.") }
+            let refreshedProducts = fresh.products.filter { $0.campaignID == entityID }
+            if !refreshedProducts.isEmpty {
+                products.removeAll { $0.campaignID == entityID }
+                products.append(contentsOf: refreshedProducts)
+            }
+            let refreshedSessions = fresh.goodsSessions.filter { $0.campaignID == entityID }
+            if !refreshedSessions.isEmpty {
+                goodsSessions.removeAll { $0.campaignID == entityID }
+                goodsSessions.append(contentsOf: refreshedSessions)
+            }
         case .eventSeatingMap, .venueGenericSeatingMap:
             selectedEvidence = evidence.filter { $0.recordID == entityID && $0.field.hasPrefix("media.") }
             guard let value = fresh.mediaAssets.first(where: { $0.id == entityID }), !selectedEvidence.isEmpty else { throw CardRefreshError.unavailable }
@@ -88,7 +102,7 @@ enum CardRefreshMerge {
             event: saved.event, stops: saved.stops, performances: performances, ticketTiers: tiers,
             ticketRounds: rounds, ticketOffers: saved.ticketOffers, goodsCampaigns: goods, mediaAssets: media,
             notices: saved.notices, evidence: mergedEvidence, editions: saved.editions, streamOffers: streams,
-            products: saved.products, goodsSessions: saved.goodsSessions, ticketBenefits: benefits, sourceHealth: saved.sourceHealth,
+            products: products, goodsSessions: goodsSessions, ticketBenefits: benefits, sourceHealth: saved.sourceHealth,
             sourceText: fresh.sourceText ?? saved.sourceText)
     }
 }

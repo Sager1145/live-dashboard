@@ -50,4 +50,23 @@ public enum PerformanceScopeResolver {
 
         return ScopeResolution(applicable: applicable, unconfirmed: unconfirmed)
     }
+
+    /// Whether an outbound action (purchase, stream link) may target this
+    /// scope for the selected performance. `.unconfirmed` never qualifies.
+    public static func allowsAction(
+        scope: Scope,
+        selectedPerformanceID: String,
+        selectedStopID: String?
+    ) -> Bool {
+        switch scope {
+        case .wholeEvent:
+            return true
+        case .stop(let stopID):
+            return selectedStopID == stopID
+        case .performances(let performanceIDs):
+            return performanceIDs.contains(selectedPerformanceID)
+        case .unconfirmed:
+            return false
+        }
+    }
 }

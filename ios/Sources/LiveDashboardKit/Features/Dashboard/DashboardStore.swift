@@ -321,22 +321,15 @@ public final class DashboardStore {
         return bundles(in: scope)
             .filter { filters.franchise == nil || $0.event.franchise == filters.franchise }
             .flatMap { $0.performances }
-            .compactMap { performance -> (Int, Int)? in
-                guard let date = performance.localDate else { return nil }
-                let parts = date.split(separator: "-")
-                guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]) else { return nil }
-                return (year, month)
-            }
+            .flatMap { performance in Self.yearMonths(covering: performance) }
     }
 
     private func matchesCalendarFilters(_ bundle: LiveEventBundle, filters: DashboardFilters) -> Bool {
         guard filters.year != nil || filters.month != nil else { return true }
         return bundle.performances.contains { performance in
-            guard let date = performance.localDate else { return false }
-            let parts = date.split(separator: "-")
-            guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]) else { return false }
-            return (filters.year == nil || filters.year == year)
-                && (filters.month == nil || filters.month == month)
+            Self.yearMonths(covering: performance).contains { year, month in
+                (filters.year == nil || filters.year == year) && (filters.month == nil || filters.month == month)
+            }
         }
     }
 
@@ -462,7 +455,7 @@ public final class DashboardStore {
                     if !cities.contains(city) { cities.append(city) }
                 }.joined(separator: " · "),
             firstLocalDate: sortedPerformances.first?.localDate,
-            lastLocalDate: sortedPerformances.compactMap(\.localDate).max(),
+            lastLocalDate: sortedPerformances.compactMap(\.periodEndLocalDate).max(),
             firstStartAt: sortedPerformances.first?.startAt,
             officialThumbnail: bundle.mediaAssets
                 .filter { $0.kind == .eventCover && $0.isImage }
@@ -510,7 +503,32 @@ public final class DashboardStore {
         }
     }
 
+    private static func yearMonths(covering performance: Performance) -> [(Int, Int)] {
+        guard let start = performance.localDate, start.count >= 7 else { return [] }
+        let end = performance.localEndDate ?? start
+        guard let startYear = Int(start.prefix(4)), let startMonth = Int(start.dropFirst(5).prefix(2)),
+              let endYear = Int(end.prefix(4)), let endMonth = Int(end.dropFirst(5).prefix(2)) else { return [] }
+        var year = startYear
+        var month = startMonth
+        var result: [(Int, Int)] = []
+        while year < endYear || (year == endYear && month <= endMonth) {
+            result.append((year, month))
+            month += 1
+            if month > 12 { month = 1; year += 1 }
+            if result.count > 36 { break }
+        }
+        return result
+    }
+
     private func dayDateText(for performance: Performance, zone: TimeZone, finished: Bool, now: Date) -> String {
+        if let start = performance.localDate, let end = performance.localEndDate, end != start,
+           let startDate = EventFormatting.parseISODate(start, in: zone),
+           let endDate = EventFormatting.parseISODate(end, in: zone) {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = zone
+            let includesYear = finished || calendar.component(.year, from: startDate) != calendar.component(.year, from: now)
+            return "\(EventFormatting.date(startDate, in: zone, includesYear: includesYear)) – \(EventFormatting.date(endDate, in: zone, includesYear: includesYear))"
+        }
         if let localDate = performance.localDate, let date = EventFormatting.parseISODate(localDate, in: zone) {
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = zone

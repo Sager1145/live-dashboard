@@ -3,7 +3,7 @@ import LiveIngestionCore
 @testable import LiveDashboardKit
 
 final class OfficialPageBlockTests: XCTestCase {
-    func testSourceBlocksKeepHeadingPathHiddenPaneTableLinksAndImages() {
+    func testSourceBlocksKeepHeadingPathHiddenPaneTableLinksAndImages() throws {
         let html = """
         <div data-target="ticket" style="display:none">
           <h2>チケット</h2>

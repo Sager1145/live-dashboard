@@ -88,7 +88,7 @@ export async function mergeSnapshotDetails(
     const records = b[key] as any[];
     const index = records.findIndex((r) => r.id === value.id);
     if (index < 0) records.push(value);
-    else records[index] = { ...records[index], ...value };
+    else records[index] = value;
   };
   const campaignIDs = new Map<string, string>();
   for (const c of parsed.candidates) {
@@ -109,9 +109,9 @@ export async function mergeSnapshotDetails(
         : b.performances.filter((p) => p.dayLabel === value.dayLabel);
       if (matches.length === 1) {
         const p = matches[0]!;
-        const timeZone = value.timeZone ?? p.timeZone ?? b.event.timeZone;
+        const timeZone = value.timeZone ?? b.event.timeZone;
         p.localDate = value.localDate;
-        p.rawDate = value.raw ?? p.rawDate;
+        p.rawDate = value.raw ?? null;
         p.timeZone = timeZone;
         p.precision = value.startsAt || value.doorsAt ? "minute" : "date";
         p.startAt = officialInstant(value.localDate, value.startsAt, timeZone);

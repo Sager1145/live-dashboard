@@ -159,7 +159,8 @@ final class ExternalSourceTests: XCTestCase {
         guard case .keepPrevious = shrunk.admission else { return XCTFail("shrink should keep the previous snapshot") }
         let catalog = try await store.communityCatalog()
         XCTAssertEqual(catalog?.performances.map(\.id), ["12"])
-        XCTAssertEqual(try await store.revision(for: .llernote)?.upstreamRevision, "rev-a")
+        let keptRevision = try await store.revision(for: .llernote)?.upstreamRevision
+        XCTAssertEqual(keptRevision, "rev-a")
         XCTAssertEqual(try Data(contentsOf: official), Data("official".utf8))
     }
 }

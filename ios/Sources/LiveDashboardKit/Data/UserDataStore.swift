@@ -184,6 +184,20 @@ public final class UserDataStore {
         replaceParticipations(eventID: eventID, performanceIDs: ids)
         updateEvent(eventID) { $0.planningToAttend = !ids.isEmpty }
     }
+
+    /// Removes participation marks that pointed at performances the latest
+    /// scrape no longer publishes. Event follow and personal plans stay.
+    public func pruneMissingPerformances(eventID: String, validPerformanceIDs: Set<String>) {
+        let state = state(for: eventID)
+        let kept = state.participatingPerformanceIDs.filter { validPerformanceIDs.contains($0) }
+        guard kept.count != state.participatingPerformanceIDs.count else { return }
+        replaceParticipations(eventID: eventID, performanceIDs: Set(kept))
+        updateEvent(eventID) { record in
+            record.planningToAttend = !kept.isEmpty
+            record.isFollowed = state.isFollowed
+        }
+    }
+
     public func setSelectedPerformance(_ performanceID: String?, eventID: String) { updateEvent(eventID) { $0.selectedPerformanceID = performanceID } }
     public func selectedPerformanceID(eventID: String) -> String? {
         fetchEvent(eventID)?.selectedPerformanceID

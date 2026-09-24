@@ -160,8 +160,16 @@ struct TimeAndVenueCard: View {
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
+                    } else if performance.activityKind == .exhibition {
+                        Text("开放时间未确认", bundle: .kit)
+                            .foregroundStyle(.secondary)
                     } else {
                         Text("开演时间尚未获取或待核验", bundle: .kit)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let start = performance.localDate, let end = performance.localEndDate, end != start {
+                        Text("会期 \(start) – \(end)", bundle: .kit)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -192,24 +200,27 @@ struct PerformersCard: View {
 
     var body: some View {
         let cardKey = TranslationStore.cardKey(eventID: eventID, cardType: .performers, entityID: CardConfiguration.globalEntityID)
+        let config = userDataStore.effectiveConfiguration(cardType: .performers, entityID: CardConfiguration.globalEntityID, eventID: eventID)
+        let lines = PerformerLines.expandingNewlines(performance.performers)
+        let compact = config.density == .compact
         DetailCard(title: "出演", cardType: .performers, entityID: CardConfiguration.globalEntityID, refreshEntityID: performance.id, userDataStore: userDataStore, eventID: eventID, translationSegments: {
-            performance.performers.enumerated().map { index, performer in
+            lines.enumerated().map { index, performer in
                 TranslationRequestItem(id: "performance|\(performance.id)|performer|\(index)", text: performer)
             }
         }) {
-            if performance.performers.isEmpty {
+            if lines.isEmpty {
                 Text("出演信息尚未获取或待核验", bundle: .kit).foregroundStyle(.secondary)
-            } else if performance.performers.count <= 8 {
-                OfficialTextList(performance.performers, separator: "、", cardKey: cardKey, eventID: eventID)
             } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    OfficialTextList(Array(performance.performers.prefix(8)), separator: "、", cardKey: cardKey, eventID: eventID)
-                    DisclosureGroup {
-                        OfficialTextList(Array(performance.performers.dropFirst(8)), separator: "、", cardKey: cardKey, eventID: eventID)
-                    } label: {
-                        Text("另外 \(performance.performers.count - 8) 位出演者", bundle: .kit).font(.subheadline)
+                VStack(alignment: .leading, spacing: compact ? 4 : 6) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, performer in
+                        OfficialText(performer, cardKey: cardKey, eventID: eventID)
+                            .font(compact ? .footnote : .subheadline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("performer-\(performance.id)-\(index)")
                     }
                 }
+                .id(performance.id)
             }
         }
     }

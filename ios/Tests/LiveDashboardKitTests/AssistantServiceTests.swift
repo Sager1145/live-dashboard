@@ -449,6 +449,7 @@ final class AssistantServiceTests: XCTestCase {
         defer { defaults.defaults.removePersistentDomain(forName: defaults.suiteName) }
         let store = LiveDetailStore(bundle: original, initialPerformanceID: "perf-1", userDataStore: UserDataStore(container: UserDataStore.makeContainer(inMemory: true)))
         var summary = Self.fixtureSummary(eventID: original.event.id)
+        summary.sourceFingerprint = AssistantSummarizer.fingerprint(of: original)
         summary.organizedBundle = organized
         store.assistantSummary = summary
         XCTAssertTrue(store.hasAssistantData)

@@ -6,15 +6,17 @@ import LiveIngestionCore
 public struct PerformanceSelector: View {
     let bundle: LiveEventBundle
     @Binding var selectedPerformanceID: String
+    var selectedLocalDate: Binding<String>?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Above this many performances, a `Menu`-style picker becomes unwieldy;
     /// switch to a pushed list page instead.
     public static let listPageThreshold = 8
 
-    public init(bundle: LiveEventBundle, selectedPerformanceID: Binding<String>) {
+    public init(bundle: LiveEventBundle, selectedPerformanceID: Binding<String>, selectedLocalDate: Binding<String>? = nil) {
         self.bundle = bundle
         self._selectedPerformanceID = selectedPerformanceID
+        self.selectedLocalDate = selectedLocalDate
     }
 
     private var sortedPerformances: [Performance] {
@@ -25,32 +27,80 @@ public struct PerformanceSelector: View {
         sortedPerformances.first { $0.id == selectedPerformanceID }
     }
 
+    private var dates: [String] {
+        var seen: Set<String> = []
+        var values: [String] = []
+        for performance in sortedPerformances {
+            guard let start = performance.localDate else { continue }
+            let end = performance.localEndDate ?? start
+            var day = start
+            while day <= end {
+                if seen.insert(day).inserted { values.append(day) }
+                guard let next = Self.nextDay(day), next != day else { break }
+                day = next
+                if values.count > 400 { break }
+            }
+        }
+        return values.sorted()
+    }
+
+    private var performancesOnDate: [Performance] {
+        guard let date = selectedLocalDate?.wrappedValue, !date.isEmpty else { return sortedPerformances }
+        return sortedPerformances.filter { $0.covers(localDate: date) }
+    }
+
     public var body: some View {
         if sortedPerformances.count > 1 {
             VStack(alignment: .leading, spacing: 4) {
-                if sortedPerformances.count > Self.listPageThreshold {
-                    Picker(selection: $selectedPerformanceID) {
-                        options
-                    } label: {
-                        Text("场次", bundle: .kit)
-                    }
-                    .pickerStyle(.navigationLink)
-                } else {
+                if let selectedLocalDate, dates.count > 1 {
                     let layout = dynamicTypeSize.isAccessibilitySize
                         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
                         : AnyLayout(HStackLayout(spacing: 8))
                     layout {
-                        Text("场次", bundle: .kit)
+                        Text("日期", bundle: .kit)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Picker(selection: $selectedPerformanceID) {
-                            options
+                        Picker(selection: selectedLocalDate) {
+                            ForEach(dates, id: \.self) { date in
+                                Text(verbatim: date).tag(date)
+                            }
                         } label: {
-                            Text("场次", bundle: .kit)
+                            Text("日期", bundle: .kit)
                         }
                         .pickerStyle(.menu)
                         .labelsHidden()
                     }
+                    .accessibilityIdentifier("datePicker")
+                }
+                if performancesOnDate.count > 1 {
+                    if performancesOnDate.count > Self.listPageThreshold {
+                        Picker(selection: $selectedPerformanceID) {
+                            options
+                        } label: {
+                            Text("场馆", bundle: .kit)
+                        }
+                        .pickerStyle(.navigationLink)
+                    } else {
+                        let layout = dynamicTypeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                            : AnyLayout(HStackLayout(spacing: 8))
+                        layout {
+                            Text("场馆", bundle: .kit)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Picker(selection: $selectedPerformanceID) {
+                                options
+                            } label: {
+                                Text("场馆", bundle: .kit)
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                        }
+                    }
+                } else if performancesOnDate.isEmpty {
+                    Text("这一天没有仍在进行的会期", bundle: .kit)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 if let selectedPerformance, !subtitleText(for: selectedPerformance).isEmpty {
                     Text(verbatim: subtitleText(for: selectedPerformance))
@@ -62,11 +112,41 @@ public struct PerformanceSelector: View {
         }
     }
 
+    private static func nextDay(_ day: String) -> String? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Tokyo") ?? .current
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: day), let next = calendar.date(byAdding: .day, value: 1, to: date) else { return nil }
+        return formatter.string(from: next)
+    }
+
     @ViewBuilder
     private var options: some View {
-        ForEach(sortedPerformances) { performance in
-            Text(verbatim: Self.shortLabel(for: performance, in: bundle)).tag(performance.id)
+        if selectedPerformanceID.isEmpty {
+            Text("请选择场馆", bundle: .kit).tag("")
         }
+        ForEach(performancesOnDate) { performance in
+            Text(verbatim: Self.optionLabel(for: performance, in: bundle, dateAlreadyShown: dates.count > 1)).tag(performance.id)
+        }
+    }
+
+    public static func optionLabel(for performance: Performance, in bundle: LiveEventBundle, dateAlreadyShown: Bool) -> String {
+        guard dateAlreadyShown else { return shortLabel(for: performance, in: bundle) }
+        var parts: [String] = []
+        switch performance.activityKind {
+        case .exhibition: parts.append("展览")
+        case .handover: parts.append("お渡し会")
+        case .performance, nil:
+            if !performance.dayLabel.isEmpty { parts.append(performance.dayLabel) }
+            if let subtitle = performance.subtitle, !subtitle.isEmpty { parts.append(subtitle) }
+        }
+        if !performance.venueName.isEmpty { parts.append(performance.venueName) }
+        let label = parts.joined(separator: " · ")
+        return label.isEmpty ? shortLabel(for: performance, in: bundle) : label
     }
 
     private func subtitleText(for performance: Performance) -> String {

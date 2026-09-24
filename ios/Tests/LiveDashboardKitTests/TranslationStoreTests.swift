@@ -428,12 +428,12 @@ final class LiveDetailSelectionTests: XCTestCase {
         )
     }
 
-    private func fixtureSummary(eventID: String, organizedBundle: LiveEventBundle?) -> AssistantEventSummary {
+    private func fixtureSummary(eventID: String, organizedBundle: LiveEventBundle?, source: LiveEventBundle) -> AssistantEventSummary {
         AssistantEventSummary(
             eventID: eventID,
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             model: "gpt-5-mini",
-            sourceFingerprint: "abc123",
+            sourceFingerprint: AssistantSummarizer.fingerprint(of: source),
             overview: AssistantRichText("总览"),
             keyPoints: [],
             performances: [],
@@ -456,7 +456,7 @@ final class LiveDetailSelectionTests: XCTestCase {
             performances: [makePerformance(id: "perf-1", order: 0), makePerformance(id: "perf-2", order: 1)],
             ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: []
         )
-        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle)
+        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle, source: officialBundle)
         store.usesAssistantData = true
         XCTAssertEqual(store.selectedPerformanceID, "perf-2")
         XCTAssertNil(store.replacedPerformanceID)
@@ -477,7 +477,7 @@ final class LiveDetailSelectionTests: XCTestCase {
             performances: [makePerformance(id: "perf-1", order: 0)],
             ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: []
         )
-        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle)
+        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle, source: officialBundle)
         store.usesAssistantData = true
 
         XCTAssertEqual(store.selectedPerformanceID, "perf-1")
@@ -505,7 +505,7 @@ final class LiveDetailSelectionTests: XCTestCase {
             performances: [makePerformance(id: "perf-1", order: 0)],
             ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: []
         )
-        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle)
+        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle, source: officialBundle)
         store.usesAssistantData = true
 
         XCTAssertEqual(store.selectedPerformanceID, "perf-1")
@@ -529,7 +529,7 @@ final class LiveDetailSelectionTests: XCTestCase {
             performances: [makePerformance(id: "perf-1", order: 0)],
             ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: []
         )
-        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle)
+        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle, source: officialBundle)
         store.usesAssistantData = true
         XCTAssertNotNil(store.replacedPerformanceID)
 
@@ -560,7 +560,7 @@ final class LiveDetailSelectionTests: XCTestCase {
             ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [],
             notices: [], evidence: []
         )
-        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle)
+        store.assistantSummary = fixtureSummary(eventID: "event-1", organizedBundle: aiBundle, source: officialBundle)
         store.usesAssistantData = true
 
         XCTAssertTrue(store.hasAssistantData)

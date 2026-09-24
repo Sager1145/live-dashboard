@@ -23,17 +23,26 @@ public final class LiveDetailStore {
     public var usesAssistantData = true {
         didSet { reconcileSelection() }
     }
+    /// AI text may replace the official bundle only when it was produced from
+    /// this exact official revision. A stale summary keeps the corrected scrape.
+    private var freshAssistantBundle: LiveEventBundle? {
+        guard let summary = assistantSummary,
+              let organized = summary.organizedBundle,
+              organized.event.id == officialBundle.event.id,
+              summary.sourceFingerprint == AssistantSummarizer.fingerprint(of: officialBundle) else { return nil }
+        return organized
+    }
     public var bundle: LiveEventBundle {
-        if usesAssistantData, let organized = assistantSummary?.organizedBundle,
-           organized.event.id == officialBundle.event.id {
+        if usesAssistantData, let organized = freshAssistantBundle {
             return organized
         }
         return officialBundle
     }
-    public var hasAssistantData: Bool {
-        assistantSummary?.organizedBundle?.event.id == officialBundle.event.id
-    }
+    public var hasAssistantData: Bool { freshAssistantBundle != nil }
     public var selection: LiveSelection
+    /// The day the date control is showing. Venue and activity choices are the
+    /// performances that cover this day.
+    public private(set) var selectedLocalDate: String?
     public var selectedPerformanceID: String {
         get { selection.performanceID ?? "" }
         set {
@@ -65,12 +74,94 @@ public final class LiveDetailStore {
         self.officialBundle = bundle
         self.userDataStore = userDataStore
         let sorted = bundle.performances.sorted { $0.order < $1.order }
-        let candidate = initialPerformanceID
-            ?? userDataStore.selectedPerformanceID(eventID: bundle.event.id)
-            ?? sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() })?.id
-            ?? sorted.last?.id
-        let performance = sorted.first { $0.id == candidate }
+        let explicitID = initialPerformanceID ?? userDataStore.selectedPerformanceID(eventID: bundle.event.id)
+        let today = Self.localDayString(Date(), timeZone: bundle.event.resolvedTimeZone)
+        let performance: Performance?
+        let date: String?
+        if let explicitID, let explicit = sorted.first(where: { $0.id == explicitID }) {
+            performance = explicit
+            date = explicit.covers(localDate: today) ? today : explicit.localDate
+        } else {
+            let coveringToday = sorted.filter { $0.covers(localDate: today) }
+            if coveringToday.count == 1 {
+                performance = coveringToday[0]
+                date = today
+            } else if coveringToday.count > 1 {
+                performance = nil
+                date = today
+            } else {
+                performance = sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() }) ?? sorted.last
+                date = performance?.localDate
+            }
+        }
+        self.selectedLocalDate = date
         self.selection = LiveSelection(eventID: bundle.event.id, stopID: performance?.stopID, performanceID: performance?.id)
+        pruneParticipation(in: bundle)
+    }
+
+    /// Dates that at least one performance covers, in calendar order.
+    public var selectableLocalDates: [String] {
+        var seen: Set<String> = []
+        var dates: [String] = []
+        for performance in sortedPerformances {
+            for day in Self.daysCovered(by: performance) where seen.insert(day).inserted {
+                dates.append(day)
+            }
+        }
+        return dates.sorted()
+    }
+
+    public var performancesOnSelectedDate: [Performance] {
+        guard let selectedLocalDate else { return sortedPerformances }
+        return sortedPerformances.filter { $0.covers(localDate: selectedLocalDate) }
+    }
+
+    /// Picks the day, then keeps the current activity only when it still covers
+    /// that day. Two venues on the same day stay unselected until the user picks one.
+    public func selectLocalDate(_ date: String) {
+        selectedLocalDate = date
+        let matches = sortedPerformances.filter { $0.covers(localDate: date) }
+        if matches.count == 1 {
+            selectedPerformanceID = matches[0].id
+        } else if let current = selectedPerformance, current.covers(localDate: date) {
+            return
+        } else {
+            selection.performanceID = nil
+            selection.stopID = nil
+            selection.editionID = nil
+            userDataStore.setSelectedPerformance(nil, eventID: bundle.event.id)
+        }
+    }
+
+    private func pruneParticipation(in bundle: LiveEventBundle) {
+        userDataStore.pruneMissingPerformances(eventID: bundle.event.id, validPerformanceIDs: Set(bundle.performances.map(\.id)))
+    }
+
+    private static func localDayString(_ date: Date, timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    private static func daysCovered(by performance: Performance) -> [String] {
+        guard let start = performance.localDate else { return [] }
+        let end = performance.localEndDate ?? start
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Tokyo") ?? .current
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard var cursor = formatter.date(from: start), let last = formatter.date(from: end), cursor <= last else { return [start] }
+        var days: [String] = []
+        while cursor <= last, days.count < 400 {
+            days.append(formatter.string(from: cursor))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return days
     }
 
     public var sortedPerformances: [Performance] {
@@ -86,6 +177,7 @@ public final class LiveDetailStore {
     /// choose the same valid fallback used for initial detail presentation.
     public func replaceBundle(_ bundle: LiveEventBundle) {
         self.officialBundle = bundle
+        pruneParticipation(in: bundle)
         reconcileSelection()
     }
 
@@ -99,6 +191,9 @@ public final class LiveDetailStore {
             selectedID = previousReplacedPerformanceID
         } else if let previousPerformanceID, sorted.contains(where: { $0.id == previousPerformanceID }) {
             selectedID = previousPerformanceID
+        } else if let selectedLocalDate {
+            let matches = sorted.filter { $0.covers(localDate: selectedLocalDate) }
+            selectedID = matches.count == 1 ? matches[0].id : nil
         } else {
             selectedID = sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() })?.id ?? sorted.last?.id
         }

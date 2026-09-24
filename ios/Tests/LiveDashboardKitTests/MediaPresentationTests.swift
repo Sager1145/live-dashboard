@@ -8,6 +8,26 @@ final class MediaPresentationTests: XCTestCase {
             scope: .unconfirmed, sourceURL: "https://example.com/live", version: 1, caption: "Goods", contentKind: kind)
     }
 
+    func testGoodsImagesFollowCitationOrderAndCollapseThumbnailTwins() {
+        func asset(_ id: String, url: String, thumb: String? = nil, scope: Scope = .performances(performanceIDs: ["p"])) -> MediaAsset {
+            MediaAsset(id: id, eventID: "event", kind: .goodsList, originalURL: url, thumbnailURL: thumb,
+                scope: scope, sourceURL: "https://example.com/live", version: 1, caption: nil, displayPolicy: .remoteDisplay, contentKind: .image)
+        }
+        let full = asset("b", url: "https://example.com/full.jpg", thumb: "https://example.com/full-thumb.jpg")
+        let twin = asset("a", url: "https://example.com/full-thumb.jpg", scope: .performances(performanceIDs: ["p"]))
+        let later = asset("c", url: "https://example.com/second.jpg")
+        let otherHall = asset("d", url: "https://example.com/kobe.jpg", scope: .performances(performanceIDs: ["other"]))
+        let pending = asset("e", url: "https://example.com/unknown.jpg", scope: .unconfirmed)
+        let shown = GoodsImageSequence.presentation(
+            mediaAssetIDs: ["b", "a", "c", "d", "e"],
+            mediaAssets: [later, twin, full, otherHall, pending],
+            selectedPerformanceID: "p",
+            selectedStopID: nil
+        )
+        XCTAssertEqual(shown.inline.map(\.id), ["b", "c"])
+        XCTAssertEqual(shown.pending.map(\.id), ["e"])
+    }
+
     func testLegacyImageAndExplicitOpaqueImageDisplayWhilePageLinksDoNot() {
         XCTAssertTrue(media().isImage) // old link_only records with actual image URLs
         XCTAssertTrue(media(url: "https://example.com/image?id=1", kind: .image).isImage)

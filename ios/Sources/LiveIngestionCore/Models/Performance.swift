@@ -3,6 +3,15 @@ import Foundation
 /// A specific date/session of a `LiveEvent`. IDs are stable and never derived
 /// from the date — a postponement updates `localDate`/`startAt` in place while
 /// keeping the same `id`, follow state, and reminders.
+public enum PerformanceActivity: String, Codable, Hashable, Sendable {
+    /// A timed live performance. Missing clocks use the existing 开演 copy.
+    case performance
+    /// A multi-day or single-day exhibition. Open hours are not a start time.
+    case exhibition
+    /// A timed handover / お渡し会. Its clocks must not be copied onto the exhibition.
+    case handover
+}
+
 public struct Performance: Codable, Hashable, Identifiable, Sendable {
     public let id: String
     public let eventID: String
@@ -10,6 +19,9 @@ public struct Performance: Codable, Hashable, Identifiable, Sendable {
     public let dayLabel: String
     public let subtitle: String?
     public let localDate: String?
+    /// Inclusive end of a 会期. Nil means the record is a single day.
+    public let localEndDate: String?
+    public let activityKind: PerformanceActivity?
     public let rawDate: String?
     public let precision: TimePrecision?
     public let timeZone: String?
@@ -37,7 +49,9 @@ public struct Performance: Codable, Hashable, Identifiable, Sendable {
         editionID: String? = nil,
         rawDate: String? = nil,
         precision: TimePrecision = .date,
-        timeZone: String? = nil
+        timeZone: String? = nil,
+        localEndDate: String? = nil,
+        activityKind: PerformanceActivity? = nil
     ) {
         self.id = id
         self.eventID = eventID
@@ -45,6 +59,8 @@ public struct Performance: Codable, Hashable, Identifiable, Sendable {
         self.dayLabel = dayLabel
         self.subtitle = subtitle
         self.localDate = localDate
+        self.localEndDate = localEndDate
+        self.activityKind = activityKind
         self.rawDate = rawDate
         self.precision = precision
         self.timeZone = timeZone
@@ -57,9 +73,32 @@ public struct Performance: Codable, Hashable, Identifiable, Sendable {
         self.editionID = editionID
     }
 
+    /// Inclusive. ISO dates compare in calendar order. A nil `localDate` covers nothing.
+    public func covers(localDate day: String) -> Bool {
+        guard let start = localDate else { return false }
+        let end = localEndDate ?? start
+        return day >= start && day <= end
+    }
+
+    public var periodEndLocalDate: String? { localEndDate ?? localDate }
+
     public var editionIDValue: String? { editionID }
 }
 
 public enum TimePrecision: String, Codable, Hashable, Sendable {
     case minute, date, month, range, unknown
+}
+
+/// One stored performer string is one line. A newline inside that string is
+/// an unsplit roster, not a single name. Commas, slashes and middle dots stay
+/// inside the name: group names and role notes use them.
+public enum PerformerLines {
+    public static func expandingNewlines(_ performers: [String]) -> [String] {
+        performers.flatMap { name -> [String] in
+            guard name.contains(where: \.isNewline) else { return [name] }
+            return name.split(whereSeparator: \.isNewline).map { line in
+                line.trimmingCharacters(in: .whitespacesAndNewlines)
+            }.filter { !$0.isEmpty }
+        }
+    }
 }

@@ -1607,6 +1607,16 @@
         }
       }
     },
+    "会期 %@ – %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "会期 %1$@ – %2$@"
+          }
+        }
+      }
+    },
     "使用 API Key 登录" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4161,6 +4171,9 @@
         }
       }
     },
+    "场馆" : {
+
+    },
     "场馆座位图" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6248,6 +6261,9 @@
           }
         }
       }
+    },
+    "开放时间未确认" : {
+
     },
     "开演" : {
       "extractionState" : "manual",
@@ -11307,6 +11323,9 @@
         }
       }
     },
+    "请选择场馆" : {
+
+    },
     "账号" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11857,6 +11876,9 @@
           }
         }
       }
+    },
+    "这一天没有仍在进行的会期" : {
+
     },
     "这不是实际歌单。" : {
 

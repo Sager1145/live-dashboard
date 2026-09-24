@@ -249,8 +249,11 @@ public struct TicketsView: View {
     }
 
     private func hasExplicitSelectedScope(_ scope: Scope) -> Bool {
-        guard case .performances(let ids) = scope else { return false }
-        return ids.contains(store.selectedPerformanceID)
+        PerformanceScopeResolver.allowsAction(
+            scope: scope,
+            selectedPerformanceID: store.selectedPerformanceID,
+            selectedStopID: store.stopID(for: store.selectedPerformanceID)
+        )
     }
 
     private func format(_ date: Date, timeZone: TimeZone) -> String {
