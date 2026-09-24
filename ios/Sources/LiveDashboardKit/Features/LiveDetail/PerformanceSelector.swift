@@ -1,6 +1,17 @@
 import SwiftUI
 import LiveIngestionCore
 
+public struct PerformanceSessionRow: Equatable, Identifiable, Sendable {
+    public let id: String
+    public let localDate: String
+    public let sessionLabel: String
+    public let venueName: String
+
+    public var label: String {
+        [localDate, sessionLabel, venueName].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
 /// Session selection: a menu picker for a handful of performances, or a
 /// pushed list page once there are too many to fit comfortably in a menu.
 public struct PerformanceSelector: View {
@@ -124,13 +135,37 @@ public struct PerformanceSelector: View {
         return formatter.string(from: next)
     }
 
+    private var visibleSessionRows: [PerformanceSessionRow] {
+        let allowed = Set(performancesOnDate.map(\.id))
+        return Self.sessionRows(in: bundle).filter { allowed.contains($0.id) }
+    }
+
     @ViewBuilder
     private var options: some View {
         if selectedPerformanceID.isEmpty {
             Text("请选择场馆", bundle: .kit).tag("")
         }
-        ForEach(performancesOnDate) { performance in
-            Text(verbatim: Self.optionLabel(for: performance, in: bundle, dateAlreadyShown: dates.count > 1)).tag(performance.id)
+        ForEach(visibleSessionRows) { row in
+            Text(verbatim: row.label).tag(row.id)
+        }
+    }
+
+    /// One row per performance id. Same-day day and night shows stay two rows:
+    /// date, day/night (or session) label, and venue. Rows are not keyed by the date string.
+    public static func sessionRows(in bundle: LiveEventBundle) -> [PerformanceSessionRow] {
+        bundle.performances.sorted { $0.order < $1.order }.map { performance in
+            let sessionParts = [performance.dayLabel, performance.subtitle ?? ""]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            var seen = Set<String>()
+            let sessionLabel = sessionParts.filter { seen.insert($0).inserted }.joined(separator: " · ")
+            let date = performance.localDate ?? performance.rawDate ?? ""
+            return PerformanceSessionRow(
+                id: performance.id,
+                localDate: date,
+                sessionLabel: sessionLabel,
+                venueName: performance.venueName
+            )
         }
     }
 

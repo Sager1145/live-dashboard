@@ -1,7 +1,11 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { scheduleMedia, runMediaJob } from "./media-worker.js";
-import { blobStoreFromEnv } from "./storage/index.js";
+import {
+  scheduleMedia,
+  runMediaJob,
+  runCandidateMediaJob,
+} from "./media-worker.js";
+import { blobStoreFromEnv, LocalCandidateStore } from "./storage/index.js";
 import { PostgresDB, migrate } from "./db.js";
 import {
   parserConfigurationVersion,
@@ -10,8 +14,10 @@ import {
   proposeSnapshot,
   augmentReviewFromSnapshot,
   scheduleSources,
+  scheduleUpdateSlot,
   runFetchJob,
   runParseJob,
+  runUpdateSlotJob,
 } from "./ingestion-worker.js";
 import { createReview, publishReview } from "./publisher.js";
 import {
@@ -19,17 +25,27 @@ import {
   deliverNotifications,
 } from "./notification-worker.js";
 import { ApnsTransport } from "./notifications/apns.js";
-import { bundleSchema } from "./contracts.js";
+import { bundleSchema, v2JSONSchemas } from "./contracts.js";
 import { z } from "zod";
 import { enqueue } from "./queue.js";
 
 const blobs = blobStoreFromEnv();
+const candidates = blobs
+  ? new LocalCandidateStore(resolve(blobs.root, "candidates"))
+  : undefined;
 const [command, ...args] = process.argv.slice(2);
 if (command === "schema") {
   await writeFile(
     resolve("../schema/live-dashboard.schema.json"),
     JSON.stringify(z.toJSONSchema(bundleSchema), null, 2) + "\n",
   );
+  const directory = resolve("../schema/v2");
+  await mkdir(directory, { recursive: true });
+  for (const [name, schema] of Object.entries(v2JSONSchemas))
+    await writeFile(
+      resolve(directory, `${name}.schema.json`),
+      JSON.stringify(z.toJSONSchema(schema), null, 2) + "\n",
+    );
   process.exit(0);
 }
 const db = new PostgresDB(
@@ -42,6 +58,9 @@ for (const signal of ["SIGINT", "SIGTERM"])
     stopped = true;
   });
 const wait = () => new Promise((r) => setTimeout(r, 1000));
+const scrapingEnabled = async () =>
+  (await db.query("SELECT value FROM app_settings WHERE key='scraping_enabled'"))
+    .rows[0]?.value !== false;
 try {
   switch (command) {
     case "migrate":
@@ -155,18 +174,27 @@ try {
     }
     case "scheduler":
       do {
-        await scheduleSources(db);
-        if (blobs) await scheduleMedia(db);
+        if (await scrapingEnabled()) {
+          await scheduleUpdateSlot(db);
+          await scheduleSources(db);
+          if (blobs) await scheduleMedia(db);
+        }
         if (args.includes("--once")) break;
         await wait();
       } while (!stopped);
       break;
     case "worker":
       do {
-        const fetched = await runFetchJob(db);
-        const parsed = await runParseJob(db);
-        const media = blobs ? await runMediaJob(db, { blobs }) : false;
-        const worked = fetched || parsed || media;
+        const enabled = await scrapingEnabled();
+        const slot = enabled ? await runUpdateSlotJob(db) : false;
+        const fetched = enabled ? await runFetchJob(db) : false;
+        const parsed = enabled ? await runParseJob(db) : false;
+        const media = enabled && blobs ? await runMediaJob(db, { blobs }) : false;
+        const candidate =
+          enabled && blobs && candidates
+            ? await runCandidateMediaJob(db, { blobs, candidates })
+            : false;
+        const worked = slot || fetched || parsed || media || candidate;
         if (args.includes("--once")) break;
         if (!worked) await wait();
       } while (!stopped);

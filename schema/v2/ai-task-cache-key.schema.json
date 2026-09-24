@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "config": {
+      "type": "string",
+      "minLength": 1
+    },
+    "promptVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 2
+    },
+    "parserVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "blockContentHashes": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "parentScopeHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "identityTableVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "visualAssetHashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    }
+  },
+  "required": [
+    "provider",
+    "model",
+    "config",
+    "promptVersion",
+    "schemaVersion",
+    "parserVersion",
+    "blockContentHashes",
+    "parentScopeHash",
+    "identityTableVersion",
+    "visualAssetHashes"
+  ],
+  "additionalProperties": false
+}

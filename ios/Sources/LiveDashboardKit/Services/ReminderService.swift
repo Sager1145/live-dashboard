@@ -43,10 +43,11 @@ public struct ReminderIdentifier: Hashable, Sendable {
 }
 
 public final class ReminderService: ReminderScheduling, @unchecked Sendable {
-    private let center: UNUserNotificationCenter
+    private let configuredCenter: UNUserNotificationCenter?
+    private var center: UNUserNotificationCenter { configuredCenter ?? .current() }
 
-    public init(center: UNUserNotificationCenter = .current()) {
-        self.center = center
+    public init(center: UNUserNotificationCenter? = nil) {
+        self.configuredCenter = center
     }
 
     public func requestAuthorizationIfNeeded() async -> Bool {

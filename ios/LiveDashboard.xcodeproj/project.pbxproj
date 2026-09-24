@@ -128,6 +128,7 @@
 		7720581BA2423EEA8B6DC424 /* LRUCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD26BA7D89BD9CBBAD1BD01F /* LRUCache.swift */; };
 		780459A0718B544946BC1CF5 /* BinarySearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D3338B5A5E4AEC3D55D719 /* BinarySearch.swift */; };
 		784200244BC5A47A1A58F373 /* GoodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0268BF4E4C57A78FC19983 /* GoodsView.swift */; };
+		B7D7A11E0000000000000A02 /* MediaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D7A11E0000000000000A01 /* MediaStore.swift */; };
 		793204BAAC16B32872898E1C /* AssistantPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D4433BA99772C1E15E279 /* AssistantPresentationTests.swift */; };
 		7A53E4232D8C833746FA8B70 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 37FC547C0FFFAFCC86F6BB71 /* Localizable.xcstrings */; };
 		7CBBFAC51A8BEFF1E674A3E6 /* Elements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29FB50E99D76E17D0B86CF62 /* Elements.swift */; };
@@ -222,6 +223,15 @@
 		FDD0F031736305E8149C99F1 /* Comment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303E8786A90D62F8D2340FB8 /* Comment.swift */; };
 		FF38B5F6A20B46061EB13E75 /* LiveCatalogEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D9FD3CC4C45097AD44C9BE /* LiveCatalogEntities.swift */; };
 		FFF2B5D25C543D129490E258 /* ExtractionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CF984C2ED338BCBA077D3E /* ExtractionTypes.swift */; };
+		A1C0A0010000000000000002 /* CatalogAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A0010000000000000001 /* CatalogAPIClient.swift */; };
+		A1C0A0010000000000000004 /* CatalogSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A0010000000000000003 /* CatalogSyncCoordinator.swift */; };
+		A1C0A0010000000000000006 /* ServerConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A0010000000000000005 /* ServerConnectionStore.swift */; };
+		A1C0A0010000000000000008 /* APICatalogV2Reader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A0010000000000000007 /* APICatalogV2Reader.swift */; };
+		A1C0A001000000000000000A /* CatalogContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A0010000000000000009 /* CatalogContracts.swift */; };
+		A1C0A001000000000000000C /* CatalogEventDocumentV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A001000000000000000B /* CatalogEventDocumentV2.swift */; };
+		A1C0A001000000000000000E /* CatalogGenerationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A001000000000000000D /* CatalogGenerationStore.swift */; };
+		A1C0A0010000000000000010 /* UpdateJobClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A001000000000000000F /* UpdateJobClient.swift */; };
+		A1C0A0010000000000000012 /* CatalogSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0A0010000000000000011 /* CatalogSyncTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -353,6 +363,7 @@
 		3078BE2A7A15EE04E51C446E /* TicketNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketNote.swift; sourceTree = "<group>"; };
 		31D5F5B8CBBF6FE341FA5513 /* DashboardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardPresentationTests.swift; sourceTree = "<group>"; };
 		32774D6B5B15AC7C27480600 /* UserDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataStore.swift; sourceTree = "<group>"; };
+		B7D7A11E0000000000000A01 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
 		33A192203EBBE555E8D5F526 /* LocalRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalRepositoryTests.swift; sourceTree = "<group>"; };
 		344D8147A6D1E8188EFCA332 /* AssistantFullPageAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantFullPageAnalysisTests.swift; sourceTree = "<group>"; };
 		35426093ABBC724D9B050CD5 /* EventernoteClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventernoteClient.swift; sourceTree = "<group>"; };
@@ -519,6 +530,15 @@
 		FD0268BF4E4C57A78FC19983 /* GoodsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoodsView.swift; sourceTree = "<group>"; };
 		FDBC1078607DE39566714752 /* TicketTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketTier.swift; sourceTree = "<group>"; };
 		FF93F8BFD58E7EB28260B43C /* TokeniserState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokeniserState.swift; sourceTree = "<group>"; };
+		A1C0A0010000000000000001 /* CatalogAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogAPIClient.swift; sourceTree = "<group>"; };
+		A1C0A0010000000000000003 /* CatalogSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSyncCoordinator.swift; sourceTree = "<group>"; };
+		A1C0A0010000000000000005 /* ServerConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConnectionStore.swift; sourceTree = "<group>"; };
+		A1C0A0010000000000000007 /* APICatalogV2Reader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APICatalogV2Reader.swift; sourceTree = "<group>"; };
+		A1C0A0010000000000000009 /* CatalogContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogContracts.swift; sourceTree = "<group>"; };
+		A1C0A001000000000000000B /* CatalogEventDocumentV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogEventDocumentV2.swift; sourceTree = "<group>"; };
+		A1C0A001000000000000000D /* CatalogGenerationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogGenerationStore.swift; sourceTree = "<group>"; };
+		A1C0A001000000000000000F /* UpdateJobClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateJobClient.swift; sourceTree = "<group>"; };
+		A1C0A0010000000000000011 /* CatalogSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSyncTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -582,6 +602,8 @@
 				A4B7357ED6ED417D02926D20 /* CardRefreshMerge.swift */,
 				AAB18B9757E7139364F6AA9F /* LiveRepository.swift */,
 				5F160447F416DC7BE56515C2 /* LocalLiveRepository.swift */,
+				A1C0A0010000000000000007 /* APICatalogV2Reader.swift */,
+				B7D7A11E0000000000000A01 /* MediaStore.swift */,
 				32774D6B5B15AC7C27480600 /* UserDataStore.swift */,
 				E3BA150E3677565558AAAFA2 /* UserDataStore+CardSettings.swift */,
 				273EB3AAC42F33A6786892E4 /* External */,
@@ -663,6 +685,7 @@
 				8311EA68D0825CDBA1637AB3 /* TicketPhaseBadgeTests.swift */,
 				4B2135935999F123AD3C3F2D /* TicketRoundFieldParsingTests.swift */,
 				F337A369356F01CACA3CB3C1 /* TranslationStoreTests.swift */,
+				A1C0A0010000000000000011 /* CatalogSyncTests.swift */,
 			);
 			name = LiveDashboardKitTests;
 			path = Tests/LiveDashboardKitTests;
@@ -916,6 +939,7 @@
 				C13A434BED2097E31C802107 /* Assistant */,
 				7C37520A7C8B2A70B8592ACD /* Intelligence */,
 				545A6322C336AAADE0F5B72F /* Translation */,
+				A1C0A0010000000000000013 /* Catalog */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1041,6 +1065,20 @@
 				6B4B916E989EB029F4615560 /* MotionSupport.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		A1C0A0010000000000000013 /* Catalog */ = {
+			isa = PBXGroup;
+			children = (
+				A1C0A0010000000000000009 /* CatalogContracts.swift */,
+				A1C0A001000000000000000B /* CatalogEventDocumentV2.swift */,
+				A1C0A0010000000000000001 /* CatalogAPIClient.swift */,
+				A1C0A001000000000000000F /* UpdateJobClient.swift */,
+				A1C0A0010000000000000005 /* ServerConnectionStore.swift */,
+				A1C0A001000000000000000D /* CatalogGenerationStore.swift */,
+				A1C0A0010000000000000003 /* CatalogSyncCoordinator.swift */,
+			);
+			path = Catalog;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1348,6 +1386,7 @@
 				3F8391A1F40E4476ABD8C7CF /* LiveIngestionExport.swift in Sources */,
 				2FCC780BA1BE78941EAC0B67 /* LiveRepository.swift in Sources */,
 				2FEC42F6AF364D370D65A525 /* LocalLiveRepository.swift in Sources */,
+				B7D7A11E0000000000000A02 /* MediaStore.swift in Sources */,
 				6BBAA67FB6C01DAEDBD2F22C /* LocalOAuthCallbackServer.swift in Sources */,
 				C37F5C42BDDFCA86C79CE1B9 /* LocalPerformanceClock.swift in Sources */,
 				239FA6CB9995365FA3C576A2 /* MotionSupport.swift in Sources */,
@@ -1376,6 +1415,14 @@
 				BE90C227CDFAE7A19A1998FD /* UpstreamSourceRegistry.swift in Sources */,
 				A04604AAC65218A6D739B428 /* UserDataStore+CardSettings.swift in Sources */,
 				C923E03465460E0A09BD8588 /* UserDataStore.swift in Sources */,
+				A1C0A0010000000000000002 /* CatalogAPIClient.swift in Sources */,
+				A1C0A0010000000000000004 /* CatalogSyncCoordinator.swift in Sources */,
+				A1C0A0010000000000000006 /* ServerConnectionStore.swift in Sources */,
+				A1C0A0010000000000000008 /* APICatalogV2Reader.swift in Sources */,
+				A1C0A001000000000000000A /* CatalogContracts.swift in Sources */,
+				A1C0A001000000000000000C /* CatalogEventDocumentV2.swift in Sources */,
+				A1C0A001000000000000000E /* CatalogGenerationStore.swift in Sources */,
+				A1C0A0010000000000000010 /* UpdateJobClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1510,6 +1557,7 @@
 				64DF83F859C292678241A1C4 /* TicketPhaseBadgeTests.swift in Sources */,
 				E393B7387517811281C37224 /* TicketRoundFieldParsingTests.swift in Sources */,
 				A7210DDBF94FA81FE7F43AF3 /* TranslationStoreTests.swift in Sources */,
+				A1C0A0010000000000000012 /* CatalogSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

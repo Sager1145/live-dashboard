@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "taskID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "patches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "recordKind": {
+            "type": "string",
+            "enum": [
+              "goodsCampaign",
+              "product",
+              "ticketRound",
+              "ticketTier",
+              "performance",
+              "notice",
+              "mediaAsset",
+              "streamOffer",
+              "ticketBenefit"
+            ]
+          },
+          "recordRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "value": {},
+          "evidenceRefs": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "state": {
+            "type": "string",
+            "const": "proposed"
+          }
+        },
+        "required": [
+          "recordKind",
+          "recordRef",
+          "field",
+          "value",
+          "evidenceRefs",
+          "state"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "absence": {
+            "type": "string",
+            "enum": [
+              "notAnnounced",
+              "unresolved",
+              "unavailable",
+              "conflict",
+              "notApplicable"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "absence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "taskID",
+    "patches",
+    "unresolved"
+  ],
+  "additionalProperties": false
+}

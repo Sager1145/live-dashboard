@@ -226,10 +226,13 @@ public final class DashboardStore {
         do {
             if let updated = try await repository.refresh(eventID: eventID) {
                 acceptRefreshedBundle(updated)
-                Task { await assistant?.generateStale(in: [updated]) }
             }
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    public func requestServerUpdate(eventID: String) {
+        errorMessage = String(localized: "更新请求要发给已连接的资料服务器", bundle: .kit)
     }
 
     /// Returns the summary of this run, or nil when nothing ran or the whole fetch failed.
@@ -266,7 +269,6 @@ public final class DashboardStore {
             errorMessage = nil
             let summary = HistoryFetchSummary(start: start, end: end, fetchedCount: fetched.count, finishedAt: now())
             lastHistoryFetch = summary
-            Task { await assistant?.generateStale(in: fetched) }
             return summary
         } catch {
             // Successful pages remain useful when another official source is unavailable.
@@ -286,7 +288,6 @@ public final class DashboardStore {
             bundles = try await (manual ? repository.refresh() : repository.refreshIfNeeded())
             userDataStore.reconcile(remaps: await repository.consumeRemaps(), availableBundles: bundles)
             errorMessage = nil
-            Task { await assistant?.generateStale(in: bundles) }
         } catch {
             // Successful pages remain useful when another official source is unavailable.
             if let saved = try? await repository.allBundles() { bundles = saved }

@@ -201,28 +201,51 @@ struct PerformersCard: View {
     var body: some View {
         let cardKey = TranslationStore.cardKey(eventID: eventID, cardType: .performers, entityID: CardConfiguration.globalEntityID)
         let config = userDataStore.effectiveConfiguration(cardType: .performers, entityID: CardConfiguration.globalEntityID, eventID: eventID)
-        let lines = PerformerLines.expandingNewlines(performance.performers)
+        let rows = PerformerPresentation.rows(performance.performers)
         let compact = config.density == .compact
         DetailCard(title: "出演", cardType: .performers, entityID: CardConfiguration.globalEntityID, refreshEntityID: performance.id, userDataStore: userDataStore, eventID: eventID, translationSegments: {
-            lines.enumerated().map { index, performer in
-                TranslationRequestItem(id: "performance|\(performance.id)|performer|\(index)", text: performer)
+            rows.map { row in
+                TranslationRequestItem(id: "performance|\(performance.id)|performer|\(row.id)", text: row.text)
             }
         }) {
-            if lines.isEmpty {
+            if rows.isEmpty {
                 Text("出演信息尚未获取或待核验", bundle: .kit).foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: compact ? 4 : 6) {
-                    ForEach(Array(lines.enumerated()), id: \.offset) { index, performer in
-                        OfficialText(performer, cardKey: cardKey, eventID: eventID)
+                    ForEach(rows) { row in
+                        OfficialText(row.text, cardKey: cardKey, eventID: eventID)
                             .font(compact ? .footnote : .subheadline)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("performer-\(performance.id)-\(index)")
+                            .accessibilityIdentifier("performer-\(performance.id)-\(row.id)")
                     }
                 }
                 .id(performance.id)
             }
         }
+    }
+}
+
+/// One row per stored performer string. Commas stay inside the name.
+/// `allowsWrapping` is always true so Dynamic Type is not clipped to one line.
+public struct PerformerRow: Equatable, Identifiable, Sendable {
+    public let id: String
+    public let text: String
+    public let allowsWrapping: Bool
+}
+
+public enum PerformerPresentation {
+    public static func rows(_ performers: [String]) -> [PerformerRow] {
+        PerformerLines.expandingNewlines(performers).enumerated().map { index, text in
+            PerformerRow(id: String(index), text: text, allowsWrapping: true)
+        }
+    }
+
+    /// The selected performance id, not the shared date, chooses the roster.
+    public static func rows(for performanceID: String, performances: [Performance]) -> [PerformerRow] {
+        guard let performance = performances.first(where: { $0.id == performanceID }) else { return [] }
+        return rows(performance.performers)
     }
 }
 

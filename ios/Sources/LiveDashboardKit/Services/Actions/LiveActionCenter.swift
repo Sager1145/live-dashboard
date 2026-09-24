@@ -8,7 +8,10 @@ public final class LiveActionCenter {
 
     public let repository: LocalLiveRepository
     public let userDataStore: UserDataStore
-    public let reminderService: ReminderService
+    public let reminderService: any ReminderScheduling
+    private let reader: any CatalogReadRepository
+    private let syncService: any CatalogSyncService
+    private let jobs: any RefreshJobService
 
     public private(set) var router: AppRouter?
     /// Stored so a later organize task can find the coordinator. Not called from this type.
@@ -17,10 +20,41 @@ public final class LiveActionCenter {
 
     public var pendingOrganizeEventID: String?
 
-    private init() {
-        repository = LocalLiveRepository()
-        userDataStore = UserDataStore()
-        reminderService = ReminderService()
+    private convenience init() {
+        let local = LocalLiveRepository()
+        self.init(
+            reader: local,
+            sync: LocalRepositorySyncService(repository: local),
+            jobs: UnavailableRefreshJobService(),
+            userDataStore: UserDataStore(),
+            reminderService: ReminderService(),
+            repository: local
+        )
+    }
+
+    /// Uses the supplied reader and sync services. Does not create a second catalog stack.
+    public init(
+        reader: any CatalogReadRepository,
+        sync: any CatalogSyncService,
+        jobs: any RefreshJobService,
+        userDataStore: UserDataStore,
+        reminderService: any ReminderScheduling,
+        repository: LocalLiveRepository
+    ) {
+        self.reader = reader
+        self.syncService = sync
+        self.jobs = jobs
+        self.userDataStore = userDataStore
+        self.reminderService = reminderService
+        self.repository = repository
+    }
+
+    public func syncCatalog(reason: SyncReason) async throws -> SyncResult {
+        try await syncService.sync(reason: reason)
+    }
+
+    public func requestServerRefresh(_ request: RefreshRequest) async throws -> RefreshJob {
+        try await jobs.requestRefresh(request)
     }
 
     public func configure(router: AppRouter, assistant: AssistantCoordinator, dashboard: DashboardStore) {
@@ -37,7 +71,7 @@ public final class LiveActionCenter {
 
     /// Empty when the catalog cannot be read. Entity queries use this so a throw does not become a guessed match.
     public func savedBundles() async -> [LiveEventBundle] {
-        (try? await repository.allBundles()) ?? []
+        (try? await reader.allBundles()) ?? []
     }
 
     public func openSpeech(eventID: String, title: String) -> String {
@@ -75,7 +109,7 @@ public final class LiveActionCenter {
         if case .invalid = startBound { return "开始日期请使用 YYYY-MM-DD。" }
         if case .invalid = endBound { return "结束日期请使用 YYYY-MM-DD。" }
         let bundles: [LiveEventBundle]
-        do { bundles = try await repository.allBundles() }
+        do { bundles = try await reader.allBundles() }
         catch { return Self.catalogUnavailable }
         let followed = Set(userDataStore.eventStates.filter { $0.value.isFollowed }.map(\.key))
         let startDay = startBound.day
@@ -100,7 +134,9 @@ public final class LiveActionCenter {
             return "已刷新\(title)。"
         }
         do {
-            guard try await repository.refresh(eventID: eventID) != nil else {
+            let result = try await syncService.sync(reason: .pull)
+            guard result.committed else { return "未能刷新\(title)。" }
+            guard try await reader.bundle(eventID: eventID) != nil else {
                 return "本地目录里没有\(title)，未刷新。"
             }
             return "已刷新\(title)。"
@@ -184,7 +220,7 @@ public final class LiveActionCenter {
     }
 
     private func loadBundle(eventID: String) async -> Result<LiveEventBundle?, Error> {
-        do { return .success(try await repository.bundle(eventID: eventID)) }
+        do { return .success(try await reader.bundle(eventID: eventID)) }
         catch { return .failure(error) }
     }
 

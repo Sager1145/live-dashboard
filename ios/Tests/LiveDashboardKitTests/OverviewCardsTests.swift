@@ -26,6 +26,26 @@ final class OverviewCardsTests: XCTestCase {
         XCTAssertEqual(order.first, .performers)
         XCTAssertEqual(Set(order), Set(ImportantInformationPolicy.overviewDefaultOrder))
     }
+
+    func testPerformersAreOneWrappingRowPerStringAndFollowThePerformanceID() {
+        let names = (1...20).map { "出演者\($0)、備考" }
+        let rows = PerformerPresentation.rows(names)
+        XCTAssertEqual(rows.count, 20)
+        XCTAssertEqual(rows.map(\.text), names)
+        XCTAssertTrue(rows.allSatisfy(\.allowsWrapping))
+        XCTAssertEqual(PerformerPresentation.rows(["A, B", "C"]).map(\.text), ["A, B", "C"])
+        XCTAssertNotEqual(rows.map(\.text).joined(separator: ", "), names.joined(separator: "\n"))
+        XCTAssertFalse(rows.contains { $0.text.contains("\n") })
+
+        func show(_ id: String, performers: [String]) -> Performance {
+            Performance(id: id, eventID: "live", stopID: nil, dayLabel: id, subtitle: nil,
+                localDate: "2026-09-05", doorsAt: nil, startAt: nil, venueName: "Hall", venueCity: "",
+                performers: performers, order: 0)
+        }
+        let performances = [show("day", performers: names), show("night", performers: ["夜の人"])]
+        XCTAssertEqual(PerformerPresentation.rows(for: "day", performances: performances).map(\.text), names)
+        XCTAssertEqual(PerformerPresentation.rows(for: "night", performances: performances).map(\.text), ["夜の人"])
+    }
 }
 
 /// `TicketRoundCard`'s headline date: the single most relevant date for the

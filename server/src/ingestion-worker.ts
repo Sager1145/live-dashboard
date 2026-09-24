@@ -7,10 +7,16 @@ import { blobStoreFromEnv, storeSnapshotBlob } from "./storage/index.js";
 import { officialInstant } from "./local-time.js";
 import { mergeSnapshotDetails } from "./proposal-details.js";
 import { createReview } from "./publisher.js";
-import { fetchDocument } from "./ingestion/fetcher.js";
+import { fetchDocument, type FetchDocumentInput } from "./ingestion/fetcher.js";
 import { makeSnapshot } from "./ingestion/snapshot.js";
 import { parseSnapshot, adapters } from "./ingestion/parser.js";
-import { refreshIntervalSeconds } from "./refresh-policy.js";
+import { buildSectionGraph } from "./ingestion/section-graph.js";
+import {
+  bundlesInServerScanWindow,
+  refreshIntervalSeconds,
+} from "./refresh-policy.js";
+import { slotStart } from "./update-window.js";
+import type { FetchOutcome } from "./ingestion/types.js";
 export const parserConfigurationVersion = createHash("sha256")
   .update(
     adapters
@@ -77,33 +83,129 @@ export async function registerDocument(
     ])
   ).rows[0];
 }
-export async function scheduleSources(db: DB) {
+export async function scheduleSources(db: DB, now = new Date()) {
   return db.transaction(async (tx) => {
     const documents = (
       await tx.query(
         "SELECT d.*,o.policy FROM source_documents d JOIN source_origins o ON d.origin_id=o.id WHERE d.enabled AND o.policy->>'enabled'='true' AND o.policy->>'reviewStatus'='approved' AND d.next_fetch_at<=now() ORDER BY d.next_fetch_at FOR UPDATE OF d SKIP LOCKED LIMIT 100",
       )
     ).rows;
+    let scheduled = 0;
     for (const d of documents) {
-      await enqueue(
-        tx,
-        "fetch",
-        { documentID: d.id },
-        `fetch:${d.id}:${new Date(d.next_fetch_at).toISOString()}`,
-      );
       const bundles = (
         await tx.query(
           "SELECT DISTINCT e.bundle FROM events e WHERE NOT e.deleted AND (e.bundle->'event'->>'primarySourceURL'=$1 OR EXISTS(SELECT 1 FROM jsonb_array_elements(e.bundle->'evidence') fact JOIN source_snapshots s ON s.id::text=fact->>'snapshotID' WHERE s.document_id=$2))",
           [d.fetch_url, d.id],
         )
       ).rows.map((r) => r.bundle);
+      // Archived tours are not fetched on the periodic pass. Manual jobs are separate.
+      if (!bundlesInServerScanWindow(bundles, now)) {
+        await tx.query(
+          "UPDATE source_documents SET next_fetch_at=now()+interval '1 day' WHERE id=$1",
+          [d.id],
+        );
+        continue;
+      }
+      await enqueue(
+        tx,
+        "fetch",
+        { documentID: d.id },
+        `fetch:${d.id}:${new Date(d.next_fetch_at).toISOString()}`,
+      );
+      scheduled += 1;
+      const timed = bundles.filter(
+        (bundle: any) =>
+          Array.isArray(bundle?.performances) &&
+          Array.isArray(bundle?.ticketRounds) &&
+          Array.isArray(bundle?.goodsCampaigns) &&
+          Array.isArray(bundle?.streamOffers),
+      );
       await tx.query(
         "UPDATE source_documents SET next_fetch_at=now()+($2*interval '1 second') WHERE id=$1",
-        [d.id, refreshIntervalSeconds(bundles, d.adapter_id, d.policy)],
+        [
+          d.id,
+          refreshIntervalSeconds(timed, d.adapter_id, d.policy, now.getTime()),
+        ],
       );
     }
-    return documents.length;
+    return scheduled;
   });
+}
+
+/** Plan version is part of the update-run unique key, together with the UTC slot. */
+export const updatePlanVersion = "p1-2026-09-24";
+
+/** UTC 00:00 or 12:00 slot containing `now`. Not a Japan-local or phone-local half day. */
+export function currentUpdateSlot(now = new Date()): string {
+  return slotStart(now).toISOString();
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  if (typeof value === "string")
+    return JSON.parse(value) as Record<string, unknown>;
+  if (value && typeof value === "object")
+    return value as Record<string, unknown>;
+  return {};
+}
+
+/**
+ * Persist one update run for the current UTC slot.
+ * An unfinished run is resumed instead of inserting every slot missed while down.
+ */
+export async function scheduleUpdateSlot(db: DB, now = new Date()) {
+  return db.transaction(async (tx) => {
+    await tx.query("LOCK TABLE jobs IN SHARE ROW EXCLUSIVE MODE");
+    const open = (
+      await tx.query(
+        "SELECT id, payload FROM jobs WHERE kind='update_run' AND payload->>'planVersion'=$1 AND status IN ('queued','running') ORDER BY payload->>'slot' DESC LIMIT 1",
+        [updatePlanVersion],
+      )
+    ).rows[0];
+    if (open) {
+      const payload = asObject(open.payload);
+      return {
+        jobID: String(open.id),
+        slot: String(payload.slot),
+        resumed: true,
+        created: false,
+      };
+    }
+    const slot = currentUpdateSlot(now);
+    const key = `update-run:${updatePlanVersion}:${slot}`;
+    const existing = (
+      await tx.query(
+        "SELECT id, status FROM jobs WHERE dedupe_key=$1",
+        [key],
+      )
+    ).rows[0];
+    if (existing)
+      return {
+        jobID: String(existing.id),
+        slot,
+        resumed: existing.status === "queued" || existing.status === "running",
+        created: false,
+      };
+    const id = await enqueue(
+      tx,
+      "update_run",
+      { planVersion: updatePlanVersion, slot },
+      key,
+    );
+    if (!id) throw new Error("update slot was not persisted");
+    return { jobID: String(id), slot, resumed: false, created: true };
+  });
+}
+
+export async function runUpdateSlotJob(db: DB) {
+  const job = await claim(db, "update_run", 180);
+  if (!job) return false;
+  try {
+    await scheduleSources(db);
+    if (!(await complete(db, job.id, job.fencing_token))) return true;
+  } catch (error) {
+    await fail(db, job.id, job.fencing_token, String(error), 300);
+  }
+  return true;
 }
 export async function saveSnapshot(db: DB, snapshot: SourceSnapshot) {
   const store = blobStoreFromEnv();
@@ -183,13 +285,34 @@ export async function parseAndStore(db: DB, snapshot: SourceSnapshot) {
         : "healthy",
     ],
   );
+  const graph = buildSectionGraph(snapshot, result);
+  for (const block of graph.blocks)
+    await db.query(
+      "INSERT INTO fact_candidates(id,snapshot_id,source_key,kind,data,evidence,issues) VALUES($1,$2,$3,'dom.block',$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
+      [
+        randomUUID(),
+        snapshot.id,
+        block.blockID,
+        JSON.stringify({
+          ...block,
+          identityTableVersion: graph.identityTableVersion,
+        }),
+        JSON.stringify({ evidence: { locator: block.domPath || block.blockID } }),
+        "[]",
+      ],
+    );
   // Discovery adds review-only documents, never implicitly authorizes a new origin/path.
   for (const link of result.links.slice(0, 50))
     if (["event", "ticket", "goods", "news"].includes(link.role))
       await registerDocument(db, link.url);
   return result;
 }
-export async function runFetchJob(db: DB) {
+export async function runFetchJob(
+  db: DB,
+  fetcher: (
+    input: FetchDocumentInput,
+  ) => Promise<FetchOutcome> = fetchDocument,
+) {
   const job = await claim(db, "fetch", 180);
   if (!job) return false;
   try {
@@ -256,7 +379,7 @@ export async function runFetchJob(db: DB) {
           ])
         ).rows[0]
       : null;
-    const outcome = await fetchDocument({
+    const outcome = await fetcher({
       url: d.fetch_url,
       sourceDocumentId: d.id,
       policy,
@@ -286,12 +409,30 @@ export async function runFetchJob(db: DB) {
           outcome.status,
           JSON.stringify({
             statusCode:
-              "statusCode" in outcome ? outcome.statusCode : undefined,
+              outcome.status === "unchanged"
+                ? 304
+                : "statusCode" in outcome
+                  ? outcome.statusCode
+                  : undefined,
             issue: "issue" in outcome ? outcome.issue : undefined,
+            ...(outcome.status === "unchanged"
+              ? { checkedAt: outcome.checkedAt, conditional: true }
+              : {}),
           }),
         ],
       );
-      if (outcome.status === "snapshotted" || outcome.status === "unchanged") {
+      // A conditional GET has no new body and must not insert another content snapshot.
+      if (outcome.status === "unchanged") {
+        await tx.query(
+          "UPDATE source_documents SET health='healthy' WHERE id=$1",
+          [d.id],
+        );
+        await tx.query(
+          "UPDATE source_origins SET health='healthy',last_success_at=now() WHERE id=$1",
+          [d.origin_key],
+        );
+        await complete(tx, job.id, job.fencing_token);
+      } else if (outcome.status === "snapshotted") {
         const snapshot = await saveSnapshot(tx, outcome.snapshot);
         await tx.query(
           "UPDATE source_documents SET last_snapshot_id=$2,etag=$3,last_modified=$4,health='healthy' WHERE id=$1",
@@ -304,19 +445,14 @@ export async function runFetchJob(db: DB) {
         );
         await tx.query(
           "UPDATE source_origins SET health='healthy',last_success_at=now(),last_content_change_at=CASE WHEN $2 THEN now() ELSE last_content_change_at END WHERE id=$1",
-          [
-            d.origin_key,
-            outcome.status === "snapshotted" &&
-              snapshot.id !== d.last_snapshot_id,
-          ],
+          [d.origin_key, snapshot.id !== d.last_snapshot_id],
         );
-        if (outcome.status === "snapshotted")
-          await enqueue(
-            tx,
-            "parse",
-            { snapshotID: snapshot.id },
-            `parse:${snapshot.id}:${parserConfigurationVersion}`,
-          );
+        await enqueue(
+          tx,
+          "parse",
+          { snapshotID: snapshot.id },
+          `parse:${snapshot.id}:${parserConfigurationVersion}`,
+        );
         await complete(tx, job.id, job.fencing_token);
       } else {
         await tx.query(

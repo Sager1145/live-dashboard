@@ -9,6 +9,19 @@ final class ContractTests: XCTestCase {
         return try LiveEventBundle.decoder.decode(LiveEventBundle.self, from: Data(contentsOf: fixture))
     }
 
+    func testV1DecoderRejectsSharedContractV2() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("fixtures/contracts/bundle-v2.json")
+        let data = try Data(contentsOf: fixture)
+        XCTAssertThrowsError(try LiveEventBundle.decoder.decode(LiveEventBundle.self, from: data))
+        let header = try LiveEventBundle.decoder.decode(SharedContractV2Header.self, from: data)
+        XCTAssertEqual(header.schemaVersion, 2)
+        XCTAssertEqual(header.revision, 1)
+        XCTAssertEqual(header.performances.map(\.localTime), ["14:00", "19:00"])
+        XCTAssertEqual(header.fieldAbsences.first?.absence, "notAnnounced")
+    }
+
     func testDecodesServerOwnedContractFixture() throws {
         let bundle = try serverFixture()
         XCTAssertEqual(bundle.schemaVersion, 1)

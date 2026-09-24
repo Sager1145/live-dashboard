@@ -83,6 +83,13 @@ public struct LiveEventBundle: Codable, Hashable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        guard schemaVersion <= 1 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .schemaVersion,
+                in: c,
+                debugDescription: "schemaVersion \(schemaVersion) is not readable by this client"
+            )
+        }
         revision = try c.decodeIfPresent(Int.self, forKey: .revision)
             ?? c.decodeIfPresent(Int.self, forKey: .contentRevision)
         publishedAt = try c.decodeIfPresent(Date.self, forKey: .publishedAt) ?? .distantPast
@@ -169,5 +176,45 @@ extension LiveEventBundle {
             try container.encode(formatter.string(from: date))
         }
         return encoder
+    }
+}
+
+/// v2 fields frozen in `server/src/contracts.ts`. The v1 `LiveEventBundle` decoder rejects `schemaVersion` above 1.
+public struct SharedContractV2Header: Decodable, Equatable, Sendable {
+    public struct FieldAbsence: Decodable, Equatable, Sendable {
+        public let recordID: String
+        public let field: String
+        public let absence: String
+    }
+
+    public struct PerformanceClock: Decodable, Equatable, Sendable {
+        public let id: String
+        public let localTime: String?
+    }
+
+    public let schemaVersion: Int
+    public let sourceCheckedAt: Date
+    public let revision: Int
+    public let fieldAbsences: [FieldAbsence]
+    public let performances: [PerformanceClock]
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        guard schemaVersion == 2 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .schemaVersion,
+                in: container,
+                debugDescription: "SharedContractV2Header requires schemaVersion 2"
+            )
+        }
+        sourceCheckedAt = try container.decode(Date.self, forKey: .sourceCheckedAt)
+        revision = try container.decode(Int.self, forKey: .revision)
+        fieldAbsences = try container.decode([FieldAbsence].self, forKey: .fieldAbsences)
+        performances = try container.decode([PerformanceClock].self, forKey: .performances)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, sourceCheckedAt, revision, fieldAbsences, performances
     }
 }

@@ -126,6 +126,51 @@ final class DashboardPresentationTests: XCTestCase {
         XCTAssertTrue(PerformanceSelector.shortLabel(for: tour.performances[1], in: tour).contains("大阪"))
     }
 
+    func testSameDayDayAndNightShowsAreSeparatePerformanceRows() {
+        let event = LiveEvent(id: "live", franchise: .lovelive, officialTitle: "Live", groups: [], eventType: .live,
+            status: .scheduled, primarySourceURL: "https://example.com", timeZone: "Asia/Tokyo")
+        func show(_ id: String, label: String, order: Int) -> Performance {
+            Performance(id: id, eventID: "live", stopID: nil, dayLabel: label, subtitle: nil,
+                localDate: "2026-09-05", doorsAt: nil, startAt: nil, venueName: "東京ドーム", venueCity: "東京",
+                performers: [label], order: order)
+        }
+        let bundle = LiveEventBundle(schemaVersion: 1, publishedAt: .distantPast, event: event, stops: [],
+            performances: [show("night", label: "夜", order: 1), show("day", label: "昼", order: 0)],
+            ticketTiers: [], ticketRounds: [], ticketOffers: [], goodsCampaigns: [], mediaAssets: [], notices: [], evidence: [])
+        let rows = PerformanceSelector.sessionRows(in: bundle)
+        XCTAssertEqual(rows.map(\.id), ["day", "night"])
+        XCTAssertEqual(rows.map(\.label), ["2026-09-05 · 昼 · 東京ドーム", "2026-09-05 · 夜 · 東京ドーム"])
+    }
+
+    func testDateActionListUsesExplicitScopeIDsAndOmitsUnconfirmed() {
+        func round(_ id: String, name: String, scope: Scope) -> TicketRound {
+            TicketRound(id: id, eventID: "live", officialName: name, kind: .lottery, scope: scope,
+                applyStartAt: nil, applyEndAt: nil, resultAt: nil, paymentDeadlineAt: nil, eligibility: nil,
+                announcementURL: nil, applyURL: nil, overseasURL: nil, officialStatus: nil, status: .confirmed)
+        }
+        let rounds = [
+            round("day-sale", name: "2026-09-05 昼", scope: .performances(performanceIDs: ["day"])),
+            round("night-sale", name: "2026-09-05 夜", scope: .performances(performanceIDs: ["night"])),
+            round("unknown", name: "2026-09-05 共通?", scope: .unconfirmed)
+        ]
+        let dayActions = PerformanceScopeResolver.actionRecords(records: rounds, selectedPerformanceID: "day", stopID: { _ in nil })
+        XCTAssertEqual(dayActions.map(\.id), ["day-sale"])
+        XCTAssertTrue(PerformanceScopeResolver.actionRecords(records: rounds, selectedPerformanceID: "", stopID: { _ in nil }).isEmpty)
+
+        let goods = [
+            GoodsCampaign(id: "day-goods", eventID: "live", officialName: "昼グッズ", channel: .venue, fulfillment: .venuePickup,
+                phase: .during, scope: .performances(performanceIDs: ["day"]), salesStartAt: nil, salesEndAt: nil,
+                pickupWindow: nil, shippingNote: nil, location: nil, requiresTicket: nil, purchaseLimit: nil,
+                paymentMethods: nil, url: nil, mediaAssetIDs: [], status: .confirmed),
+            GoodsCampaign(id: "unknown-goods", eventID: "live", officialName: "2026-09-05", channel: .venue, fulfillment: .venuePickup,
+                phase: .during, scope: .unconfirmed, salesStartAt: nil, salesEndAt: nil, pickupWindow: nil,
+                shippingNote: nil, location: nil, requiresTicket: nil, purchaseLimit: nil, paymentMethods: nil,
+                url: nil, mediaAssetIDs: [], status: .confirmed)
+        ]
+        let dayGoods = PerformanceScopeResolver.actionRecords(records: goods, selectedPerformanceID: "day", stopID: { _ in nil })
+        XCTAssertEqual(dayGoods.map(\.id), ["day-goods"])
+    }
+
     func testThumbnailOnlyUsesOfficialKeyVisualAndUpdatesWithRefreshedBundle() throws {
         func asset(_ id: String, kind: MediaAssetKind, version: Int = 1) -> MediaAsset {
             MediaAsset(id: id, eventID: "live", kind: kind, originalURL: "https://www.lovelive-anime.jp/\(id).jpg",

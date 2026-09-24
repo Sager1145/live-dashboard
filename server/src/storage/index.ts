@@ -3,6 +3,7 @@ import { LocalBlobStore } from "./local.js";
 export * from "./types.js";
 export * from "./local.js";
 export * from "./snapshots.js";
+export * from "./candidates.js";
 
 /** Returns no store when blob persistence was not configured. It never chooses a public directory. */
 export function blobStoreFromEnv(

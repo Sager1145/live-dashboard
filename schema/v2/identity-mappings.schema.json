@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "serverInstanceID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "entityKind": {
+            "type": "string",
+            "enum": [
+              "event",
+              "performance",
+              "ticket",
+              "goods"
+            ]
+          },
+          "legacyID": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "currentID": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "entityKind",
+          "legacyID",
+          "currentID"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "serverInstanceID",
+    "mappings"
+  ],
+  "additionalProperties": false
+}

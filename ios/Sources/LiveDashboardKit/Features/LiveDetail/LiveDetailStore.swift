@@ -193,11 +193,20 @@ public final class LiveDetailStore {
             selectedID = previousPerformanceID
         } else if let selectedLocalDate {
             let matches = sorted.filter { $0.covers(localDate: selectedLocalDate) }
-            selectedID = matches.count == 1 ? matches[0].id : nil
+            if matches.count == 1 {
+                selectedID = matches[0].id
+            } else if matches.isEmpty {
+                selectedID = sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() })?.id ?? sorted.last?.id
+            } else {
+                selectedID = nil
+            }
         } else {
             selectedID = sorted.first(where: { ($0.startAt ?? .distantPast) >= Date() })?.id ?? sorted.last?.id
         }
         let performance = sorted.first { $0.id == selectedID }
+        if let performance, selectedLocalDate.map({ !performance.covers(localDate: $0) }) ?? true {
+            selectedLocalDate = performance.localDate
+        }
 
         selection.eventID = bundle.event.id
         selection.performanceID = performance?.id

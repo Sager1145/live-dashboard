@@ -24,8 +24,76 @@ final class MediaPresentationTests: XCTestCase {
             selectedPerformanceID: "p",
             selectedStopID: nil
         )
-        XCTAssertEqual(shown.inline.map(\.id), ["b", "c"])
+        XCTAssertEqual(shown.inline.map(\.id), ["b", "a", "c"])
         XCTAssertEqual(shown.pending.map(\.id), ["e"])
+    }
+
+    func testTwelveDistinctAssetIDsStayTwelvePresentationItems() {
+        let ids = (1...12).map { "asset-\($0)" }
+        let assets = ids.map { id in
+            MediaAsset(id: id, eventID: "event", kind: .goodsList, originalURL: "https://example.com/\(id).jpg",
+                thumbnailURL: "https://example.com/\(id)-400.jpg", scope: .performances(performanceIDs: ["p"]),
+                sourceURL: "https://example.com/live", version: 1, caption: nil, displayPolicy: .remoteDisplay, contentKind: .image)
+        }
+        let shown = GoodsImageSequence.presentation(
+            mediaAssetIDs: ids + [ids[0]],
+            mediaAssets: assets,
+            selectedPerformanceID: "p",
+            selectedStopID: nil
+        )
+        XCTAssertEqual(shown.inline.map(\.id), ids)
+        XCTAssertEqual(shown.inline.count, 12)
+        XCTAssertTrue(shown.pending.isEmpty)
+    }
+
+    func testDifferentAssetIDsAreNotCollapsedWhenSrcsetURLsOverlap() {
+        func asset(_ id: String, url: String) -> MediaAsset {
+            MediaAsset(id: id, eventID: "event", kind: .goodsList, originalURL: url, thumbnailURL: url,
+                scope: .performances(performanceIDs: ["p"]), sourceURL: "https://example.com/live", version: 1,
+                caption: nil, displayPolicy: .remoteDisplay, contentKind: .image)
+        }
+        let shown = GoodsImageSequence.presentation(
+            mediaAssetIDs: ["wide", "narrow"],
+            mediaAssets: [asset("wide", url: "https://example.com/same.jpg"), asset("narrow", url: "https://example.com/same.jpg")],
+            selectedPerformanceID: "p",
+            selectedStopID: nil
+        )
+        XCTAssertEqual(shown.inline.map(\.id), ["wide", "narrow"])
+    }
+
+    func testMediaCacheKeyUsesInstanceAssetHashAndVariantAndDropsMismatchedBytes() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("media-store-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaStore(directory: directory)
+        let bytes = Data("original-bytes".utf8)
+        let hash = MediaStore.contentHash(of: bytes)
+        let original = MediaCacheKey(serverInstanceID: "instance-a", assetID: "asset-1", contentHash: hash, variant: .original)
+        let preview = MediaCacheKey(serverInstanceID: "instance-a", assetID: "asset-1", contentHash: hash, variant: .preview)
+        let otherInstance = MediaCacheKey(serverInstanceID: "instance-b", assetID: "asset-1", contentHash: hash, variant: .original)
+        let otherAsset = MediaCacheKey(serverInstanceID: "instance-a", assetID: "asset-2", contentHash: hash, variant: .original)
+        let otherHash = MediaCacheKey(serverInstanceID: "instance-a", assetID: "asset-1", contentHash: String(repeating: "ab", count: 32), variant: .original)
+        XCTAssertNotEqual(store.fileURL(for: original), store.fileURL(for: preview))
+        XCTAssertNotEqual(store.fileURL(for: original), store.fileURL(for: otherInstance))
+        XCTAssertNotEqual(store.fileURL(for: original), store.fileURL(for: otherAsset))
+        XCTAssertNotEqual(store.fileURL(for: original), store.fileURL(for: otherHash))
+
+        let official = URL(string: "https://official.example/original.jpg")!
+        let server = URL(string: "https://server.example/media/asset-1")!
+        XCTAssertNil(MediaStore.fetchPlan(serverContentURL: nil, officialOriginalURL: official).url)
+        XCTAssertFalse(MediaStore.fetchPlan(serverContentURL: nil, officialOriginalURL: official).allowsOfficialOriginalFallback)
+        XCTAssertEqual(MediaStore.fetchPlan(serverContentURL: server, officialOriginalURL: official).url, server)
+
+        try store.writeVerified(bytes, key: original)
+        XCTAssertThrowsError(try store.writeVerified(Data("other".utf8), key: original))
+        let share = try store.shareFile(for: original)
+        XCTAssertEqual(try Data(contentsOf: share), bytes)
+
+        try Data("corrupt".utf8).write(to: store.fileURL(for: original), options: .atomic)
+        XCTAssertThrowsError(try store.validatedData(for: original)) { error in
+            XCTAssertEqual(error as? MediaStoreError, .hashMismatch)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL(for: original).path))
+        XCTAssertThrowsError(try store.shareFile(for: original))
     }
 
     func testLegacyImageAndExplicitOpaqueImageDisplayWhilePageLinksDoNot() {

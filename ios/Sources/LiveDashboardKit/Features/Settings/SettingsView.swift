@@ -9,21 +9,55 @@ public struct SettingsView: View {
     let assistant: AssistantCoordinator
     let externalStore: ExternalDataStore?
     let reminderService: ReminderScheduling
+    @State private var serverConnection: ServerConnectionStore
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @AppStorage("translation.targetLanguage") private var translationTargetRaw = TranslationTargetLanguage.followApp.rawValue
     @Environment(\.openURL) private var openURL
 
+    @MainActor
     public init(dashboardStore: DashboardStore, userDataStore: UserDataStore, assistant: AssistantCoordinator, externalStore: ExternalDataStore? = nil, reminderService: ReminderScheduling = ReminderService()) {
         self.dashboardStore = dashboardStore
         self.userDataStore = userDataStore
         self.assistant = assistant
         self.externalStore = externalStore
         self.reminderService = reminderService
+        self._serverConnection = State(initialValue: .shared)
     }
 
     public var body: some View {
+        @Bindable var connection = serverConnection
         NavigationStack {
             Form {
+                Section {
+                    TextField(text: $connection.baseURLString) {
+                        Text("服务器地址", bundle: .kit)
+                    }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    TextField(text: $connection.serverInstanceID) {
+                        Text("实例 ID", bundle: .kit)
+                    }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    TextField(text: $connection.displayName) {
+                        Text("显示名称", bundle: .kit)
+                    }
+                    Button {
+                        connection.save()
+                    } label: {
+                        Text("保存连接", bundle: .kit)
+                    }
+                    .accessibilityIdentifier("saveServerConnectionButton")
+                } header: {
+                    Text("资料服务器", bundle: .kit)
+                } footer: {
+                    if let validationMessage = connection.validationMessage {
+                        Text(verbatim: validationMessage)
+                    } else {
+                        Text("App 只从这台服务器下载已经发布的资料。", bundle: .kit)
+                    }
+                }
                 Section {
                     Toggle(isOn: Binding(get: { userDataStore.showsDeviceLocalTime }, set: { userDataStore.setDeviceLocalTimeEnabled($0) })) {
                         Text("同时显示设备本地时间", bundle: .kit)
@@ -62,9 +96,6 @@ public struct SettingsView: View {
                         Text("在系统设置中为本 App 选择简体中文、繁體中文、English 或 日本語。", bundle: .kit)
                     }
                 }
-                if let externalStore {
-                    CommunityImportSection(externalStore: externalStore, bundles: dashboardStore.bundles, userDataStore: userDataStore)
-                }
                 Section {
                     LabeledContent {
                         Text(notificationStatusText)
@@ -84,25 +115,6 @@ public struct SettingsView: View {
                     Text("提醒", bundle: .kit)
                 } footer: {
                     Text("截止提醒由本机通知发送。App 关闭时仍会按已保存的时间提醒，但无法自动发现官方之后修改的截止时间；再次打开 App 更新资料后请重新设置提醒。", bundle: .kit)
-                }
-                Section {
-                    NavigationLink {
-                        AssistantSettingsView(assistant: assistant)
-                    } label: {
-                        LabeledContent {
-                            Text(assistantStatusText)
-                        } label: {
-                            Text("ChatGPT 助手", bundle: .kit)
-                        }
-                    }
-                    .accessibilityIdentifier("assistantSettingsLink")
-                } header: {
-                    Text("ChatGPT 助手", bundle: .kit)
-                } footer: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("AI 会重新分析官网，填写公演、票务、座位与周边字段，并独立保存结果。", bundle: .kit)
-                        Text("若登录 ChatGPT 助手，会将官网页面文字发送到 OpenAI 生成摘要；凭据保存在本机钥匙串。", bundle: .kit)
-                    }
                 }
                 Section {
                     NavigationLink {
@@ -127,14 +139,6 @@ public struct SettingsView: View {
             }
             .navigationTitle(Text("设置", bundle: .kit))
             .task { notificationStatus = await reminderService.authorizationStatus() }
-        }
-    }
-
-    private var assistantStatusText: String {
-        switch assistant.account {
-        case .signedOut: String(localized: "未登录", bundle: .kit)
-        case .apiKey(let hint): String(localized: "API Key \(hint)", bundle: .kit)
-        case .chatGPT(let email, let accountID): String(localized: "ChatGPT \(email ?? accountID ?? String(localized: "已登录", bundle: .kit))", bundle: .kit)
         }
     }
 

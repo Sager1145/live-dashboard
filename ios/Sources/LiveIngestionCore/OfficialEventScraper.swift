@@ -616,7 +616,7 @@ private extension OfficialEventScraper {
         // parser still emits `.unconfirmed` (DESIGN.md: never guess Day2).
         let ticketScope: Scope = performances.count == 1 ? .performances(performanceIDs: [performances[0].id]) : .unconfirmed
         let parsedTiers = parseTicketTiers(ticketHTML, eventID: eventID, cached: cached?.ticketTiers ?? [])
-        let baseTiers = parsedTiers
+        let baseTiers = parsedTiers.isEmpty ? (cached?.ticketTiers ?? []) : parsedTiers
         let tradeHTML = HTML.sectionHTML(html, heading: "チケットトレード") ?? ""
         let parsedRoundItems: [ParsedTicketRound]
         if isLoveLive {
@@ -716,8 +716,8 @@ private extension OfficialEventScraper {
         )
             + parsedGoodsResult.mediaAssets
             + parsedBenefitsResult.mediaAssets
-        let mediaAssets = Dictionary(parsedMedia.map { (canonicalURL($0.originalURL), $0) }, uniquingKeysWith: { _, fresh in fresh })
-            .values.map { asset in
+        let mediaAssets = mergeMedia(cached?.mediaAssets ?? [], parsedMedia)
+            .map { asset in
                 guard let scope = scopeByMediaID[asset.id] else { return asset }
                 return asset.replacingScope(scope)
             }

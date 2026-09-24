@@ -3,6 +3,7 @@ dist/
 .build/
 DerivedData/
 .env
+infra/pi.env
 *.xcuserstate
 __pycache__/
 .venv/

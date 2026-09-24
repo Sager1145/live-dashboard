@@ -137,7 +137,13 @@ final class LocalRepositoryTests: XCTestCase {
         await scraper.setPartialFailure()
         let now = date("2026-09-22T12:00:00Z")
         let repository = LocalLiveRepository(scraper: scraper, directory: directory, calendar: calendar, now: { now })
-        do { _ = try await repository.refreshIfNeeded(); XCTFail("Expected partial failure") } catch {}
+        do {
+            _ = try await repository.refreshIfNeeded()
+            XCTFail("Expected partial failure")
+        } catch OfficialEventScraperError.partialFailure(let bundles, _) {
+            XCTAssertEqual(bundles.map(\.event.id), ["success"])
+            XCTAssertFalse(LocalRefreshPolicy.isArchived(bundles[0], cutoff: LocalRefreshPolicy.cutoff(now: now, timeZone: calendar.timeZone)))
+        }
         let saved = try await repository.allBundles()
         XCTAssertEqual(saved.map(\.event.id), ["success"])
         let last = await repository.lastRefreshDate()

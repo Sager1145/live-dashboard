@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "jobID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "partial",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "progress": {
+      "type": "object",
+      "properties": {
+        "sectionsCompleted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sectionsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "assetsReady": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "assetsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "sectionsCompleted",
+        "sectionsTotal",
+        "assetsReady",
+        "assetsTotal"
+      ],
+      "additionalProperties": false
+    },
+    "published": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "eventID": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "eventID",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "section": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "jobID",
+    "state",
+    "progress",
+    "published",
+    "issues"
+  ],
+  "additionalProperties": false
+}

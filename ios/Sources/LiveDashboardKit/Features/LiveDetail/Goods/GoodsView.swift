@@ -334,10 +334,10 @@ public struct GoodsView: View {
 
 }
 
-/// Campaign images in the order the page cited them. A thumbnail record and
-/// the original it points at are one picture. An image whose own scope is
-/// another performance stays out of this selection; an unresolved image stays
-/// visible in `pending`.
+/// Campaign images in citation order, one logical item per asset id.
+/// Repeating an id does not repeat the picture. Different ids stay even when
+/// their URLs are srcset sizes of a similar image. Scope still uses explicit
+/// performance IDs; `.unconfirmed` stays in `pending`, not the date's inline list.
 enum GoodsImageSequence {
     struct Presentation: Equatable {
         var inline: [MediaAsset]
@@ -352,14 +352,12 @@ enum GoodsImageSequence {
     ) -> Presentation {
         let byID = Dictionary(mediaAssets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let allowed: Set<MediaAssetKind> = [.goodsList, .venueGoodsNotice, .goodsAreaMap, .product]
-        var seen: Set<String> = []
+        var seenIDs: Set<String> = []
         var inline: [MediaAsset] = []
         var pending: [MediaAsset] = []
         for id in mediaAssetIDs {
+            guard seenIDs.insert(id).inserted else { continue }
             guard let asset = byID[id], allowed.contains(asset.kind) else { continue }
-            let keys = identityKeys(asset)
-            if keys.contains(where: seen.contains) { continue }
-            seen.formUnion(keys)
             if PerformanceScopeResolver.allowsAction(
                 scope: asset.scope,
                 selectedPerformanceID: selectedPerformanceID,
@@ -371,15 +369,5 @@ enum GoodsImageSequence {
             }
         }
         return Presentation(inline: inline, pending: pending)
-    }
-
-    private static func identityKeys(_ asset: MediaAsset) -> [String] {
-        [asset.originalURL, asset.thumbnailURL].compactMap { $0 }.map(canonicalize)
-    }
-
-    private static func canonicalize(_ raw: String) -> String {
-        guard var components = URLComponents(string: raw) else { return raw }
-        components.fragment = nil
-        return components.string ?? raw
     }
 }

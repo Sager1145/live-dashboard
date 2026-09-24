@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "taskID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "taskType": {
+      "type": "string",
+      "enum": [
+        "goods",
+        "tickets",
+        "performers",
+        "schedule",
+        "notices",
+        "media",
+        "stream"
+      ]
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 2
+    },
+    "eventID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "baseRevision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "snapshotID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "blockIDs": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "scopeContext": {
+      "type": "object",
+      "properties": {
+        "allowedPerformanceIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "parentHeading": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 20000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "allowedPerformanceIDs",
+        "parentHeading"
+      ],
+      "additionalProperties": false
+    },
+    "allowedLinkIDs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "allowedImageIDs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "allowedFields": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      }
+    },
+    "inputText": {
+      "type": "string",
+      "maxLength": 80000
+    }
+  },
+  "required": [
+    "taskID",
+    "taskType",
+    "schemaVersion",
+    "eventID",
+    "baseRevision",
+    "snapshotID",
+    "blockIDs",
+    "scopeContext",
+    "allowedLinkIDs",
+    "allowedImageIDs",
+    "allowedFields",
+    "inputText"
+  ],
+  "additionalProperties": false
+}

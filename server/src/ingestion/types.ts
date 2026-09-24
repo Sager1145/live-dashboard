@@ -40,7 +40,13 @@ export interface RedirectHop {
 
 export type FetchOutcome =
   | { status: "snapshotted"; snapshot: SourceSnapshot }
-  | { status: "unchanged"; snapshot: SourceSnapshot; validatedAt: string }
+  | {
+      status: "unchanged";
+      snapshot: SourceSnapshot;
+      validatedAt: string;
+      /** When the conditional GET was checked. 304 does not imply a new body. */
+      checkedAt: string;
+    }
   | {
       status: "blocked" | "rate_limited" | "missing" | "retryable_failure";
       statusCode?: number;

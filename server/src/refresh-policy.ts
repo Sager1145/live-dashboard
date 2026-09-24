@@ -1,4 +1,5 @@
 import type { Bundle } from "./contracts.js";
+import { isArchived, scanWindow } from "./update-window.js";
 
 /** Targets never override the origin's independently enforced request/byte budget. */
 export function refreshIntervalSeconds(
@@ -55,4 +56,49 @@ export function refreshIntervalSeconds(
   if (active) return 7200;
   if (Number.isFinite(closest) || undatedShipping) return 86400;
   return 604800;
+}
+
+/** Japan civil date. The server window does not follow a phone timezone. */
+export function japanCalendarDate(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${pick("year")}-${pick("month")}-${pick("day")}`;
+}
+
+/** Inclusive start of the server scan window: one Japan calendar month back. */
+export function serverScanCutoff(now = new Date()): string {
+  return scanWindow(japanCalendarDate(now), "Asia/Tokyo").from;
+}
+
+export interface ScanPerformance {
+  localDate?: string | null;
+}
+
+/**
+ * Archived only when every performance date is known and the last one is
+ * strictly before the Japan scan window. Unknown dates stay in the window.
+ */
+export function tourIsArchived(
+  performances: readonly ScanPerformance[] | null | undefined,
+  now = new Date(),
+): boolean {
+  if (!performances?.length) return false;
+  const cutoff = serverScanCutoff(now);
+  return performances.every((performance) =>
+    isArchived(performance?.localDate ?? null, cutoff),
+  );
+}
+
+export function bundlesInServerScanWindow(
+  bundles: readonly { performances?: readonly ScanPerformance[] | null }[],
+  now = new Date(),
+): boolean {
+  if (!bundles.length) return true;
+  return bundles.some((bundle) => !tourIsArchived(bundle.performances, now));
 }

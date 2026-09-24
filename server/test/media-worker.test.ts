@@ -5,9 +5,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { makeSnapshot } from "../src/ingestion/snapshot.js";
-import { runMediaJob, scheduleMedia } from "../src/media-worker.js";
+import {
+  enqueueDiscoveredCandidateMedia,
+  runCandidateMediaJob,
+  runMediaJob,
+  scheduleMedia,
+} from "../src/media-worker.js";
 import { createReview, publishReview } from "../src/publisher.js";
-import { LocalBlobStore } from "../src/storage/index.js";
+import { LocalBlobStore, MemoryCandidateStore } from "../src/storage/index.js";
 import { seededBundle, testDB } from "./support.js";
 import type { DB } from "../src/db.js";
 
@@ -303,4 +308,129 @@ test("retryable media failures stop at the queue retry limit", async (t) => {
   assert.equal(job.status, "failed");
   assert.equal(Number(job.attempts), 3);
   assert.match(job.last_error, /synthetic timeout/);
+});
+
+test("candidate jobs fetch every discovered image without publishing or upgrading link_only", async (t) => {
+  const db = await testDB();
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "live-dashboard-candidate-worker-"),
+  );
+  t.after(async () => {
+    await db.close();
+    await rm(root, { recursive: true, force: true });
+  });
+  await db.query(
+    "INSERT INTO source_origins(id,origin,policy) VALUES($1,$2,$3)",
+    [
+      randomUUID(),
+      "https://media.example.test",
+      JSON.stringify(approvedPolicy),
+    ],
+  );
+  const html = [
+    "<h2>Goods</h2>",
+    ...Array.from(
+      { length: 12 },
+      (_, index) =>
+        `<img src="/approved/goods-${index}.png" alt="item ${index}">`,
+    ),
+  ].join("");
+  assert.equal(
+    await enqueueDiscoveredCandidateMedia(db, {
+      html,
+      pageURL: "https://media.example.test/event",
+      displayPolicy: "permitted_cache",
+      now: new Date("2026-09-22T12:00:00Z"),
+    }),
+    12,
+  );
+  assert.equal(
+    await enqueueDiscoveredCandidateMedia(db, {
+      html,
+      pageURL: "https://media.example.test/event",
+      displayPolicy: "permitted_cache",
+      now: new Date("2026-09-22T12:00:00Z"),
+    }),
+    0,
+  );
+  assert.equal(
+    (await db.query("SELECT id FROM jobs WHERE kind='media.fetch'")).rows.length,
+    0,
+  );
+  const candidates = new MemoryCandidateStore();
+  let calls = 0;
+  const worked = await runCandidateMediaJob(db, {
+    blobs: new LocalBlobStore(root),
+    candidates,
+    fetch: async (input) => {
+      calls += 1;
+      assert.equal(input.policy.host, "media.example.test");
+      const index = Number(input.url.match(/goods-(\d+)/)?.[1]);
+      return {
+        status: "snapshotted",
+        snapshot: makeSnapshot({
+          sourceDocumentId: input.sourceDocumentId,
+          fetchUrl: input.url,
+          finalUrl: input.url,
+          statusCode: 200,
+          headers: { "content-type": "image/png", etag: `"g${index}"` },
+          body: png(20 + index, 10),
+        }),
+      };
+    },
+  });
+  assert.equal(worked, true);
+  assert.equal(calls, 1);
+  const stored = await candidates.list();
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0]?.state, "ready");
+  assert.equal(stored[0]?.displayPolicy, "permitted_cache");
+  assert.ok(stored[0]?.current?.preview);
+  assert.equal(
+    (await db.query("SELECT id FROM review_cases")).rows.length,
+    0,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "SELECT status FROM jobs WHERE kind='candidate.media.fetch' AND status='done'",
+      )
+    ).rows.length,
+    1,
+  );
+
+  await db.query(
+    "UPDATE jobs SET status='done' WHERE kind='candidate.media.fetch' AND status='queued'",
+  );
+  assert.equal(
+    await enqueueDiscoveredCandidateMedia(db, {
+      html: `<a href="/approved/poster.png">poster</a>`,
+      pageURL: "https://media.example.test/event",
+      displayPolicy: "link_only",
+      now: new Date("2026-09-22T12:00:00Z"),
+    }),
+    1,
+  );
+  let linkCalls = 0;
+  assert.equal(
+    await runCandidateMediaJob(db, {
+      blobs: new LocalBlobStore(root),
+      candidates,
+      fetch: async () => {
+        linkCalls += 1;
+        throw new Error("must not fetch");
+      },
+    }),
+    true,
+  );
+  assert.equal(linkCalls, 0);
+  const link = (await candidates.list()).find(
+    (record) => record.displayPolicy === "link_only",
+  );
+  assert.equal(link?.state, "candidate");
+  assert.equal(link?.versions.length, 0);
+  assert.equal(
+    (await db.query("SELECT id FROM review_cases")).rows.length,
+    0,
+  );
 });

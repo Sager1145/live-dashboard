@@ -99,7 +99,9 @@ TEST_DATABASE_URL='postgres://...' npm test
 | `server/db/migrations` | SQL 数据模型及关系约束 |
 | `ios/` | SwiftUI App、URLSession Repository、SwiftData 用户数据 |
 | `sources/` | 默认禁用的来源注册表和研究 URL |
-| `fixtures/contracts/` | 明确标记的跨端合成测试数据 |
+| `fixtures/contracts/` | 明确标记的跨端合成测试数据，含 v1 与 v2 |
+| `schema/v2/` | 由 Zod 导出的 v2 JSON Schema |
+| `docs/adr/0001-shared-contract-v2.md` | 已冻结的共享契约与身份映射 |
 | `infra/` | 容器部署、数据库权限模板 |
 
 状态与限制以 [验收报告](docs/IMPLEMENTATION_STATUS.md)、[来源报告](docs/SOURCE_REPORT.md) 为准。APNs 真机、TestFlight、生产恢复和持续采集需要真实部署环境；不能用本地测试代替这些验收。

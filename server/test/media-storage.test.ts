@@ -7,6 +7,7 @@ import { makeSnapshot } from "../src/ingestion/snapshot.js";
 import {
   blobStoreFromEnv,
   LocalBlobStore,
+  LocalCandidateStore,
   storeSnapshotBlob,
 } from "../src/storage/index.js";
 
@@ -76,4 +77,41 @@ test("local store rejects an existing public root instead of changing system dir
     /must not be accessible/,
   );
   assert.equal((await stat(root)).mode & 0o777, 0o755);
+});
+
+test("different bytes at the same logical URL stay as separate blobs", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "live-dashboard-blob-versions-"));
+  const index = await mkdtemp(
+    path.join(os.tmpdir(), "live-dashboard-candidate-index-"),
+  );
+  t.after(async () => {
+    await rm(root, { recursive: true, force: true });
+    await rm(index, { recursive: true, force: true });
+  });
+  const store = new LocalBlobStore(root);
+  const first = await store.put({
+    namespace: "media",
+    bytes: Buffer.from("image-version-a"),
+  });
+  const second = await store.put({
+    namespace: "media",
+    bytes: Buffer.from("image-version-b"),
+  });
+  assert.notEqual(first.sha256, second.sha256);
+  assert.deepEqual(await store.read(first.key), Buffer.from("image-version-a"));
+  assert.deepEqual(await store.read(second.key), Buffer.from("image-version-b"));
+  const candidates = new LocalCandidateStore(index);
+  await candidates.put({
+    id: "same-url",
+    originalURL: "https://media.example.com/approved/map.png",
+    displayPolicy: "permitted_cache",
+    state: "candidate",
+    logicalImageID: first.sha256,
+    sourceURLs: ["https://media.example.com/approved/map.png"],
+    versions: [],
+  });
+  const loaded = await candidates.get("same-url");
+  assert.equal(loaded?.state, "candidate");
+  assert.equal(loaded?.displayPolicy, "permitted_cache");
+  assert.equal((await candidates.list()).length, 1);
 });

@@ -5,15 +5,20 @@ import os from "node:os";
 import path from "node:path";
 import { makeSnapshot } from "../src/ingestion/snapshot.js";
 import type { SourcePolicy } from "../src/ingestion/types.js";
+import { createHash } from "node:crypto";
 import {
   cacheMedia,
+  canServeAsset,
+  collapseLogicalImages,
+  discoverCandidateImages,
+  fetchCandidateMedia,
   inspectMedia,
   mediaPresentation,
   MemoryMediaVersionRepository,
   PostgresMediaVersionRepository,
   type RecordMediaVersionInput,
 } from "../src/media.js";
-import { LocalBlobStore } from "../src/storage/index.js";
+import { LocalBlobStore, MemoryCandidateStore } from "../src/storage/index.js";
 import { testDB } from "./support.js";
 
 const policy: SourcePolicy = {
@@ -330,4 +335,253 @@ test("Postgres repository atomically keeps a stable version for identical conten
   } finally {
     await db.close();
   }
+});
+
+test("candidate bytes stay private until published, and link_only is never upgraded", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "live-dashboard-media-candidate-policy-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const blobs = new LocalBlobStore(root);
+  const candidates = new MemoryCandidateStore();
+  let calls = 0;
+  const blocked = await fetchCandidateMedia({
+    candidateID: "link-image",
+    originalURL: "https://media.example.com/approved/map.png",
+    displayPolicy: "link_only",
+    sourcePolicy: policy,
+    blobs,
+    candidates,
+    fetch: async () => {
+      calls += 1;
+      throw new Error("must not fetch link_only");
+    },
+  });
+  assert.equal(calls, 0);
+  assert.equal(blocked.status, "not_fetched");
+  if (blocked.status === "not_fetched") {
+    assert.equal(blocked.record.displayPolicy, "link_only");
+    assert.equal(blocked.record.state, "candidate");
+    assert.equal(blocked.record.versions.length, 0);
+  }
+  const upgraded = await fetchCandidateMedia({
+    candidateID: "link-image",
+    originalURL: "https://media.example.com/approved/map.png",
+    displayPolicy: "permitted_cache",
+    sourcePolicy: policy,
+    blobs,
+    candidates,
+    fetch: async () => {
+      calls += 1;
+      throw new Error("must not upgrade link_only");
+    },
+  });
+  assert.equal(calls, 0);
+  assert.equal(upgraded.status, "not_fetched");
+  if (upgraded.status === "not_fetched")
+    assert.equal(upgraded.record.displayPolicy, "link_only");
+  const hash = "c".repeat(64);
+  assert.equal(
+    canServeAsset({
+      published: false,
+      state: "ready",
+      displayPolicy: "permitted_cache",
+      contentHash: hash,
+    }),
+    false,
+  );
+  assert.equal(
+    canServeAsset({
+      published: true,
+      state: "candidate",
+      displayPolicy: "permitted_cache",
+      contentHash: hash,
+    }),
+    false,
+  );
+  assert.equal(
+    canServeAsset({
+      published: true,
+      state: "pending",
+      displayPolicy: "permitted_cache",
+      contentHash: hash,
+    }),
+    false,
+  );
+  assert.equal(
+    canServeAsset({
+      published: true,
+      state: "ready",
+      displayPolicy: "link_only",
+      contentHash: hash,
+    }),
+    false,
+  );
+  assert.equal(
+    canServeAsset({
+      published: true,
+      state: "ready",
+      displayPolicy: "permitted_cache",
+      contentHash: hash,
+    }),
+    true,
+  );
+});
+
+test("candidate fetch keeps old bytes when the same URL changes and ignores an HTML 304", async (t) => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "live-dashboard-media-candidate-bytes-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const blobs = new LocalBlobStore(root);
+  const candidates = new MemoryCandidateStore();
+  const bodies = [png(32, 16), png(64, 16)];
+  let calls = 0;
+  const fetch = async (
+    input: Parameters<
+      NonNullable<Parameters<typeof fetchCandidateMedia>[0]["fetch"]>
+    >[0],
+  ) => {
+    calls += 1;
+    if (calls === 3) {
+      assert.ok(input.previousSnapshot);
+      return {
+        status: "unchanged" as const,
+        snapshot: input.previousSnapshot!,
+        validatedAt: "2026-09-22T13:00:00Z",
+        checkedAt: "2026-09-22T13:00:00Z",
+      };
+    }
+    const body = bodies[calls - 1]!;
+    return {
+      status: "snapshotted" as const,
+      snapshot: snapshot(body, "image/png"),
+    };
+  };
+  const input = {
+    candidateID: "same-url",
+    originalURL: "https://media.example.com/approved/map.png",
+    displayPolicy: "permitted_cache" as const,
+    sourcePolicy: policy,
+    blobs,
+    candidates,
+    fetch,
+  };
+  const first = await fetchCandidateMedia(input);
+  const second = await fetchCandidateMedia(input);
+  const third = await fetchCandidateMedia(input);
+  assert.equal(first.status, "ready");
+  assert.equal(second.status, "ready");
+  assert.equal(third.status, "unchanged");
+  if (first.status === "ready" && second.status === "ready") {
+    assert.equal(first.createdNewBytes, true);
+    assert.equal(second.createdNewBytes, true);
+    assert.notEqual(
+      first.record.current?.contentHash,
+      second.record.current?.contentHash,
+    );
+    assert.equal(second.record.versions.length, 2);
+    assert.equal(await blobs.has(first.record.versions[0]!.blobKey), true);
+    assert.equal(await blobs.has(second.record.current!.blobKey), true);
+    assert.equal(first.record.current?.preview?.mediaType, "image/png");
+    const preview = await blobs.read(first.record.current!.preview!.blobKey);
+    assert.equal(
+      createHash("sha256").update(preview).digest("hex"),
+      first.record.current?.preview?.contentHash,
+    );
+    assert.equal(third.status === "unchanged" && third.record.versions.length, 2);
+    assert.equal(
+      third.status === "unchanged" && third.record.current?.contentHash,
+      second.record.current?.contentHash,
+    );
+  }
+  assert.equal(calls, 3);
+
+  const pdf = await fetchCandidateMedia({
+    ...input,
+    candidateID: "pdf-note",
+    originalURL: "https://media.example.com/approved/note.pdf",
+    fetch: async () => ({
+      status: "snapshotted",
+      snapshot: snapshot(Buffer.from("%PDF-1.7\nsynthetic"), "application/pdf"),
+    }),
+  });
+  assert.equal(pdf.status, "ready");
+  if (pdf.status === "ready") {
+    assert.equal(pdf.record.current?.mediaType, "application/pdf");
+    assert.equal(pdf.record.current?.preview, undefined);
+    assert.equal(
+      canServeAsset({
+        published: false,
+        state: pdf.record.state,
+        displayPolicy: pdf.record.displayPolicy,
+        contentHash: pdf.record.current?.contentHash ?? "",
+      }),
+      false,
+    );
+  }
+});
+
+test("srcset duplicates collapse by bytes and distinct goods images are not capped", () => {
+  const images = Array.from({ length: 12 }, (_, index) => {
+    const bytes = png(40 + index, 80);
+    return {
+      url: `https://media.example.com/approved/goods-${index}.png`,
+      contentHash: createHash("sha256").update(bytes).digest("hex"),
+      order: index,
+      section: "Goods",
+      caption: `item ${index}`,
+    };
+  });
+  const srcsetTwin = {
+    url: "https://media.example.com/approved/goods-0-800w.png",
+    contentHash: images[0]!.contentHash,
+    order: 0,
+    section: "Goods",
+    caption: "item 0 large",
+  };
+  const otherCrop = {
+    url: "https://media.example.com/approved/goods-0-crop.png",
+    contentHash: createHash("sha256").update(png(40, 81)).digest("hex"),
+    order: 12,
+    section: "Goods",
+    caption: "item 0 crop",
+  };
+  const groups = collapseLogicalImages([...images, srcsetTwin, otherCrop]);
+  assert.equal(groups.length, 13);
+  assert.deepEqual(groups[0]?.urls, [
+    images[0]!.url,
+    srcsetTwin.url,
+  ]);
+  assert.equal(groups.at(-1)?.urls[0], otherCrop.url);
+  assert.notEqual(groups[0]?.logicalImageID, groups.at(-1)?.logicalImageID);
+
+  const html = [
+    "<h2>Goods</h2>",
+    ...Array.from(
+      { length: 12 },
+      (_, index) =>
+        `<img src="/approved/goods-${index}.png" alt="item ${index}">`,
+    ),
+    `<img srcset="/approved/goods-0.png 400w, /approved/goods-0-800w.png 800w" alt="item 0">`,
+    `<img src="/approved/pixel.gif" width="1" height="1" alt="">`,
+    `<img class="icon" src="/approved/icons/cart.png" alt="">`,
+  ].join("");
+  const discovered = discoverCandidateImages(
+    html,
+    "https://media.example.com/event",
+  );
+  assert.equal(discovered.length, 13);
+  assert.equal(discovered[0]?.section, "Goods");
+  assert.ok(discovered.every((image) => image.url.startsWith("https://")));
+  assert.equal(
+    discovered.filter((image) => image.url.endsWith("/approved/goods-0.png"))
+      .length,
+    1,
+  );
+  assert.ok(
+    discovered.some((image) => image.url.endsWith("/approved/goods-0-800w.png")),
+  );
+  assert.ok(discovered.every((image) => !image.url.includes("pixel.gif")));
+  assert.ok(discovered.every((image) => !image.url.includes("/icons/")));
 });

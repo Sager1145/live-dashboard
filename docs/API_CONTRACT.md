@@ -1,6 +1,8 @@
 # API 契约
 
-运行时权威定义为 `server/src/contracts.ts`，`schema/live-dashboard.schema.json` 由 Zod 导出。Swift 对应 `ios/Sources/LiveDashboardKit/Domain/Models/`。旧研究 fixtures 与原始 schema 不是公共 API 数据。
+运行时权威定义为 `server/src/contracts.ts`，`schema/live-dashboard.schema.json` 由 Zod 导出。Swift 的 v1 文档是 `ios/Sources/LiveIngestionCore/Models/LiveEventBundle.swift`。旧研究 fixtures 与原始 schema 不是公共 API 数据。
+
+v2 的决定、身份映射和未做的路由见 [ADR 0001](adr/0001-shared-contract-v2.md)。`schema/v2/` 与 `fixtures/contracts/bundle-v2.json` 从同一 Zod 模型导出。`/v1` 仍只返回 `schemaVersion = 1`。v2 的游标、作业、模型补丁和静默推送形状已冻结，HTTP 路由尚未实现。Swift 的 `LiveEventBundle` 拒绝 `schemaVersion > 1`；`SharedContractV2Header` 只读取 v2 头字段。
 
 `LiveEventBundle` 保留已有 Swift v1 字段，并增加 `revision`、`editions`、`streamOffers`、`products`、`goodsSessions`、`amount`、`sourceHealth`、图片 `displayPolicy`。所有服务端发布记录都有稳定 ID。缺失精确时间用 `null`；`localDate` 可为 `null`，原文与精度由 `rawDate`、`precision` 保留。金额是 `amount: {minorUnits: integer, currency: ISO4217}`，兼容 `priceJPY` 但不把升级差额与普通票价混算。
 

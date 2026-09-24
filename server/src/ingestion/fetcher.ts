@@ -163,10 +163,12 @@ export async function fetchDocument(
           undefined,
           304,
         );
+      const checkedAt = new Date().toISOString();
       return {
         status: "unchanged",
         snapshot: input.previousSnapshot,
-        validatedAt: new Date().toISOString(),
+        validatedAt: checkedAt,
+        checkedAt,
       };
     }
     if (response.statusCode === 401 || response.statusCode === 403) {

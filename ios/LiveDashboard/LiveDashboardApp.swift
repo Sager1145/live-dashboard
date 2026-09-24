@@ -24,7 +24,7 @@ struct LiveDashboardApp: App {
 final class AppDependencies {
     let repository: LocalLiveRepository
     let userDataStore: UserDataStore
-    let reminderService: ReminderService
+    let reminderService: any ReminderScheduling
     let installationService: InstallationService
     let dashboardStore: DashboardStore
     let assistant = AssistantCoordinator()
@@ -70,7 +70,30 @@ final class PushAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        UIApplication.shared.registerForRemoteNotifications()
         return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02x", Int($0)) }.joined()
+        #if DEBUG
+        let environment = "sandbox"
+        #else
+        let environment = "production"
+        #endif
+        let defaults = UserDefaults.standard
+        defaults.set(token, forKey: "LiveDashboard.apnsToken")
+        defaults.set(environment, forKey: "LiveDashboard.apnsEnvironment")
+        defaults.removeObject(forKey: "LiveDashboard.apnsRegistrationError")
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        UserDefaults.standard.set(error.localizedDescription, forKey: "LiveDashboard.apnsRegistrationError")
+    }
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "LiveDashboard.pendingRemoteSyncAt")
+        completionHandler(.noData)
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {

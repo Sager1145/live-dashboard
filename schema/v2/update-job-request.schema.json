@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "catalog"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "source"
+            },
+            "sourceID": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "kind",
+            "sourceID"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "event"
+            },
+            "eventID": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "kind",
+            "eventID"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "eventSection"
+            },
+            "eventID": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "section": {
+              "type": "string",
+              "enum": [
+                "goods",
+                "tickets",
+                "performers",
+                "schedule",
+                "notices",
+                "media",
+                "stream"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "eventID",
+            "section"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "card"
+            },
+            "eventID": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "cardID": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "kind",
+            "eventID",
+            "cardID"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "history"
+            },
+            "eventID": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "kind",
+            "eventID"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "fetchLatest": {
+      "type": "boolean"
+    },
+    "reextract": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "owner_requested",
+        "schedule",
+        "source_changed"
+      ]
+    }
+  },
+  "required": [
+    "target",
+    "fetchLatest",
+    "reextract",
+    "reason"
+  ],
+  "additionalProperties": false
+}

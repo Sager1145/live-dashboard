@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 2,
+  "revision": 1,
+  "publishedAt": "2026-09-22T12:00:00Z",
+  "event": {
+    "id": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+    "franchise": "lovelive",
+    "officialTitle": "Synthetic contract fixture — not production",
+    "groups": [
+      "Test group"
+    ],
+    "eventType": "live",
+    "status": "scheduled",
+    "primarySourceURL": "https://example.org/test-only",
+    "timeZone": "Asia/Tokyo"
+  },
+  "editions": [],
+  "stops": [],
+  "performances": [
+    {
+      "id": "94a4259a-61c8-4359-a590-cb9357212907",
+      "eventID": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+      "stopID": null,
+      "dayLabel": "昼",
+      "subtitle": null,
+      "localDate": "2027-01-01",
+      "precision": "date",
+      "rawDate": null,
+      "doorsAt": null,
+      "startAt": "2027-01-01T14:00:00+09:00",
+      "venueName": "Test venue",
+      "venueCity": "Test city",
+      "performers": [
+        "Test group"
+      ],
+      "order": 1,
+      "localTime": "14:00"
+    },
+    {
+      "id": "20a3aabb-2e27-450e-b420-ad901d994c73",
+      "eventID": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+      "stopID": null,
+      "dayLabel": "夜",
+      "subtitle": null,
+      "localDate": "2027-01-01",
+      "precision": "date",
+      "rawDate": null,
+      "doorsAt": null,
+      "startAt": "2027-01-01T19:00:00+09:00",
+      "venueName": "Test venue",
+      "venueCity": "Test city",
+      "performers": [
+        "Other group"
+      ],
+      "order": 2,
+      "localTime": "19:00"
+    }
+  ],
+  "ticketTiers": [
+    {
+      "id": "67357488-4253-4c74-bae4-686d1b8c3e0d",
+      "eventID": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+      "name": "普通票",
+      "priceJPY": null,
+      "amount": {
+        "minorUnits": 10000,
+        "currency": "JPY"
+      },
+      "priceKind": "full",
+      "includes": null,
+      "feeNote": null,
+      "taxNote": null
+    }
+  ],
+  "ticketRounds": [
+    {
+      "id": "3aae4aed-2b5a-42a1-bd8e-3fdb2a60748e",
+      "eventID": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+      "scope": {
+        "kind": "performances",
+        "performanceIDs": [
+          "94a4259a-61c8-4359-a590-cb9357212907"
+        ]
+      },
+      "officialName": "昼公演のみ",
+      "kind": "lottery",
+      "applyStartAt": null,
+      "applyEndAt": "2026-12-01T23:59:00+09:00",
+      "resultAt": null,
+      "paymentDeadlineAt": null,
+      "eligibility": null,
+      "announcementURL": null,
+      "applyURL": null,
+      "overseasURL": null,
+      "officialStatus": null,
+      "status": "confirmed",
+      "links": [
+        {
+          "label": "官方受付页",
+          "url": "https://example.org/test-only/round"
+        }
+      ]
+    }
+  ],
+  "ticketOffers": [
+    {
+      "id": "d8b5e34a-713e-4681-822a-e1fd7c9c72ab",
+      "roundID": "3aae4aed-2b5a-42a1-bd8e-3fdb2a60748e",
+      "tierID": "67357488-4253-4c74-bae4-686d1b8c3e0d",
+      "performanceIDs": [
+        "94a4259a-61c8-4359-a590-cb9357212907"
+      ],
+      "priceJPY": null,
+      "amount": {
+        "minorUnits": 10000,
+        "currency": "JPY"
+      }
+    }
+  ],
+  "streamOffers": [],
+  "goodsCampaigns": [
+    {
+      "id": "9d3f2b1a-6c4e-4a7a-8f2d-1c9e5b7a3f6d",
+      "eventID": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+      "scope": {
+        "kind": "performances",
+        "performanceIDs": [
+          "94a4259a-61c8-4359-a590-cb9357212907"
+        ]
+      },
+      "officialName": "事前通贩",
+      "channel": "online",
+      "fulfillment": "shipping",
+      "phase": "pre",
+      "salesStartAt": null,
+      "salesEndAt": null,
+      "pickupWindow": null,
+      "shippingNote": null,
+      "location": null,
+      "requiresTicket": null,
+      "purchaseLimit": null,
+      "paymentMethods": null,
+      "url": null,
+      "mediaAssetIDs": [],
+      "status": "confirmed",
+      "links": [
+        {
+          "label": "官方通贩页",
+          "url": "https://example.org/test-only/goods"
+        }
+      ]
+    }
+  ],
+  "products": [],
+  "goodsSessions": [],
+  "mediaAssets": [],
+  "notices": [],
+  "evidence": [],
+  "sourceHealth": "healthy",
+  "sourceText": "Synthetic contract fixture source text — 官方受付页（https://example.org/test-only/round）官方通贩页（https://example.org/test-only/goods）",
+  "sourceCheckedAt": "2026-09-24T00:00:00Z",
+  "fieldAbsences": [
+    {
+      "recordID": "94a4259a-61c8-4359-a590-cb9357212907",
+      "field": "doorsAt",
+      "absence": "notAnnounced"
+    }
+  ],
+  "applicability": [],
+  "mediaManifest": {
+    "eventID": "b3c342aa-714c-47bb-b8fc-854b139427d4",
+    "revision": 1,
+    "assets": []
+  },
+  "legacyAliases": {
+    "events": [],
+    "performances": [],
+    "tickets": [],
+    "goods": []
+  }
+}
