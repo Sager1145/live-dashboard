@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /live-dashboard/refresh.html
+Disallow: /live-dashboard/api/

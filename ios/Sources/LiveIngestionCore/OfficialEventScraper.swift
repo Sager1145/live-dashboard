@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public enum OfficialWebsiteHeaders {
     // The public Love Live CDN serves a generic 403 page to app-only agents,

@@ -10,7 +10,8 @@ let package = Package(
     ],
     products: [
         .library(name: "LiveDashboardKit", targets: ["LiveDashboardKit"]),
-        .executable(name: "OfficialAuditCLI", targets: ["OfficialAuditCLI"])
+        .executable(name: "OfficialAuditCLI", targets: ["OfficialAuditCLI"]),
+        .executable(name: "PagesCatalogCLI", targets: ["PagesCatalogCLI"])
     ],
     targets: [
         .target(
@@ -22,6 +23,11 @@ let package = Package(
             name: "LiveIngestionCore",
             dependencies: ["SwiftSoup"],
             path: "Sources/LiveIngestionCore"
+        ),
+        .executableTarget(
+            name: "PagesCatalogCLI",
+            dependencies: ["LiveIngestionCore"],
+            path: "Sources/PagesCatalogCLI"
         ),
         .executableTarget(
             name: "OfficialAuditCLI",

@@ -1,0 +1,105 @@
+name: Publish official catalog to Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'ios/Sources/LiveIngestionCore/**'
+      - 'ios/Sources/PagesCatalogCLI/**'
+      - 'ios/Vendor/SwiftSoup/**'
+      - 'ios/Package.swift'
+      - '.github/workflows/pages-catalog.yml'
+      - 'scripts/pages/**'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+# Serialize manual/scheduled runs so the persisted snapshot cannot regress.
+concurrency:
+  group: official-catalog-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify update entry
+        run: node --test web/test/*.test.js
+      - name: Restore durable catalog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const { owner, repo } = context.repo;
+            const branch = 'catalog-data';
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              const main = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+              await github.rest.git.createRef({ owner, repo, ref: `refs/heads/${branch}`, sha: main.data.object.sha });
+            }
+            try {
+              const result = await github.rest.repos.getContent({ owner, repo, path: 'catalog.json', ref: branch });
+              const blob = await github.rest.git.getBlob({ owner, repo, file_sha: result.data.sha });
+              if (!blob.data.content || blob.data.encoding !== 'base64') throw new Error('Unexpected saved snapshot format');
+              fs.writeFileSync('previous-catalog.json', Buffer.from(blob.data.content, 'base64'));
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              core.info('No previous catalog: first collection.');
+            }
+      - name: Build centralized official scraper
+        run: swift build --package-path ios --product PagesCatalogCLI -c release
+      - name: Collect official data and build static artifact
+        run: |
+          mkdir -p _site/api/v1
+          cp web/index.html web/refresh.html web/refresh.js web/refresh-client.js web/robots.txt web/.nojekyll _site/
+          ios/.build/release/PagesCatalogCLI previous-catalog.json _site/api/v1/catalog.json
+      - name: Persist catalog for subsequent refreshes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const { owner, repo } = context.repo;
+            let sha;
+            try {
+              const result = await github.rest.repos.getContent({ owner, repo, path: 'catalog.json', ref: 'catalog-data' });
+              sha = result.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            const data = fs.readFileSync('_site/api/v1/catalog.json');
+            await github.rest.repos.createOrUpdateFileContents({
+              owner, repo, path: 'catalog.json', branch: 'catalog-data', sha,
+              message: `Refresh official catalog (${context.runId})`, content: data.toString('base64')
+            });
+            const snapshot = JSON.parse(data);
+            await core.summary.addHeading('Official catalog')
+              .addRaw(`${snapshot.events.length} events; ${snapshot.sourceFailures.length} source failures.`)
+              .addCodeBlock(JSON.stringify(snapshot.sourceFailures, null, 2), 'json').write();
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

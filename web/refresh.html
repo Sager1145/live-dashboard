@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>官网数据更新入口</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 520px; padding: 48px 24px; margin: auto; }
+    label { display: block; margin: 24px 0 8px; }
+    input, button { box-sizing: border-box; padding: 12px; font: inherit; border-radius: 8px; }
+    input { width: 100%; }
+    button { margin-top: 16px; cursor: pointer; }
+    p { line-height: 1.6; }
+    #status { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>官网数据更新入口</h1>
+    <p>每小时自动抓取一次。这里可以立即请求一次更新，抓取及发布进度在 GitHub Actions 查看。</p>
+    <form id="refresh-form">
+      <label for="token">GitHub 更新凭据</label>
+      <input id="token" type="password" autocomplete="off" required aria-describedby="token-help">
+      <p id="token-help">使用仅授权此仓库、拥有 Actions 读写权限的 fine-grained token。凭据仅在此次请求中发送至 GitHub，不保存。</p>
+      <button id="submit" type="submit">立即更新官网数据</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <a id="runs" target="_blank" rel="noopener noreferrer">查看更新进度</a>
+  </main>
+  <script type="module" src="./refresh.js"></script>
+</body>
+</html>

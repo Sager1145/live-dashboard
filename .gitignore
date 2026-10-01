@@ -11,3 +11,5 @@ __pycache__/
 server/data/
 *.log
 .DS_Store
+_site/
+previous-catalog.json
