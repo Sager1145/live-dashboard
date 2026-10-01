@@ -1448,7 +1448,7 @@ private extension OfficialEventScraper {
                 consumed.insert(neighbor)
             }
         }
-        let rounds: [ParsedTicketRound] = headings.enumerated().compactMap { index, section in
+        let rounds: [ParsedTicketRound] = headings.enumerated().compactMap { index, section -> ParsedTicketRound? in
             let raw = HTML.text(section.html)
             guard candidates[index].isRound else { return nil }
             // The heading names the round; body text only decides when the
@@ -1485,10 +1485,15 @@ private extension OfficialEventScraper {
             let identity = ticketRoundIdentity(section.heading)
             let repeated = headings.filter { ticketRoundIdentity($0.heading) == identity }.count > 1
             let applicationURLs = Set(ownLinks.filter { $0.role == .application || $0.role == .overseasApplication }.map(\.url))
-            let discriminator = repeated ? "|" + products.joined(separator: "|") + "|" + (period ?? "") + "|" + applicationURLs.sorted().joined(separator: "|") : ""
-            let id = cached.first(where: {
-                ticketRoundIdentity($0.officialName) == identity && (!repeated || ($0.lotteryProducts == products && $0.applyStartAt == dates.first && Set($0.allApplicationLinks.map(\.url)) == applicationURLs))
-            })?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
+            let discriminatorParts = ["", products.joined(separator: "|"), period ?? "", applicationURLs.sorted().joined(separator: "|")]
+            let discriminator: String = repeated ? discriminatorParts.joined(separator: "|") : ""
+            let cachedRound = cached.first { round -> Bool in
+                guard ticketRoundIdentity(round.officialName) == identity else { return false }
+                guard repeated else { return true }
+                let cachedApplicationURLs = Set(round.allApplicationLinks.map(\.url))
+                return round.lotteryProducts == products && round.applyStartAt == dates.first && cachedApplicationURLs == applicationURLs
+            }
+            let id: String = cachedRound?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
             ownLinks = associateProductLinks(ownLinks, products: products,
                 lines: HTML.annotatedLines(section.html, relativeTo: sourceURL).map { (text: $0.text, links: $0.links) })
 
@@ -1496,7 +1501,7 @@ private extension OfficialEventScraper {
             let paymentWindowText = markedLineText(raw, markers: ["入金期間", "支払期間", "支払期限"])
             let paymentDates = parseExplicitDateTimes(paymentWindowText ?? "")
 
-            return ParsedTicketRound(round: TicketRound(
+            let round = TicketRound(
                 id: id, eventID: eventID,
                 officialName: section.heading, kind: kind,
                 scope: .unconfirmed,
@@ -1518,7 +1523,8 @@ private extension OfficialEventScraper {
                 lotteryProducts: products,
                 applicationTarget: nil,
                 notes: ticketNotes(in: lines, links: ownLinks)
-            ), scopeText: section.heading + "\n" + raw)
+            )
+            return ParsedTicketRound(round: round, scopeText: section.heading + "\n" + raw)
         }
         var seenRoundIDs: Set<String> = []
         return rounds.filter { seenRoundIDs.insert($0.round.id).inserted }
@@ -1885,7 +1891,7 @@ private extension OfficialEventScraper {
             return results.map(clean).filter { !$0.isEmpty && seen.insert($0).inserted }
         }
 
-        let rounds: [ParsedTicketRound] = blocks.compactMap { block in
+        let rounds: [ParsedTicketRound] = blocks.compactMap { block -> ParsedTicketRound? in
             let officialName = block.target.map { "\(block.roundHeading)（\($0)）" } ?? block.roundHeading
             let allText = block.allLines.map(\.text).joined(separator: "\n") + "\n" + block.productLines.map(\.text).joined(separator: "\n")
             let nameAndFields = officialName + allText
@@ -1923,12 +1929,17 @@ private extension OfficialEventScraper {
                 return ticketRoundIdentity(name) == identity
             }.count > 1
             let applicationURLs = Set(ownLinks.filter { $0.role == .application || $0.role == .overseasApplication }.map(\.url))
-            let discriminator = repeated ? "|" + lotteryProducts.joined(separator: "|") + "|" + (block.applyWindowText ?? "") + "|" + applicationURLs.sorted().joined(separator: "|") : ""
-            let id = cached.first(where: {
-                ticketRoundIdentity($0.officialName) == identity && (!repeated || ($0.lotteryProducts == lotteryProducts && $0.applyStartAt == applyDates.first && Set($0.allApplicationLinks.map(\.url)) == applicationURLs))
-            })?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
+            let discriminatorParts = ["", lotteryProducts.joined(separator: "|"), block.applyWindowText ?? "", applicationURLs.sorted().joined(separator: "|")]
+            let discriminator: String = repeated ? discriminatorParts.joined(separator: "|") : ""
+            let cachedRound = cached.first { round -> Bool in
+                guard ticketRoundIdentity(round.officialName) == identity else { return false }
+                guard repeated else { return true }
+                let cachedApplicationURLs = Set(round.allApplicationLinks.map(\.url))
+                return round.lotteryProducts == lotteryProducts && round.applyStartAt == applyDates.first && cachedApplicationURLs == applicationURLs
+            }
+            let id: String = cachedRound?.id ?? "\(eventID)-round-\(stableHash(identity + discriminator))"
 
-            return ParsedTicketRound(round: TicketRound(
+            let round = TicketRound(
                 id: id, eventID: eventID,
                 officialName: officialName, kind: kind,
                 scope: .unconfirmed,
@@ -1950,7 +1961,8 @@ private extension OfficialEventScraper {
                 lotteryProducts: lotteryProducts,
                 applicationTarget: block.target ?? block.applicationTargetField,
                 notes: notes
-            ), scopeText: officialName + "\n" + allText)
+            )
+            return ParsedTicketRound(round: round, scopeText: officialName + "\n" + allText)
         }
         var seenRoundIDs: Set<String> = []
         return rounds.filter { seenRoundIDs.insert($0.round.id).inserted }
