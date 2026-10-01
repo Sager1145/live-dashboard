@@ -45,21 +45,21 @@ final class AssistantEngineRoutingTests: XCTestCase {
 
     func testOrganizeOnDeviceUsesLocalPathEvenWhenEngineIsOpenAI() async throws {
         let organizer = FakeOnDeviceOrganizer()
-        let coordinator = makeCoordinator(organizer: organizer)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = LocalLiveRepository(directory: directory)
+        let coordinator = makeCoordinator(organizer: organizer, repository: repository)
         XCTAssertEqual(coordinator.engine, .openAI)
         let bundle = Self.fixtureBundle(sourceText: "2026年3月1日 10:00 开场")
-        let repository = LiveActionCenter.shared.repository
-        let previous = try await repository.allBundles()
         await repository.installEventsForTesting([bundle])
         await coordinator.organizeOnDevice(eventID: bundle.event.id)
-        await repository.installEventsForTesting(previous)
 
         XCTAssertEqual(organizer.eventIDs, [bundle.event.id])
         XCTAssertNil(coordinator.summary(for: bundle.event.id))
         XCTAssertTrue(coordinator.summaries.isEmpty)
     }
 
-    private func makeCoordinator(organizer: FakeOnDeviceOrganizer) -> AssistantCoordinator {
+    private func makeCoordinator(organizer: FakeOnDeviceOrganizer, repository: (any LiveRepository)? = nil) -> AssistantCoordinator {
         let (defaults, suiteName) = isolatedDefaults()
         suiteNames.append(suiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -68,7 +68,8 @@ final class AssistantEngineRoutingTests: XCTestCase {
             accountStore: AssistantAccountStore(secrets: InMemorySecretStore()),
             summaryStore: AssistantSummaryStore(directory: directory),
             defaults: defaults,
-            onDeviceOrganizer: organizer
+            onDeviceOrganizer: organizer,
+            repository: repository
         )
     }
 

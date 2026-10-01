@@ -6,7 +6,7 @@ import LiveIngestionCore
 public final class LiveActionCenter {
     public static let shared = LiveActionCenter()
 
-    public let repository: LocalLiveRepository
+    public let repository: any LiveRepository
     public let userDataStore: UserDataStore
     public let reminderService: any ReminderScheduling
     private let reader: any CatalogReadRepository
@@ -21,7 +21,7 @@ public final class LiveActionCenter {
     public var pendingOrganizeEventID: String?
 
     private convenience init() {
-        let local = LocalLiveRepository()
+        let local = PagesLiveRepository()
         self.init(
             reader: local,
             sync: LocalRepositorySyncService(repository: local),
@@ -39,7 +39,7 @@ public final class LiveActionCenter {
         jobs: any RefreshJobService,
         userDataStore: UserDataStore,
         reminderService: any ReminderScheduling,
-        repository: LocalLiveRepository
+        repository: any LiveRepository
     ) {
         self.reader = reader
         self.syncService = sync

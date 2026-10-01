@@ -9,7 +9,6 @@ public struct SettingsView: View {
     let assistant: AssistantCoordinator
     let externalStore: ExternalDataStore?
     let reminderService: ReminderScheduling
-    @State private var serverConnection: ServerConnectionStore
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @AppStorage("translation.targetLanguage") private var translationTargetRaw = TranslationTargetLanguage.followApp.rawValue
     @Environment(\.openURL) private var openURL
@@ -21,43 +20,11 @@ public struct SettingsView: View {
         self.assistant = assistant
         self.externalStore = externalStore
         self.reminderService = reminderService
-        self._serverConnection = State(initialValue: .shared)
     }
 
     public var body: some View {
-        @Bindable var connection = serverConnection
         NavigationStack {
             Form {
-                Section {
-                    TextField(text: $connection.baseURLString) {
-                        Text("服务器地址", bundle: .kit)
-                    }
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    TextField(text: $connection.serverInstanceID) {
-                        Text("实例 ID", bundle: .kit)
-                    }
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    TextField(text: $connection.displayName) {
-                        Text("显示名称", bundle: .kit)
-                    }
-                    Button {
-                        connection.save()
-                    } label: {
-                        Text("保存连接", bundle: .kit)
-                    }
-                    .accessibilityIdentifier("saveServerConnectionButton")
-                } header: {
-                    Text("资料服务器", bundle: .kit)
-                } footer: {
-                    if let validationMessage = connection.validationMessage {
-                        Text(verbatim: validationMessage)
-                    } else {
-                        Text("App 只从这台服务器下载已经发布的资料。", bundle: .kit)
-                    }
-                }
                 Section {
                     Toggle(isOn: Binding(get: { userDataStore.showsDeviceLocalTime }, set: { userDataStore.setDeviceLocalTimeEnabled($0) })) {
                         Text("同时显示设备本地时间", bundle: .kit)
@@ -134,7 +101,7 @@ public struct SettingsView: View {
                 } header: {
                     Text("资料管理", bundle: .kit)
                 } footer: {
-                    Text("公演资料、关注、手动申请状态、提醒和卡片设置都保存在本机。检查官方资料不需要账号或服务器安装身份。", bundle: .kit)
+                    Text("公演资料下载后缓存在本机；关注、手动申请状态、提醒和卡片设置也保存在本机。", bundle: .kit)
                 }
             }
             .navigationTitle(Text("设置", bundle: .kit))
@@ -178,10 +145,10 @@ private struct DataManagementView: View {
                     if dashboardStore.isRefreshing && !dashboardStore.isFetchingHistory {
                         HStack {
                             ProgressView()
-                            Text("正在检查官方资料，请稍候…", bundle: .kit)
+                            Text("正在同步资料，请稍候…", bundle: .kit)
                         }
                     } else {
-                        Label { Text("立即检查官方资料", bundle: .kit) } icon: { Image(systemName: "arrow.clockwise") }
+                        Label { Text("立即同步资料", bundle: .kit) } icon: { Image(systemName: "arrow.clockwise") }
                     }
                 }
                 .disabled(dashboardStore.isRefreshing)
@@ -213,7 +180,7 @@ private struct DataManagementView: View {
             } header: {
                 Text("资料更新", bundle: .kit)
             } footer: {
-                Text("每天首次打开或跨天回到前台时自动整理官网资料，范围从手机当前日期往前一个自然月开始，包含所有未来公演。更早的已存公演会保留，但不再自动整理。", bundle: .kit)
+                Text("资料每小时由服务器统一更新。App 在前台每小时同步一次，回到前台时检查是否需要同步；也可随时手动同步。离线时保留上次保存的资料。", bundle: .kit)
             }
             Section {
                 DatePicker(selection: $historyStart, in: ...Date(), displayedComponents: .date) {
@@ -233,10 +200,10 @@ private struct DataManagementView: View {
                     if dashboardStore.isFetchingHistory {
                         HStack {
                             ProgressView()
-                            Text("正在抓取过往公演…", bundle: .kit)
+                            Text("正在查找过往公演…", bundle: .kit)
                         }
                     } else {
-                        Label { Text("抓取该区间的公演", bundle: .kit) } icon: { Image(systemName: "clock.arrow.circlepath") }
+                        Label { Text("查找该区间的公演", bundle: .kit) } icon: { Image(systemName: "clock.arrow.circlepath") }
                     }
                 }
                 .disabled(dashboardStore.isRefreshing || historyEnd < historyStart)
@@ -254,7 +221,7 @@ private struct DataManagementView: View {
             } header: {
                 Text("历史资料", bundle: .kit)
             } footer: {
-                Text("手动抓取官网在所选日期区间内举办过的公演（含已结束的），并保存到本机。区间越长抓取时间越久。抓取结果不会影响每日自动整理。", bundle: .kit)
+                Text("同步已发布的资料，并查找所选日期区间内的公演（含已结束的）。只能查找已发布目录中的公演。", bundle: .kit)
             }
         }
         .navigationTitle(Text("资料管理", bundle: .kit))
@@ -267,7 +234,7 @@ private struct DataManagementView: View {
             refreshMessage = error
         } else {
             refreshSucceeded = true
-            refreshMessage = String(localized: "官方资料已更新", bundle: .kit)
+            refreshMessage = String(localized: "资料已同步", bundle: .kit)
         }
     }
 
@@ -278,7 +245,7 @@ private struct DataManagementView: View {
             historyMessage = error
         } else if let summary, summary.fetchedCount > 0 {
             historySucceeded = true
-            historyMessage = String(localized: "已抓取 \(summary.fetchedCount) 场公演（\(summary.start) 至 \(summary.end)）", bundle: .kit)
+            historyMessage = String(localized: "已找到 \(summary.fetchedCount) 场公演（\(summary.start) 至 \(summary.end)）", bundle: .kit)
         } else if summary != nil {
             historySucceeded = true
             historyMessage = String(localized: "未找到该区间的公演", bundle: .kit)

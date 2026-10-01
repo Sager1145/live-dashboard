@@ -12,9 +12,13 @@ struct LiveDashboardApp: App {
         WindowGroup {
             AppShell(dependencies: dependencies)
                 .onOpenURL { dependencies.handle(url: $0) }
-                .onChange(of: scenePhase) { _, phase in
-                    guard phase == .active else { return }
-                    Task { await dependencies.dashboardStore.refreshIfNeeded() }
+                .task(id: scenePhase) {
+                    guard scenePhase == .active else { return }
+                    while !Task.isCancelled {
+                        await dependencies.dashboardStore.refreshIfNeeded()
+                        do { try await Task.sleep(for: .seconds(60)) }
+                        catch { return }
+                    }
                 }
         }
     }
@@ -22,7 +26,7 @@ struct LiveDashboardApp: App {
 
 @MainActor @Observable
 final class AppDependencies {
-    let repository: LocalLiveRepository
+    let repository: any LiveRepository
     let userDataStore: UserDataStore
     let reminderService: any ReminderScheduling
     let installationService: InstallationService

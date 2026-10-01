@@ -58,6 +58,7 @@ public final class AssistantCoordinator {
     public private(set) var localDraftNotes: [String: String] = [:]
 
     private let defaults: UserDefaults
+    private let catalogRepository: (any LiveRepository)?
     private let onDeviceOrganizer: any OnDeviceOrganizing
     private let accountStore: AssistantAccountStore
     private let summaryStore: AssistantSummaryStore
@@ -110,11 +111,13 @@ public final class AssistantCoordinator {
         urlSession: URLSession = .shared,
         signInFlow: ChatGPTSignInFlow? = nil,
         defaults: UserDefaults = .standard,
-        onDeviceOrganizer: any OnDeviceOrganizing = SystemOnDeviceOrganizer()
+        onDeviceOrganizer: any OnDeviceOrganizing = SystemOnDeviceOrganizer(),
+        repository: (any LiveRepository)? = nil
     ) {
         self.officialPageSession = officialPageSession
         self.defaults = defaults
         self.onDeviceOrganizer = onDeviceOrganizer
+        self.catalogRepository = repository
         self.accountStore = accountStore
         self.summaryStore = summaryStore
         self.client = client
@@ -382,7 +385,7 @@ public final class AssistantCoordinator {
         }
         let bundle: LiveEventBundle?
         do {
-            bundle = try await LiveActionCenter.shared.repository.bundle(eventID: eventID)
+            bundle = try await (catalogRepository ?? LiveActionCenter.shared.repository).bundle(eventID: eventID)
         } catch {
             bundle = nil
         }

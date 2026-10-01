@@ -102,7 +102,7 @@ public enum CatalogSyncError: Error, Equatable, Sendable {
 }
 
 struct LocalRepositorySyncService: CatalogSyncService {
-    let repository: LocalLiveRepository
+    let repository: any LiveRepository
 
     func sync(reason: SyncReason) async throws -> SyncResult {
         _ = try await repository.refresh()
